@@ -314,6 +314,23 @@ const ALL_CONNECTORS = [
   // ── REGIONAL – Birmingham ───────────────────────────────────────────────────
   { id: 'birmingham-planning', label: 'Birmingham Planning', tier: 'regional', requiresKey: null, search: lazySearch('./birminghamPlanning.js') },
 
+  // ── REGIONAL – Poland ──────────────────────────────────────────────────────
+  { id: 'onet-pl', label: 'Onet.pl', tier: 'regional', requiresKey: null, search: lazySearch('./onetPl.js') },
+  { id: 'wp-pl', label: 'Wirtualna Polska', tier: 'regional', requiresKey: null, search: lazySearch('./wpPl.js') },
+  { id: 'interia-pl', label: 'Interia.pl', tier: 'regional', requiresKey: null, search: lazySearch('./interiaPl.js') },
+  { id: 'gazeta-pl', label: 'Gazeta.pl', tier: 'regional', requiresKey: null, search: lazySearch('./gazetaPl.js') },
+  { id: 'whitepages-pl', label: 'WhitePages Poland', tier: 'regional', requiresKey: null, search: lazySearch('./whitepagesPl.js') },
+  { id: 'biznes-gov-pl', label: 'Biznes.gov.pl', tier: 'regional', requiresKey: null, search: lazySearch('./biznesGovPl.js') },
+  { id: 'ceidg-pl', label: 'CEIDG Poland', tier: 'regional', requiresKey: null, search: lazySearch('./ceidgPl.js') },
+  { id: 'regon-pl', label: 'REGON Poland', tier: 'regional', requiresKey: null, search: lazySearch('./regonPl.js') },
+  { id: 'krs-pl', label: 'KRS Poland', tier: 'regional', requiresKey: null, search: lazySearch('./krsPl.js') },
+  { id: 'knf-pl', label: 'KNF Poland', tier: 'regional', requiresKey: null, search: lazySearch('./knfPl.js') },
+  { id: 'uprp-pl', label: 'UPRP Poland', tier: 'regional', requiresKey: null, search: lazySearch('./uprpPl.js') },
+  { id: 'ppm-pl', label: 'PPM.edu.pl', tier: 'regional', requiresKey: null, search: lazySearch('./ppmPl.js') },
+  { id: 'pkt-pl', label: 'PKT.pl', tier: 'regional', requiresKey: null, search: lazySearch('./pktPl.js') },
+  { id: 'zumi-pl', label: 'Zumi.pl', tier: 'regional', requiresKey: null, search: lazySearch('./zumiPl.js') },
+  { id: 'o2-pl', label: 'O2.pl', tier: 'regional', requiresKey: null, search: lazySearch('./o2Pl.js') },
+
   // ── META ──────────────────────────────────────────────────────────────────
   { id: 'startpage', label: 'Startpage', tier: 'meta', requiresKey: null, search: lazySearch('./startpage.js') },
   { id: 'dogpile', label: 'Dogpile', tier: 'meta', requiresKey: null, search: lazySearch('./dogpile.js') },
