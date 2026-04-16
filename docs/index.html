@@ -311,7 +311,7 @@
       </span>
     </div>
 
-    <div id="eng-bar">ENGINES READY: <span id="eng-count">19 open APIs (standalone)</span></div>
+    <div id="eng-bar">ENGINES READY: <span id="eng-count">26 open APIs (standalone) · add API keys for more</span></div>
 
     <!-- PRIMARY SEARCH ROW -->
     <div class="search-row">
@@ -511,8 +511,8 @@ const KEY_DEFS=[
 })();
 
 function loadKeys(){KEY_DEFS.forEach(k=>{const el=document.getElementById('k-'+k.id);if(el)el.value=localStorage.getItem('tracer_'+k.id)||''})}
-function saveKeys(){KEY_DEFS.forEach(k=>{const el=document.getElementById('k-'+k.id);if(el)el.value?localStorage.setItem('tracer_'+k.id,el.value):localStorage.removeItem('tracer_'+k.id)});showErr('Keys saved.',false)}
-function clearKeys(){KEY_DEFS.forEach(k=>{localStorage.removeItem('tracer_'+k.id);const el=document.getElementById('k-'+k.id);if(el)el.value=''})}
+function saveKeys(){KEY_DEFS.forEach(k=>{const el=document.getElementById('k-'+k.id);if(el)el.value?localStorage.setItem('tracer_'+k.id,el.value):localStorage.removeItem('tracer_'+k.id)});updateStandaloneEngCount();showErr('Keys saved.',false)}
+function clearKeys(){KEY_DEFS.forEach(k=>{localStorage.removeItem('tracer_'+k.id);const el=document.getElementById('k-'+k.id);if(el)el.value=''});updateStandaloneEngCount()}
 function collectKeys(){const o={};KEY_DEFS.forEach(k=>{const el=document.getElementById('k-'+k.id);if(el&&el.value.trim())o[k.id]=el.value.trim()});return o}
 
 // ── CONNECTION ────────────────────────────────────────────────────────────────
@@ -791,7 +791,151 @@ async function searchDirect(query){
         snippet:[co.jurisdiction_code,co.company_type,co.company_status].filter(Boolean).join(' | '),
         score:3-i,seenOn:['opencorporates']};});
     }},
+
+    // ── GitLab Users ──
+    {name:'gitlab-users',fn:async()=>{
+      const d=await fetchWithRetry(`https://gitlab.com/api/v4/users?search=${q}&per_page=5`);
+      return(Array.isArray(d)?d:[]).map((u,i)=>({source:'gitlab',
+        title:u.username||u.name||'',url:u.web_url||'',
+        snippet:[u.name||'',u.bio||''].filter(Boolean).join(' · ').slice(0,180),
+        score:6-i,seenOn:['gitlab']}));
+    }},
+
+    // ── GitLab Projects ──
+    {name:'gitlab-projects',fn:async()=>{
+      const d=await fetchWithRetry(`https://gitlab.com/api/v4/projects?search=${q}&per_page=5&order_by=stars`);
+      return(Array.isArray(d)?d:[]).map((p,i)=>({source:'gitlab',
+        title:p.path_with_namespace||p.name||'',url:p.web_url||'',
+        snippet:[p.description||'',p.star_count?`★ ${p.star_count}`:''].filter(Boolean).join(' · ').slice(0,180),
+        score:5-i,seenOn:['gitlab']}));
+    }},
+
+    // ── Wikimedia Commons ──
+    {name:'commons',fn:async()=>{
+      const d=await fetchWithRetry(`https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&format=json&origin=*`);
+      return(d.query&&d.query.search||[]).map((item,i)=>({source:'commons',
+        title:item.title||'',url:`https://commons.wikimedia.org/wiki/${encodeURIComponent(item.title)}`,
+        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
+        score:4-i,seenOn:['commons']}));
+    }},
+
+    // ── DBLP (computer science bibliography) ──
+    {name:'dblp',fn:async()=>{
+      const d=await fetchWithRetry(`https://dblp.org/search/publ/api?q=${q}&format=json&h=5`);
+      const hits=(d.result&&d.result.hits&&d.result.hits.hit)||[];
+      return hits.map((h,i)=>{const info=h.info||{};return{source:'dblp',
+        title:info.title||'',url:info.url||'',
+        snippet:[(info.authors&&info.authors.author)?[].concat(info.authors.author).slice(0,2).map(a=>typeof a==='string'?a:a.text||'').join(', '):'',info.year||'',info.venue||''].filter(Boolean).join(' · '),
+        score:4-i,seenOn:['dblp']};});
+    }},
+
+    // ── Codeberg Users (Gitea-based, CORS-friendly) ──
+    {name:'codeberg',fn:async()=>{
+      const d=await fetchWithRetry(`https://codeberg.org/api/v1/users/search?q=${q}&limit=5`);
+      return((d&&d.data)||[]).map((u,i)=>({source:'codeberg',
+        title:u.login||u.username||'',url:`https://codeberg.org/${u.login||u.username}`,
+        snippet:[u.full_name||'',u.description||''].filter(Boolean).join(' · ').slice(0,180),
+        score:4-i,seenOn:['codeberg']}));
+    }},
+
+    // ── Wikibooks ──
+    {name:'wikibooks',fn:async()=>{
+      const d=await fetchWithRetry(`https://en.wikibooks.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&format=json&origin=*`);
+      return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikibooks',
+        title:item.title||'',url:`https://en.wikibooks.org/wiki/${encodeURIComponent(item.title)}`,
+        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
+        score:3-i,seenOn:['wikibooks']}));
+    }},
   ];
+
+  // ── KEY-BACKED FETCHERS (only added when user provides API keys) ──
+  const keys=collectKeys();
+
+  if(keys.brave){
+    namedFetchers.push({name:'brave',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.search.brave.com/res/v1/web/search?q=${q}&count=8`,
+        {headers:{'X-Subscription-Token':keys.brave,'Accept':'application/json'}});
+      return(d.web&&d.web.results||[]).map((r,i)=>({source:'brave',
+        title:r.title||'',url:r.url||'',
+        snippet:(r.description||'').slice(0,180),
+        score:8-i,seenOn:['brave']}));
+    }});
+  }
+
+  if(keys.google&&keys.googleCx){
+    namedFetchers.push({name:'google',fn:async()=>{
+      const d=await fetchWithRetry(`https://www.googleapis.com/customsearch/v1?q=${q}&key=${encodeURIComponent(keys.google)}&cx=${encodeURIComponent(keys.googleCx)}&num=8`);
+      return(d.items||[]).map((r,i)=>({source:'google',
+        title:r.title||'',url:r.link||'',
+        snippet:(r.snippet||'').slice(0,180),
+        score:9-i,seenOn:['google']}));
+    }});
+  }
+
+  if(keys.serpapi){
+    namedFetchers.push({name:'serpapi',fn:async()=>{
+      const d=await fetchWithRetry(`https://serpapi.com/search.json?q=${q}&api_key=${encodeURIComponent(keys.serpapi)}&engine=google&num=8`);
+      return(d.organic_results||[]).map((r,i)=>({source:'serpapi',
+        title:r.title||'',url:r.link||'',
+        snippet:(r.snippet||'').slice(0,180),
+        score:8-i,seenOn:['serpapi']}));
+    }});
+  }
+
+  if(keys.mojeek){
+    namedFetchers.push({name:'mojeek',fn:async()=>{
+      const d=await fetchWithRetry(`https://www.mojeek.com/search?q=${q}&fmt=json&api_key=${encodeURIComponent(keys.mojeek)}&t=8`);
+      return(d.response&&d.response.results||[]).map((r,i)=>({source:'mojeek',
+        title:r.title||'',url:r.url||'',
+        snippet:(r.desc||'').slice(0,180),
+        score:6-i,seenOn:['mojeek']}));
+    }});
+  }
+
+  if(keys.exa){
+    namedFetchers.push({name:'exa',fn:async()=>{
+      const d=await fetchWithRetry('https://api.exa.ai/search',{
+        method:'POST',headers:{'Content-Type':'application/json','x-api-key':keys.exa},
+        body:JSON.stringify({query,numResults:8,useAutoprompt:true})});
+      return(d.results||[]).map((r,i)=>({source:'exa',
+        title:r.title||'',url:r.url||'',
+        snippet:(r.text||r.publishedDate||'').slice(0,180),
+        score:7-i,seenOn:['exa']}));
+    }});
+  }
+
+  if(keys.shodan){
+    namedFetchers.push({name:'shodan',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.shodan.io/shodan/host/search?query=${q}&key=${encodeURIComponent(keys.shodan)}`);
+      return(d.matches||[]).slice(0,5).map((m,i)=>({source:'shodan',
+        title:`${m.ip_str||''}:${m.port||''}`,url:`https://www.shodan.io/host/${m.ip_str}`,
+        snippet:[m.org||'',m.os||'',m.product||''].filter(Boolean).join(' · ').slice(0,180),
+        score:5-i,seenOn:['shodan']}));
+    }});
+  }
+
+  if(keys.hunter){
+    namedFetchers.push({name:'hunter',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.hunter.io/v2/domain-search?domain=${q}&api_key=${encodeURIComponent(keys.hunter)}`);
+      const emails=(d.data&&d.data.emails)||[];
+      return emails.slice(0,5).map((e,i)=>({source:'hunter',
+        title:e.value||'',url:`https://hunter.io/verify/${encodeURIComponent(e.value)}`,
+        snippet:[e.first_name,e.last_name,e.department,e.position].filter(Boolean).join(' · '),
+        score:5-i,seenOn:['hunter']}));
+    }});
+  }
+
+  if(keys.intelx){
+    namedFetchers.push({name:'intelx',fn:async()=>{
+      const d=await fetchWithRetry('https://2.intelx.io/intelligent/search',{
+        method:'POST',headers:{'Content-Type':'application/json','x-key':keys.intelx},
+        body:JSON.stringify({term:query,maxresults:5,media:0,sort:2,terminate:[]})});
+      return(d.records||[]).slice(0,5).map((r,i)=>({source:'intelx',
+        title:r.name||r.systemid||'',url:`https://intelx.io/?s=${encodeURIComponent(query)}`,
+        snippet:[r.bucket||'',r.mediah||'',r.date||''].filter(Boolean).join(' · ').slice(0,180),
+        score:5-i,seenOn:['intelx']}));
+    }});
+  }
 
   const attempted=namedFetchers.length;
   const sourceStatus=[];   // {name, status:'ok'|'fail'|'empty', reason?}
@@ -922,6 +1066,7 @@ const TIER_MAP={
   'companies-house':'open','social-profiles':'social',
   wikipedia:'open',wikidata:'open',github:'open',hackernews:'open',stackoverflow:'open',
   'archive.org':'open',openlibrary:'open',pubmed:'open',npm:'open',
+  gitlab:'open',commons:'open',dblp:'open',codeberg:'open',wikibooks:'open',
   shodan:'osint',censys:'osint',hunter:'osint',intelx:'osint',publicwww:'osint',tineye:'osint',
   yandex:'regional',baidu:'regional',naver:'regional',sogou:'regional',so360:'regional',seznam:'regional','mail.ru':'regional',rambler:'regional',
   startpage:'meta',dogpile:'meta',metacrawler:'meta',etools:'meta',ecosia:'meta',
@@ -1216,8 +1361,19 @@ function clearResults(){document.getElementById('results-section').style.display
 function showErr(msg,isErr){const el=document.getElementById('err');el.textContent=msg;el.style.display=msg?'block':'none';if(!isErr)el.style.color='var(--bright)'}
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
+const OPEN_SOURCE_COUNT=26;
+function updateStandaloneEngCount(){
+  if(connected)return;
+  const keys=collectKeys();
+  const keyBacked=['brave','google','serpapi','mojeek','exa','shodan','hunter','intelx']
+    .filter(k=>k==='google'?(keys.google&&keys.googleCx):!!keys[k]).length;
+  const total=OPEN_SOURCE_COUNT+keyBacked;
+  document.getElementById('eng-count').textContent=
+    total+' APIs ('+OPEN_SOURCE_COUNT+' open'+(keyBacked?' + '+keyBacked+' key-backed':'')+')';
+}
 loadKeys();
 renderHistory();
+updateStandaloneEngCount();
 // Always try the local server first. On GitHub Pages we start in STANDALONE
 // mode but immediately attempt a connection — if the user has `npm run serve`
 // running, the dot goes green and searches use the full engine set.
