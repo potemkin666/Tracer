@@ -1,5 +1,10 @@
 const axios = require('axios');
+const cheerio = require('cheerio');
 const { normalise } = require('../normaliser');
+
+function stripTags(html) {
+  return cheerio.load(html).text();
+}
 
 async function search(query, apiKeys = {}) {
   try {
@@ -14,9 +19,9 @@ async function search(query, apiKeys = {}) {
     const items = response.data.items || [];
     return items.map((item, i) =>
       normalise('naver', query, {
-        title: (item.title || '').replace(/<[^>]+>/g, ''),
+        title: stripTags(item.title || ''),
         url: item.link,
-        snippet: (item.description || '').replace(/<[^>]+>/g, ''),
+        snippet: stripTags(item.description || ''),
         rank: i + 1,
       })
     );
