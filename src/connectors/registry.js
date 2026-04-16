@@ -74,6 +74,25 @@ const ALL_CONNECTORS = [
   { id: 'europeana', label: 'Europeana', tier: 'open', requiresKey: null, search: lazySearch('./europeana.js') },
   { id: 'jstor', label: 'JSTOR', tier: 'open', requiresKey: null, search: lazySearch('./jstor.js') },
   { id: 'companies-house', label: 'UK Companies House', tier: 'open', requiresKey: null, search: lazySearch('./companieshouse.js') },
+  { id: 'google-maps', label: 'Google Maps', tier: 'open', requiresKey: null, search: lazySearch('./googleMaps.js') },
+  { id: 'google-books', label: 'Google Books', tier: 'open', requiresKey: null, search: lazySearch('./googleBooks.js') },
+  { id: 'bing-maps', label: 'Bing Maps', tier: 'open', requiresKey: null, search: lazySearch('./bingMaps.js') },
+  { id: 'yandex-maps', label: 'Yandex Maps', tier: 'open', requiresKey: null, search: lazySearch('./yandexMaps.js') },
+  { id: 'baidu-index', label: 'Baidu Index', tier: 'open', requiresKey: null, search: lazySearch('./baiduIndex.js') },
+  { id: 'weixin-sogou', label: 'Weixin Sogou', tier: 'open', requiresKey: null, search: lazySearch('./weixinSogou.js') },
+  { id: 'tusksearch', label: 'TuskSearch', tier: 'open', requiresKey: null, search: lazySearch('./tuskSearch.js') },
+  { id: 'excite', label: 'Excite', tier: 'open', requiresKey: null, search: lazySearch('./excite.js') },
+  { id: 'biznar', label: 'Biznar', tier: 'open', requiresKey: null, search: lazySearch('./biznar.js') },
+  { id: 'mednar', label: 'MedNar', tier: 'open', requiresKey: null, search: lazySearch('./mednar.js') },
+  { id: 'scienceresearch', label: 'ScienceResearch', tier: 'open', requiresKey: null, search: lazySearch('./scienceResearch.js') },
+  { id: 'kiddle', label: 'Kiddle', tier: 'open', requiresKey: null, search: lazySearch('./kiddle.js') },
+  { id: 'petalsearch', label: 'Petal Search', tier: 'open', requiresKey: null, search: lazySearch('./petalSearch.js') },
+  { id: 'grok', label: 'Grok', tier: 'open', requiresKey: null, search: lazySearch('./grok.js') },
+  { id: 'loc-gov', label: 'Library of Congress', tier: 'open', requiresKey: null, search: lazySearch('./locGov.js') },
+  { id: 'hathitrust', label: 'HathiTrust', tier: 'open', requiresKey: null, search: lazySearch('./hathiTrust.js') },
+  { id: 'british-museum', label: 'British Museum', tier: 'open', requiresKey: null, search: lazySearch('./britishMuseum.js') },
+  { id: 'royal-collection', label: 'Royal Collection Trust', tier: 'open', requiresKey: null, search: lazySearch('./royalCollectionTrust.js') },
+  { id: 'british-library', label: 'British Library', tier: 'open', requiresKey: null, search: lazySearch('./britishLibrary.js') },
 
   // ── OSINT ─────────────────────────────────────────────────────────────────
   { id: 'shodan', label: 'Shodan', tier: 'osint', requiresKey: 'shodan', search: lazySearch('./shodan.js') },
@@ -82,6 +101,9 @@ const ALL_CONNECTORS = [
   { id: 'intelx', label: 'IntelX', tier: 'osint', requiresKey: 'intelx', search: lazySearch('./intelx.js') },
   { id: 'publicwww', label: 'PublicWWW', tier: 'osint', requiresKey: 'publicwww', search: lazySearch('./publicwww.js') },
   { id: 'tineye', label: 'TinEye', tier: 'osint', requiresKey: 'tineye', search: lazySearch('./tineye.js') },
+  { id: 'dehashed', label: 'DeHashed', tier: 'osint', requiresKey: 'dehashed', search: lazySearch('./dehashed.js') },
+  { id: 'haveibeenpwned', label: 'Have I Been Pwned', tier: 'osint', requiresKey: 'hibp', search: lazySearch('./haveibeenpwned.js') },
+  { id: 'greynoise', label: 'GreyNoise', tier: 'osint', requiresKey: 'greynoise', search: lazySearch('./greynoise.js') },
 
   // ── REGIONAL ──────────────────────────────────────────────────────────────
   { id: 'yandex', label: 'Yandex', tier: 'regional', requiresKey: 'yandex', search: lazySearch('./yandex.js') },
@@ -157,6 +179,16 @@ const ALL_CONNECTORS = [
   { id: 'national-archives-uk', label: 'UK National Archives', tier: 'regional', requiresKey: null, search: lazySearch('./nationalArchivesUk.js') },
   { id: 'senedd', label: 'Senedd Wales', tier: 'regional', requiresKey: null, search: lazySearch('./senedd.js') },
 
+  // ── REGIONAL – London Historical ───────────────────────────────────────────
+  { id: 'old-bailey', label: 'Old Bailey Online', tier: 'regional', requiresKey: null, search: lazySearch('./oldBailey.js') },
+  { id: 'layers-of-london', label: 'Layers of London', tier: 'regional', requiresKey: null, search: lazySearch('./layersOfLondon.js') },
+  { id: 'booth-poverty-map', label: 'Booth Poverty Map', tier: 'regional', requiresKey: null, search: lazySearch('./boothPovertyMap.js') },
+  { id: 'locating-london', label: 'Locating London', tier: 'regional', requiresKey: null, search: lazySearch('./locatingLondon.js') },
+  { id: 'london-picture-archive', label: 'London Picture Archive', tier: 'regional', requiresKey: null, search: lazySearch('./londonPictureArchive.js') },
+  { id: 'british-history-online', label: 'British History Online', tier: 'regional', requiresKey: null, search: lazySearch('./britishHistoryOnline.js') },
+  { id: 'map-of-london', label: 'Map of Early Modern London', tier: 'regional', requiresKey: null, search: lazySearch('./mapOfLondon.js') },
+  { id: 'gm-lives', label: 'GM Lives', tier: 'regional', requiresKey: null, search: lazySearch('./gmLives.js') },
+
   // ── REGIONAL – Germany ─────────────────────────────────────────────────────
   { id: 'fireball', label: 'Fireball', tier: 'regional', requiresKey: null, search: lazySearch('./fireball.js') },
   { id: 'gelbeseiten', label: 'Gelbe Seiten', tier: 'regional', requiresKey: null, search: lazySearch('./gelbeseiten.js') },
@@ -205,6 +237,158 @@ const ALL_CONNECTORS = [
 
   // ── REGIONAL – Belgium ─────────────────────────────────────────────────────
   { id: 'whitepages-be', label: 'White Pages Belgium', tier: 'regional', requiresKey: null, search: lazySearch('./whitepagesBe.js') },
+
+  // ── REGIONAL – DRC (Congo) ──────────────────────────────────────────────
+  { id: 'acp-cd', label: 'ACP Congo', tier: 'regional', requiresKey: null, search: lazySearch('./acpCd.js') },
+  { id: 'rcst-cd', label: 'RCST Congo', tier: 'regional', requiresKey: null, search: lazySearch('./rcstCd.js') },
+  { id: 'odd-dashboard-cd', label: 'ODD Dashboard Congo', tier: 'regional', requiresKey: null, search: lazySearch('./oddDashboardCd.js') },
+  { id: 'inrb-cd', label: 'INRB Congo', tier: 'regional', requiresKey: null, search: lazySearch('./inrbCd.js') },
+  { id: 'drc-precop-cd', label: 'DRC PreCOP Environment', tier: 'regional', requiresKey: null, search: lazySearch('./drcPrecopCd.js') },
+  { id: 'julisha-cd', label: 'Julisha Congo', tier: 'regional', requiresKey: null, search: lazySearch('./julishaCd.js') },
+  { id: 'pnmls-cd', label: 'PNMLS Documentation', tier: 'regional', requiresKey: null, search: lazySearch('./pnmlsCd.js') },
+
+  // ── REGIONAL – Argentina ────────────────────────────────────────────────────
+  { id: 'infoleg-ar', label: 'InfoLeg Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./infolegAr.js') },
+  { id: 'justicia-ar', label: 'Argentina Justicia', tier: 'regional', requiresKey: null, search: lazySearch('./justiciaAr.js') },
+  { id: 'mseg-ar', label: 'MSEG Buenos Aires', tier: 'regional', requiresKey: null, search: lazySearch('./msegAr.js') },
+  { id: 'pjn-ar', label: 'PJN Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./pjnAr.js') },
+  { id: 'cij-ar', label: 'CIJ Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./cijAr.js') },
+  { id: 'boletin-oficial-ar', label: 'Boletín Oficial Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./boletinOficialAr.js') },
+  { id: 'afip-ar', label: 'AFIP Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./afipAr.js') },
+  { id: 'datos-abiertos-ar', label: 'Datos Abiertos Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./datosAbiertosAr.js') },
+  { id: 'migraciones-ar', label: 'Migraciones Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./migracionesAr.js') },
+  { id: 'comprar-ar', label: 'Comprar Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./comprarAr.js') },
+
+  // ── REGIONAL – Romania ──────────────────────────────────────────────────────
+  { id: 'politia-ro', label: 'Romanian Police', tier: 'regional', requiresKey: null, search: lazySearch('./politiaRo.js') },
+  { id: 'politia-frontiera-ro', label: 'Border Police Romania', tier: 'regional', requiresKey: null, search: lazySearch('./politiaFrontieraRo.js') },
+  { id: 'onrc-ro', label: 'ONRC Romania', tier: 'regional', requiresKey: null, search: lazySearch('./onrcRo.js') },
+  { id: 'listafirme-ro', label: 'Lista Firme', tier: 'regional', requiresKey: null, search: lazySearch('./listafirmeRo.js') },
+  { id: 'romanian-companies', label: 'Romanian Companies', tier: 'regional', requiresKey: null, search: lazySearch('./romanianCompanies.js') },
+  { id: 'arhiva-nationala-ro', label: 'National Archives Romania', tier: 'regional', requiresKey: null, search: lazySearch('./arhivaNationalaRo.js') },
+  { id: 'biblioteca-nationala-ro', label: 'National Library Romania', tier: 'regional', requiresKey: null, search: lazySearch('./bibliotecaNationalaRo.js') },
+  { id: 'e-licitatie-ro', label: 'e-Licitatie Romania', tier: 'regional', requiresKey: null, search: lazySearch('./eLicitatieRo.js') },
+  { id: 'anaf-ro', label: 'ANAF Romania', tier: 'regional', requiresKey: null, search: lazySearch('./anafRo.js') },
+  { id: 'portal-just-ro', label: 'Portal Just Romania', tier: 'regional', requiresKey: null, search: lazySearch('./portalJustRo.js') },
+  { id: 'rejust-ro', label: 'ReJust Romania', tier: 'regional', requiresKey: null, search: lazySearch('./rejustRo.js') },
+  { id: 'rolii-ro', label: 'ROLII Romania', tier: 'regional', requiresKey: null, search: lazySearch('./roliiRo.js') },
+  { id: 'genealogica-ro', label: 'Genealogica Romania', tier: 'regional', requiresKey: null, search: lazySearch('./genealogicaRo.js') },
+  { id: 'sicap-ro', label: 'SICAP Romania', tier: 'regional', requiresKey: null, search: lazySearch('./sicapRo.js') },
+
+  // ── REGIONAL – Eritrea ──────────────────────────────────────────────────────
+  { id: 'shabait-er', label: 'Shabait Eritrea', tier: 'regional', requiresKey: null, search: lazySearch('./shabaitEr.js') },
+  { id: 'eritrea-info-er', label: 'Eritrea Information', tier: 'regional', requiresKey: null, search: lazySearch('./eritreaInfoEr.js') },
+  { id: 'eritrea-yellow-pages', label: 'Eritrea Yellow Pages', tier: 'regional', requiresKey: null, search: lazySearch('./eritreaYellowPages.js') },
+  { id: 'erilaw-er', label: 'EriLaw', tier: 'regional', requiresKey: null, search: lazySearch('./erilawEr.js') },
+  { id: 'worldlii-er', label: 'WorldLII Eritrea', tier: 'regional', requiresKey: null, search: lazySearch('./worldliiEr.js') },
+
+  // ── REGIONAL – Iran ─────────────────────────────────────────────────────────
+  { id: 'irandoc-ir', label: 'IranDoc', tier: 'regional', requiresKey: null, search: lazySearch('./irandocIr.js') },
+  { id: 'sid-ir', label: 'SID Iran', tier: 'regional', requiresKey: null, search: lazySearch('./sidIr.js') },
+  { id: 'nlai-ir', label: 'National Library Iran', tier: 'regional', requiresKey: null, search: lazySearch('./nlaiIr.js') },
+  { id: 'jref-ir', label: 'JREF Iran', tier: 'regional', requiresKey: null, search: lazySearch('./jrefIr.js') },
+  { id: 'vlist-ir', label: 'VList Iran', tier: 'regional', requiresKey: null, search: lazySearch('./vlistIr.js') },
+  { id: 'company-register-ir', label: 'Company Register Iran', tier: 'regional', requiresKey: null, search: lazySearch('./companyRegisterIr.js') },
+  { id: 'symposia-ir', label: 'Symposia Iran', tier: 'regional', requiresKey: null, search: lazySearch('./symposiaIr.js') },
+  { id: 'trade-with-iran', label: 'Trade With Iran', tier: 'regional', requiresKey: null, search: lazySearch('./tradeWithIranIr.js') },
+  { id: 'mfa-ir', label: 'MFA Iran', tier: 'regional', requiresKey: null, search: lazySearch('./mfaIr.js') },
+  { id: 'iran-law-ir', label: 'Iran Law Journal', tier: 'regional', requiresKey: null, search: lazySearch('./iranLawIr.js') },
+
+  // ── REGIONAL – Luxembourg ───────────────────────────────────────────────────
+  { id: 'lbr-lu', label: 'LBR Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./lbrLu.js') },
+  { id: 'guichet-lu', label: 'Guichet Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./guichetLu.js') },
+  { id: 'legilux-lu', label: 'Legilux', tier: 'regional', requiresKey: null, search: lazySearch('./legiluxLu.js') },
+  { id: 'justice-lu', label: 'Justice Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./justiceLu.js') },
+  { id: 'data-lu', label: 'Data Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./dataLu.js') },
+  { id: 'geoportail-lu', label: 'Geoportail Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./geoportailLu.js') },
+  { id: 'police-lu', label: 'Police Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./policeLu.js') },
+  { id: 'editus-lu', label: 'Editus Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./editusLu.js') },
+  { id: 'proff-lu', label: 'Proff Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./proffLu.js') },
+  { id: 'archives-lu', label: 'Archives Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./archivesLu.js') },
+  { id: 'bnl-lu', label: 'National Library Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./bnlLu.js') },
+  { id: 'cc-lu', label: 'Chamber of Commerce Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./ccLu.js') },
+
+  // ── REGIONAL – London Boroughs ──────────────────────────────────────────────
+  { id: 'harrow-planning', label: 'Harrow Planning', tier: 'regional', requiresKey: null, search: lazySearch('./harrowPlanning.js') },
+  { id: 'richmond-planning', label: 'Richmond Planning', tier: 'regional', requiresKey: null, search: lazySearch('./richmondPlanning.js') },
+  { id: 'wandsworth-planning', label: 'Wandsworth Planning', tier: 'regional', requiresKey: null, search: lazySearch('./wandsworthPlanning.js') },
+  { id: 'merton-planning', label: 'Merton Planning', tier: 'regional', requiresKey: null, search: lazySearch('./mertonPlanning.js') },
+  { id: 'bromley-planning', label: 'Bromley Planning', tier: 'regional', requiresKey: null, search: lazySearch('./bromleyPlanning.js') },
+  { id: 'sutton-planning', label: 'Sutton Planning', tier: 'regional', requiresKey: null, search: lazySearch('./suttonPlanning.js') },
+  { id: 'kingston-planning', label: 'Kingston Planning', tier: 'regional', requiresKey: null, search: lazySearch('./kingstonPlanning.js') },
+  { id: 'enfield-planning', label: 'Enfield Planning', tier: 'regional', requiresKey: null, search: lazySearch('./enfieldPlanning.js') },
+  { id: 'hackney-archives', label: 'Hackney Archives', tier: 'regional', requiresKey: null, search: lazySearch('./hackneyArchives.js') },
+  { id: 'london-archives', label: 'London Archives', tier: 'regional', requiresKey: null, search: lazySearch('./londonArchives.js') },
+  { id: 'met-police', label: 'Metropolitan Police', tier: 'regional', requiresKey: null, search: lazySearch('./metPolice.js') },
+  { id: 'gmp-police', label: 'Greater Manchester Police', tier: 'regional', requiresKey: null, search: lazySearch('./gmpPolice.js') },
+
+  // ── REGIONAL – Cornwall ─────────────────────────────────────────────────────
+  { id: 'cornwall-gov', label: 'Cornwall Council', tier: 'regional', requiresKey: null, search: lazySearch('./cornwallGov.js') },
+  { id: 'devon-cornwall-police', label: 'Devon & Cornwall Police', tier: 'regional', requiresKey: null, search: lazySearch('./devonCornwallPolice.js') },
+
+  // ── REGIONAL – Isle of Man ──────────────────────────────────────────────────
+  { id: 'gov-im', label: 'Isle of Man Gov', tier: 'regional', requiresKey: null, search: lazySearch('./govIm.js') },
+  { id: 'planning-im', label: 'Isle of Man Planning', tier: 'regional', requiresKey: null, search: lazySearch('./planningIm.js') },
+
+  // ── REGIONAL – Birmingham ───────────────────────────────────────────────────
+  { id: 'birmingham-planning', label: 'Birmingham Planning', tier: 'regional', requiresKey: null, search: lazySearch('./birminghamPlanning.js') },
+
+  // ── REGIONAL – New York State ──────────────────────────────────────────────
+  { id: 'dol-ny', label: 'NY DOL Contractor Registry', tier: 'regional', requiresKey: null, search: lazySearch('./dolNy.js') },
+  { id: 'nyscr-ny', label: 'NY State Contract Reporter', tier: 'regional', requiresKey: null, search: lazySearch('./nyscrNy.js') },
+  { id: 'dmv-ny', label: 'NY DMV', tier: 'regional', requiresKey: null, search: lazySearch('./dmvNy.js') },
+  { id: 'nysm-ny', label: 'NY State Museum', tier: 'regional', requiresKey: null, search: lazySearch('./nysmNy.js') },
+
+  // ── REGIONAL – France ──────────────────────────────────────────────────────
+  { id: 'pagesjaunes-fr', label: 'PagesJaunes', tier: 'regional', requiresKey: null, search: lazySearch('./pagesJaunesFr.js') },
+  { id: '118712-fr', label: '118712', tier: 'regional', requiresKey: null, search: lazySearch('./fr118712.js') },
+  { id: '118000-fr', label: '118000', tier: 'regional', requiresKey: null, search: lazySearch('./fr118000.js') },
+  { id: 'orange-annuaire-fr', label: 'Orange Annuaire', tier: 'regional', requiresKey: null, search: lazySearch('./orangeAnnuaireFr.js') },
+  { id: 'societe-fr', label: 'Societe.com', tier: 'regional', requiresKey: null, search: lazySearch('./societeFr.js') },
+  { id: 'verif-fr', label: 'Verif.com', tier: 'regional', requiresKey: null, search: lazySearch('./verifFr.js') },
+  { id: 'infobel-fr', label: 'Infobel France', tier: 'regional', requiresKey: null, search: lazySearch('./infobelFr.js') },
+  { id: 'europages-fr', label: 'Europages France', tier: 'regional', requiresKey: null, search: lazySearch('./europagesFr.js') },
+  { id: 'kompass-fr', label: 'Kompass France', tier: 'regional', requiresKey: null, search: lazySearch('./kompassFr.js') },
+  { id: 'service-public-fr', label: 'Service-Public.fr', tier: 'regional', requiresKey: null, search: lazySearch('./servicePublicFr.js') },
+  { id: 'jdn-fr', label: 'Journal du Net', tier: 'regional', requiresKey: null, search: lazySearch('./jdnFr.js') },
+  { id: 'recherche-fr', label: 'Recherche.fr', tier: 'regional', requiresKey: null, search: lazySearch('./rechercheFr.js') },
+  { id: 'voila-fr', label: 'Voila.fr', tier: 'regional', requiresKey: null, search: lazySearch('./voilaFr.js') },
+
+  // ── REGIONAL – Poland ──────────────────────────────────────────────────────
+  { id: 'onet-pl', label: 'Onet.pl', tier: 'regional', requiresKey: null, search: lazySearch('./onetPl.js') },
+  { id: 'wp-pl', label: 'Wirtualna Polska', tier: 'regional', requiresKey: null, search: lazySearch('./wpPl.js') },
+  { id: 'interia-pl', label: 'Interia.pl', tier: 'regional', requiresKey: null, search: lazySearch('./interiaPl.js') },
+  { id: 'gazeta-pl', label: 'Gazeta.pl', tier: 'regional', requiresKey: null, search: lazySearch('./gazetaPl.js') },
+  { id: 'whitepages-pl', label: 'WhitePages Poland', tier: 'regional', requiresKey: null, search: lazySearch('./whitepagesPl.js') },
+  { id: 'biznes-gov-pl', label: 'Biznes.gov.pl', tier: 'regional', requiresKey: null, search: lazySearch('./biznesGovPl.js') },
+  { id: 'ceidg-pl', label: 'CEIDG Poland', tier: 'regional', requiresKey: null, search: lazySearch('./ceidgPl.js') },
+  { id: 'regon-pl', label: 'REGON Poland', tier: 'regional', requiresKey: null, search: lazySearch('./regonPl.js') },
+  { id: 'krs-pl', label: 'KRS Poland', tier: 'regional', requiresKey: null, search: lazySearch('./krsPl.js') },
+  { id: 'knf-pl', label: 'KNF Poland', tier: 'regional', requiresKey: null, search: lazySearch('./knfPl.js') },
+  { id: 'uprp-pl', label: 'UPRP Poland', tier: 'regional', requiresKey: null, search: lazySearch('./uprpPl.js') },
+  { id: 'ppm-pl', label: 'PPM.edu.pl', tier: 'regional', requiresKey: null, search: lazySearch('./ppmPl.js') },
+  { id: 'pkt-pl', label: 'PKT.pl', tier: 'regional', requiresKey: null, search: lazySearch('./pktPl.js') },
+  { id: 'zumi-pl', label: 'Zumi.pl', tier: 'regional', requiresKey: null, search: lazySearch('./zumiPl.js') },
+  { id: 'o2-pl', label: 'O2.pl', tier: 'regional', requiresKey: null, search: lazySearch('./o2Pl.js') },
+
+  // ── REGIONAL – Switzerland ────────────────────────────────────────────────
+  { id: 'search-ch', label: 'Search.ch', tier: 'regional', requiresKey: null, search: lazySearch('./searchCh.js') },
+  { id: 'local-ch', label: 'Local.ch', tier: 'regional', requiresKey: null, search: lazySearch('./localCh.js') },
+  { id: 'tiger-ch', label: 'Tiger.ch', tier: 'regional', requiresKey: null, search: lazySearch('./tigerCh.js') },
+
+  // ── REGIONAL – South Korea ────────────────────────────────────────────────
+  { id: 'daum-kr', label: 'Daum', tier: 'regional', requiresKey: null, search: lazySearch('./daumKr.js') },
+  { id: 'kakao-map-kr', label: 'Kakao Map', tier: 'regional', requiresKey: null, search: lazySearch('./kakaoMapKr.js') },
+  { id: 'nate-kr', label: 'Nate', tier: 'regional', requiresKey: null, search: lazySearch('./nateKr.js') },
+  { id: 'zum-kr', label: 'Zum', tier: 'regional', requiresKey: null, search: lazySearch('./zumKr.js') },
+  { id: '11st-kr', label: '11st', tier: 'regional', requiresKey: null, search: lazySearch('./kr11st.js') },
+  { id: 'coupang-kr', label: 'Coupang', tier: 'regional', requiresKey: null, search: lazySearch('./coupangKr.js') },
+  { id: 'gmarket-kr', label: 'Gmarket', tier: 'regional', requiresKey: null, search: lazySearch('./gmarketKr.js') },
+  { id: 'auction-kr', label: 'Auction', tier: 'regional', requiresKey: null, search: lazySearch('./auctionKr.js') },
+  { id: 'jobkorea-kr', label: 'JobKorea', tier: 'regional', requiresKey: null, search: lazySearch('./jobKoreaKr.js') },
+  { id: 'saramin-kr', label: 'Saramin', tier: 'regional', requiresKey: null, search: lazySearch('./saraminKr.js') },
+  { id: '114-kr', label: '114.co.kr', tier: 'regional', requiresKey: null, search: lazySearch('./kr114.js') },
+  { id: 'koreatechdesk', label: 'Korea Tech Desk', tier: 'regional', requiresKey: null, search: lazySearch('./koreaTechDesk.js') },
 
   // ── META ──────────────────────────────────────────────────────────────────
   { id: 'startpage', label: 'Startpage', tier: 'meta', requiresKey: null, search: lazySearch('./startpage.js') },

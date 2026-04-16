@@ -22,7 +22,7 @@
     /* === BACKGROUND === */
     #bg{
       position:fixed;inset:0;z-index:0;
-      background:url('https://github.com/user-attachments/assets/d5cd6088-9b29-4be0-a8f2-22ad443ef1ee') center/cover fixed;
+      background:url('https://github.com/user-attachments/assets/f5c4fc13-1ca2-4bba-9378-bcd80fa303da') center/cover fixed;
       image-rendering:pixelated;
     }
     #bg::after{content:'';position:absolute;inset:0;background:rgba(0,8,22,.75)}
@@ -108,6 +108,7 @@
     #conn-wrap{display:flex;align-items:center;gap:.45rem;font-size:.5rem}
     .dot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 1.5s ease-in-out infinite}
     .dot.on{background:var(--bright);animation:none}
+    .dot.standalone{background:var(--cyan);animation:none}
     @keyframes blink{50%{opacity:.15}}
 
     /* === SEARCH ROW === */
@@ -231,15 +232,6 @@
     .cluster{background:rgba(230,57,70,.05);border:1px solid rgba(230,57,70,.3);padding:.8rem 1rem;margin-bottom:.65rem}
     .cluster-hdr{font-family:'Press Start 2P',monospace;font-size:.48rem;color:#ff4d6d;margin-bottom:.4rem}
 
-    /* === SETUP GUIDE === */
-    #guide{
-      display:none;width:100%;max-width:800px;
-      background:rgba(0,10,30,.88);border:1px solid var(--glow);
-      padding:1.4rem 1.8rem;margin-bottom:1.2rem;font-size:.82rem;line-height:1.75;
-    }
-    #guide h3{font-family:'Press Start 2P',monospace;font-size:.58rem;color:var(--bright);margin-bottom:.9rem}
-    #guide code{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);padding:.1rem .35rem;color:var(--cyan)}
-    #guide pre{background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.7rem .9rem;margin:.7rem 0;color:var(--glow);overflow-x:auto;font-size:.8rem}
     .err{color:var(--red);font-size:.75rem;padding:.45rem .7rem;border:1px solid rgba(255,77,109,.3);background:rgba(255,77,109,.05);margin-top:.7rem;display:none}
 
     /* === FOOTER === */
@@ -280,7 +272,7 @@
       </span>
     </div>
 
-    <div id="eng-bar">ENGINES READY: <span id="eng-count">–</span></div>
+    <div id="eng-bar">ENGINES READY: <span id="eng-count">8 open APIs (standalone)</span></div>
 
     <!-- PRIMARY SEARCH ROW -->
     <div class="search-row">
@@ -302,14 +294,52 @@
       <label><input type="checkbox" id="opt-docs"> DOCUMENTS</label>
     </div>
 
-    <!-- API ENDPOINT -->
-    <div style="display:flex;gap:.6rem;margin-bottom:1rem;align-items:center">
-      <span style="font-family:'Press Start 2P',monospace;font-size:.46rem;color:var(--dim);white-space:nowrap">API ENDPOINT</span>
-      <input type="text" id="endpoint" value="http://localhost:3000"
-        style="flex:1;background:rgba(0,18,46,.85);border:1px solid var(--teal);color:var(--cyan);
-               font-family:'Share Tech Mono',monospace;font-size:.82rem;padding:.4rem .7rem;outline:none;">
-      <button class="btn btn-sm" onclick="checkConn()">PING</button>
-    </div>
+    <!-- LOCAL SERVER (collapsible, advanced) -->
+    <details>
+      <summary>LOCAL SERVER — connect for 192+ engines</summary>
+      <div>
+        <div style="display:flex;gap:.6rem;margin-bottom:.8rem;align-items:center">
+          <span style="font-family:'Press Start 2P',monospace;font-size:.46rem;color:var(--dim);white-space:nowrap">API ENDPOINT</span>
+          <input type="text" id="endpoint" value="http://localhost:3000"
+            style="flex:1;background:rgba(0,18,46,.85);border:1px solid var(--teal);color:var(--cyan);
+                   font-family:'Share Tech Mono',monospace;font-size:.82rem;padding:.4rem .7rem;outline:none;">
+          <button class="btn btn-sm" onclick="checkConn()">PING</button>
+        </div>
+        <div id="guide" style="font-size:.8rem;line-height:1.7;color:var(--silver)">
+          <p style="margin-bottom:.6rem">Want the <strong style="color:var(--bright)">full 192-engine power</strong>? Follow these steps. <em style="color:var(--dim)">(Yes, every single one.)</em></p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 0 — Do you have Node.js?</strong></p>
+          <p style="margin-bottom:.2rem">Open a terminal (Command Prompt on Windows, Terminal on Mac/Linux) and type:</p>
+          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.5rem .8rem;margin:.3rem 0 .4rem;color:var(--glow);overflow-x:auto;font-size:.78rem">node -v</pre>
+          <p style="margin-bottom:.6rem">If you see a version number (like <code style="color:var(--bright)">v18.x</code> or higher) → great, skip to Step 1.<br>
+          If you get "command not found" → go to <a href="https://nodejs.org" target="_blank" style="color:var(--cyan);text-decoration:underline">nodejs.org</a>, download the <strong>LTS</strong> version, install it (just click Next → Next → Next → Finish), then <strong>close and re-open your terminal</strong>.</p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 1 — Download Tracer</strong></p>
+          <p style="margin-bottom:.2rem">In your terminal, type this and press Enter:</p>
+          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.5rem .8rem;margin:.3rem 0 .4rem;color:var(--glow);overflow-x:auto;font-size:.78rem">git clone https://github.com/potemkin666/Tracer</pre>
+          <p style="margin-bottom:.6rem;color:var(--dim)">This downloads the whole project into a folder called <code>Tracer</code>. If you don't have git, grab the <a href="https://github.com/potemkin666/Tracer/archive/refs/heads/main.zip" style="color:var(--cyan);text-decoration:underline">.zip from GitHub</a> and unzip it instead.</p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 2 — Go into the folder</strong></p>
+          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.5rem .8rem;margin:.3rem 0 .4rem;color:var(--glow);overflow-x:auto;font-size:.78rem">cd Tracer</pre>
+          <p style="margin-bottom:.6rem;color:var(--dim)">You're now inside the project folder. If you downloaded the zip, <code>cd</code> into wherever you unzipped it.</p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 3 — Install dependencies</strong></p>
+          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.5rem .8rem;margin:.3rem 0 .4rem;color:var(--glow);overflow-x:auto;font-size:.78rem">npm install</pre>
+          <p style="margin-bottom:.6rem;color:var(--dim)">This downloads all the libraries Tracer needs. It might take a minute. Wait until you see your cursor blinking again — that means it's done.</p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 4 — Start the server</strong></p>
+          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.5rem .8rem;margin:.3rem 0 .4rem;color:var(--glow);overflow-x:auto;font-size:.78rem">npm run serve</pre>
+          <p style="margin-bottom:.6rem;color:var(--dim)">You should see something like <code style="color:var(--bright)">Tracer server listening on port 3000</code>. <strong>Don't close this terminal window</strong> — the server runs as long as it's open.</p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 5 — Connect this page to your server</strong></p>
+          <p style="margin-bottom:.3rem">Come back to this page. The endpoint box above should already say <code style="color:var(--bright)">http://localhost:3000</code>.</p>
+          <p style="margin-bottom:.6rem">Click the <strong style="color:var(--bright)">PING</strong> button. If it turns green — you're connected to all 192 engines. Search away! 🎉<br>
+          <span style="color:var(--dim);font-size:.75rem">Still red? Make sure the terminal from Step 4 is still open, shows no errors, and you're using <code>http://</code> (not https).</span></p>
+
+          <p style="color:var(--gold);font-size:.75rem;margin-top:.3rem">💡 <strong>Tip:</strong> Next time you want to use it, just open a terminal, <code>cd Tracer</code>, and <code>npm run serve</code>. Steps 0-3 are one-time only.</p>
+        </div>
+      </div>
+    </details>
 
     <!-- API KEYS (collapsible) -->
     <details>
@@ -326,18 +356,6 @@
     </details>
 
     <div class="err" id="err"></div>
-  </div>
-
-  <!-- SETUP GUIDE (shown when offline) -->
-  <div id="guide">
-    <h3>🌊 START YOUR LOCAL SERVER</h3>
-    <p>Tracer runs as a local Node.js server. GitHub Pages hosts this UI only.</p>
-    <pre>git clone https://github.com/potemkin666/Tracer
-cd Tracer
-npm install
-npm run serve</pre>
-    <p>Then set <strong>API ENDPOINT</strong> above to <code>http://localhost:3000</code> and click <strong>DIVE DEEP</strong>.</p>
-    <p style="margin-top:.8rem;color:var(--dim)">Tip: API keys are optional — many open engines run without them.</p>
   </div>
 
   <!-- LOADING -->
@@ -406,6 +424,9 @@ const KEY_DEFS=[
   {id:'intelx',   label:'INTELX KEY'},
   {id:'publicwww',label:'PUBLICWWW KEY'},
   {id:'tineye',   label:'TINEYE KEY'},
+  {id:'dehashed', label:'DEHASHED email:key'},
+  {id:'hibp',     label:'HIBP API KEY'},
+  {id:'greynoise',label:'GREYNOISE KEY'},
   {id:'yandex',   label:'YANDEX user:key'},
   {id:'naverClientId',     label:'NAVER CLIENT ID'},
   {id:'naverClientSecret', label:'NAVER SECRET'},
@@ -434,6 +455,8 @@ function collectKeys(){const o={};KEY_DEFS.forEach(k=>{const el=document.getElem
 
 // ── CONNECTION ────────────────────────────────────────────────────────────────
 let connected=false;
+const isGHPages=location.hostname.endsWith('.github.io');
+
 async function checkConn(){
   const base=document.getElementById('endpoint').value.replace(/\/$/,'');
   try{
@@ -442,16 +465,14 @@ async function checkConn(){
       connected=true;
       document.getElementById('dot').className='dot on';
       document.getElementById('conn-lbl').textContent='ONLINE';
-      document.getElementById('guide').style.display='none';
       updateEngCount(base);
       return true;
     }
   }catch{}
   connected=false;
-  document.getElementById('dot').className='dot';
-  document.getElementById('conn-lbl').textContent='OFFLINE';
-  document.getElementById('guide').style.display='block';
-  document.getElementById('eng-count').textContent='0 (server offline — showing open-API results)';
+  document.getElementById('dot').className='dot'+(isGHPages?' standalone':'');
+  document.getElementById('conn-lbl').textContent=isGHPages?'STANDALONE':'OFFLINE';
+  if(!isGHPages){document.getElementById('eng-count').textContent='0 (server offline — open-API fallback)';}
   return false;
 }
 document.getElementById('endpoint').addEventListener('change',checkConn);
@@ -676,8 +697,11 @@ function showErr(msg,isErr){const el=document.getElementById('err');el.textConte
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 loadKeys();
-checkConn();
-setInterval(checkConn,20000);
+if(!isGHPages){checkConn();setInterval(checkConn,20000);}
+else{
+  document.getElementById('dot').className='dot standalone';
+  document.getElementById('conn-lbl').textContent='STANDALONE';
+}
 </script>
 </body>
 </html>

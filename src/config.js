@@ -33,6 +33,9 @@ export const ENV_KEY_MAP = {
   TRACER_EXA_KEY: 'exa',
   TRACER_PERPLEXITY_KEY: 'perplexity',
   TRACER_TINEYE_KEY: 'tineye',
+  TRACER_DEHASHED_KEY: 'dehashed',
+  TRACER_HIBP_KEY: 'hibp',
+  TRACER_GREYNOISE_KEY: 'greynoise',
 };
 
 /**
