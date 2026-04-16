@@ -331,6 +331,25 @@ const ALL_CONNECTORS = [
   { id: 'zumi-pl', label: 'Zumi.pl', tier: 'regional', requiresKey: null, search: lazySearch('./zumiPl.js') },
   { id: 'o2-pl', label: 'O2.pl', tier: 'regional', requiresKey: null, search: lazySearch('./o2Pl.js') },
 
+  // ── REGIONAL – Switzerland ────────────────────────────────────────────────
+  { id: 'search-ch', label: 'Search.ch', tier: 'regional', requiresKey: null, search: lazySearch('./searchCh.js') },
+  { id: 'local-ch', label: 'Local.ch', tier: 'regional', requiresKey: null, search: lazySearch('./localCh.js') },
+  { id: 'tiger-ch', label: 'Tiger.ch', tier: 'regional', requiresKey: null, search: lazySearch('./tigerCh.js') },
+
+  // ── REGIONAL – South Korea ────────────────────────────────────────────────
+  { id: 'daum-kr', label: 'Daum', tier: 'regional', requiresKey: null, search: lazySearch('./daumKr.js') },
+  { id: 'kakao-map-kr', label: 'Kakao Map', tier: 'regional', requiresKey: null, search: lazySearch('./kakaoMapKr.js') },
+  { id: 'nate-kr', label: 'Nate', tier: 'regional', requiresKey: null, search: lazySearch('./nateKr.js') },
+  { id: 'zum-kr', label: 'Zum', tier: 'regional', requiresKey: null, search: lazySearch('./zumKr.js') },
+  { id: '11st-kr', label: '11st', tier: 'regional', requiresKey: null, search: lazySearch('./kr11st.js') },
+  { id: 'coupang-kr', label: 'Coupang', tier: 'regional', requiresKey: null, search: lazySearch('./coupangKr.js') },
+  { id: 'gmarket-kr', label: 'Gmarket', tier: 'regional', requiresKey: null, search: lazySearch('./gmarketKr.js') },
+  { id: 'auction-kr', label: 'Auction', tier: 'regional', requiresKey: null, search: lazySearch('./auctionKr.js') },
+  { id: 'jobkorea-kr', label: 'JobKorea', tier: 'regional', requiresKey: null, search: lazySearch('./jobKoreaKr.js') },
+  { id: 'saramin-kr', label: 'Saramin', tier: 'regional', requiresKey: null, search: lazySearch('./saraminKr.js') },
+  { id: '114-kr', label: '114.co.kr', tier: 'regional', requiresKey: null, search: lazySearch('./kr114.js') },
+  { id: 'koreatechdesk', label: 'Korea Tech Desk', tier: 'regional', requiresKey: null, search: lazySearch('./koreaTechDesk.js') },
+
   // ── META ──────────────────────────────────────────────────────────────────
   { id: 'startpage', label: 'Startpage', tier: 'meta', requiresKey: null, search: lazySearch('./startpage.js') },
   { id: 'dogpile', label: 'Dogpile', tier: 'meta', requiresKey: null, search: lazySearch('./dogpile.js') },
