@@ -30,7 +30,7 @@ async function checkUrl(url, username) {
   try {
     const res = await axios.get(url, {
       timeout: 5000,
-      maxRedirects: 0,
+      maxRedirects: 3,
       validateStatus: () => true,
       headers: { 'User-Agent': 'Tracer/1.0' },
     });

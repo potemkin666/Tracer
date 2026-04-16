@@ -15,7 +15,7 @@ async function search(username) {
       try {
         const response = await axios.get(url, {
           timeout: 5000,
-          maxRedirects: 0,
+          maxRedirects: 3,
           validateStatus: () => true,
           headers: { 'User-Agent': 'Tracer/1.0' },
         });
