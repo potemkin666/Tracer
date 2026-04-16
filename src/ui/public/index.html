@@ -4,41 +4,234 @@
   <meta charset="UTF-8">
   <title>Tracer</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 4rem auto; padding: 1rem; }
-    h1 { margin-bottom: 1.5rem; }
-    label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
-    input, select { width: 100%; padding: 0.5rem; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 4px; }
-    button { padding: 0.6rem 1.5rem; background: #1a73e8; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-    button:hover { background: #1558b0; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #333; }
+    header { background: #1a73e8; color: #fff; padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; }
+    header h1 { font-size: 1.3rem; margin: 0; }
+    .search-bar { display: flex; gap: 0.5rem; max-width: 700px; margin: 1.5rem auto; padding: 0 1rem; }
+    .search-bar input, .search-bar select { padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; }
+    .search-bar input[type="text"] { flex: 1; }
+    .search-bar button { padding: 0.5rem 1.2rem; background: #1a73e8; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+    .search-bar button:hover { background: #1558b0; }
+    .search-bar button:disabled { opacity: 0.6; cursor: default; }
+
+    .tabs { display: flex; border-bottom: 2px solid #ddd; background: #fff; max-width: 960px; margin: 0 auto; }
+    .tabs button { flex: 1; padding: 0.7rem; border: none; background: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: #555; }
+    .tabs button.active { color: #1a73e8; border-bottom: 3px solid #1a73e8; }
+
+    .tab-panel { display: none; max-width: 960px; margin: 0 auto; }
+    .tab-panel.active { display: block; }
+
+    #graphPanel { position: relative; background: #fff; border: 1px solid #e0e0e0; border-top: 0; }
+    #graphSvg { width: 100%; height: 550px; display: block; }
+    .legend { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.95); border: 1px solid #ddd; border-radius: 4px; padding: 6px 10px; font-size: 0.75rem; }
+    .legend-item { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
+    .legend-swatch { width: 14px; height: 4px; border-radius: 2px; }
+    .graph-tooltip { position: absolute; pointer-events: none; background: rgba(0,0,0,0.8); color: #fff; padding: 5px 9px; border-radius: 4px; font-size: 0.78rem; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none; }
+
+    #listPanel { padding: 1rem; }
+    .result-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 0.6rem; }
+    .result-card h3 { font-size: 0.9rem; margin: 0 0 0.2rem; }
+    .result-card h3 a { color: #1a73e8; text-decoration: none; }
+    .result-card .meta { font-size: 0.78rem; color: #888; }
+    .result-card .snippet { font-size: 0.82rem; color: #555; margin-top: 0.2rem; }
+    .score-badge { display: inline-block; padding: 1px 7px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; color: #fff; }
+    #status { text-align: center; padding: 1rem; color: #888; font-size: 0.9rem; }
   </style>
 </head>
 <body>
-  <h1>Tracer Search</h1>
-  <form id="searchForm">
-    <label for="input">Name / Username</label>
-    <input type="text" id="input" name="input" placeholder="e.g. john smith" required>
-    <label for="mode">Mode</label>
-    <select id="mode" name="mode">
-      <option value="normal">Normal</option>
-      <option value="aggressive">Aggressive</option>
-    </select>
-    <button type="submit">Search</button>
-  </form>
-  <pre id="output" style="margin-top:2rem;white-space:pre-wrap;"></pre>
-  <script>
-    document.getElementById('searchForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const input = document.getElementById('input').value;
-      const mode = document.getElementById('mode').value;
-      document.getElementById('output').textContent = 'Searching...';
-      const res = await fetch('/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, mode }),
-      });
-      const data = await res.json();
-      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+
+<header>
+  <h1>Tracer</h1>
+</header>
+
+<div class="search-bar">
+  <input type="text" id="input" placeholder="Name or username…" required>
+  <select id="mode">
+    <option value="normal">Normal</option>
+    <option value="aggressive">Aggressive</option>
+  </select>
+  <button id="searchBtn">Search</button>
+</div>
+
+<div id="status"></div>
+
+<div class="tabs" id="tabBar" style="display:none;">
+  <button class="active" data-tab="graphPanel">Network Graph</button>
+  <button data-tab="listPanel">Results</button>
+</div>
+
+<div id="graphPanel" class="tab-panel active">
+  <svg id="graphSvg"></svg>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#e74c3c"></div> Same avatar</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#3498db"></div> Same domain</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#2ecc71"></div> Shared email</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#f39c12"></div> Cross-linked</div>
+  </div>
+  <div class="graph-tooltip" id="tooltip"></div>
+</div>
+
+<div id="listPanel" class="tab-panel"></div>
+
+<script>
+// ── Tab switching ──
+document.querySelectorAll('.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Search ──
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+async function doSearch() {
+  const input = document.getElementById('input').value.trim();
+  const mode = document.getElementById('mode').value;
+  if (!input) return;
+  const btn = document.getElementById('searchBtn');
+  btn.disabled = true;
+  document.getElementById('status').textContent = 'Searching…';
+  document.getElementById('tabBar').style.display = 'none';
+
+  try {
+    const res = await fetch('/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input, mode, avatars: true }),
     });
-  </script>
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    document.getElementById('status').textContent = '';
+    document.getElementById('tabBar').style.display = 'flex';
+    renderList(data.results || []);
+    renderGraph(data.graph || { nodes: [], edges: [] });
+    // Show graph tab
+    document.querySelectorAll('.tabs button')[0].click();
+  } catch (err) {
+    document.getElementById('status').textContent = 'Error: ' + err.message;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ── Result list ──
+function scoreColor(s) {
+  if (s >= 70) return '#27ae60';
+  if (s >= 40) return '#f39c12';
+  return '#e74c3c';
+}
+
+function renderList(results) {
+  const el = document.getElementById('listPanel');
+  if (!results.length) { el.innerHTML = '<p style="padding:1rem;color:#888;">No results.</p>'; return; }
+  el.innerHTML = results.map(r => {
+    const tags = (r.meta && r.meta.tags && r.meta.tags.length) ? ' · ' + r.meta.tags.join(', ') : '';
+    return `<div class="result-card">
+      <h3><span class="score-badge" style="background:${scoreColor(r.score)}">${r.score}</span>
+        <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title || r.url)}</a></h3>
+      <div class="meta">${esc(r.source)} · rank ${r.rank}${tags}</div>
+      ${r.snippet ? '<div class="snippet">' + esc(r.snippet) + '</div>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+// ── Graph rendering (self-contained force layout) ──
+function renderGraph(graphData) {
+  const svg = document.getElementById('graphSvg');
+  // Clear previous
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  if (!graphData.nodes || graphData.nodes.length === 0) return;
+
+  const width = svg.clientWidth || 900;
+  const height = 550;
+  svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
+  const ns = 'http://www.w3.org/2000/svg';
+
+  const EDGE_COLORS = { sameAvatar: '#e74c3c', sameDomain: '#3498db', sharedEmail: '#2ecc71', crossLinked: '#f39c12' };
+
+  const nodes = graphData.nodes.map((n, i) => ({
+    ...n, x: width/2 + (Math.random()-0.5)*width*0.6,
+    y: height/2 + (Math.random()-0.5)*height*0.6, vx: 0, vy: 0, index: i
+  }));
+  const idx = {}; nodes.forEach((n, i) => { idx[n.id] = i; });
+  const links = graphData.edges
+    .filter(e => idx[e.source] !== undefined && idx[e.target] !== undefined)
+    .map(e => ({ source: idx[e.source], target: idx[e.target], type: e.type }));
+
+  // Simple force layout
+  const k = Math.sqrt((width * height) / Math.max(nodes.length, 1));
+  const REP = k * k, SPRING = k * 0.8;
+  let temp = width / 5;
+  for (let iter = 0; iter < 300; iter++) {
+    for (let i = 0; i < nodes.length; i++) { nodes[i].vx = 0; nodes[i].vy = 0;
+      for (let j = 0; j < nodes.length; j++) { if (i===j) continue;
+        let dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+        const d = Math.sqrt(dx*dx+dy*dy)||1; const f = REP/(d*d);
+        nodes[i].vx += (dx/d)*f; nodes[i].vy += (dy/d)*f;
+      }
+    }
+    for (const l of links) { const a=nodes[l.source], b=nodes[l.target];
+      let dx=b.x-a.x, dy=b.y-a.y; const d=Math.sqrt(dx*dx+dy*dy)||1; const f=(d-SPRING)/d*0.4;
+      a.vx+=dx*f; a.vy+=dy*f; b.vx-=dx*f; b.vy-=dy*f;
+    }
+    for (const n of nodes) { n.vx+=(width/2-n.x)*0.01; n.vy+=(height/2-n.y)*0.01; }
+    for (const n of nodes) {
+      const m=Math.sqrt(n.vx*n.vx+n.vy*n.vy)||1; const c=Math.min(m,temp);
+      n.x+=(n.vx/m)*c; n.y+=(n.vy/m)*c;
+      n.x=Math.max(20,Math.min(width-20,n.x)); n.y=Math.max(20,Math.min(height-20,n.y));
+    }
+    temp *= 0.97;
+  }
+
+  // Draw edges
+  for (const l of links) {
+    const a=nodes[l.source], b=nodes[l.target];
+    const line = document.createElementNS(ns,'line');
+    line.setAttribute('x1',a.x); line.setAttribute('y1',a.y);
+    line.setAttribute('x2',b.x); line.setAttribute('y2',b.y);
+    line.setAttribute('stroke', EDGE_COLORS[l.type]||'#999');
+    line.setAttribute('stroke-width', l.type==='sameAvatar'?3:1.5);
+    line.setAttribute('stroke-opacity','0.6');
+    svg.appendChild(line);
+  }
+
+  // Draw nodes
+  const tooltip = document.getElementById('tooltip');
+  for (const n of nodes) {
+    const r = Math.max(4, Math.min(12, n.score/10));
+    const circle = document.createElementNS(ns,'circle');
+    circle.setAttribute('cx',n.x); circle.setAttribute('cy',n.y); circle.setAttribute('r',r);
+    circle.setAttribute('fill', scoreColor(n.score));
+    circle.setAttribute('stroke','#fff'); circle.setAttribute('stroke-width','1.5');
+    circle.style.cursor = 'pointer';
+    circle.addEventListener('mouseenter', e => {
+      tooltip.textContent = '[' + n.score + '] ' + (n.label||n.id);
+      tooltip.style.left = (e.offsetX+12)+'px'; tooltip.style.top = (e.offsetY-8)+'px';
+      tooltip.style.display = 'block';
+    });
+    circle.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+    circle.addEventListener('click', () => { window.open(n.id, '_blank'); });
+    svg.appendChild(circle);
+  }
+
+  // Labels for high-score nodes
+  for (const n of nodes) {
+    if (n.score < 50) continue;
+    const t = document.createElementNS(ns,'text');
+    t.setAttribute('x',n.x); t.setAttribute('y',n.y-10);
+    t.setAttribute('text-anchor','middle'); t.setAttribute('font-size','10'); t.setAttribute('fill','#333');
+    t.textContent = (n.label||'').slice(0,30);
+    svg.appendChild(t);
+  }
+}
+</script>
 </body>
 </html>

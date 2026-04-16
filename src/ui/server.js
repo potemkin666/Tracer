@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import express from 'express';
 import { run } from '../orchestrator.js';
 import { loadKeysFromEnv } from '../config.js';
+import { buildGraph } from '../graphBuilder.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,7 +32,8 @@ app.post('/search', async (req, res) => {
       timeSliceMode,
       documents,
     });
-    res.json({ results, avatarClusters });
+    const graph = buildGraph(results, avatarClusters);
+    res.json({ results, avatarClusters, graph });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

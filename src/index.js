@@ -132,7 +132,7 @@ async function main() {
   }
 
   if (html) {
-    exportHTML(results, html);
+    exportHTML(results, html, avatarClusters);
     console.log(`HTML saved to: ${html}`);
   }
 }
