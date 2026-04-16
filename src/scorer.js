@@ -15,7 +15,7 @@ function score(results, originalInput) {
     if (title.includes(lowerInput) || snippet.includes(lowerInput)) s += 10;
     if (url.includes(lowerInput.replace(/\s+/g, ''))) s += 5;
     if ((urlMap[r.url] || 0) > 1) s += 3;
-    if (url.includes('archive.org') || r.source === 'wayback') s += 2;
+    if (r.source === 'wayback' || /https?:\/\/[^/]*\.archive\.org\//.test(r.url || '')) s += 2;
 
     return { ...r, score: s };
   });
