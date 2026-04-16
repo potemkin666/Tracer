@@ -5,10 +5,11 @@ async function search(query) {
   try {
     const response = await axios.get('https://web.archive.org/cdx/search/cdx', {
       params: {
-        url: `*${query}*`,
+        url: `*${query.replace(/\s+/g, '')}*`,
         output: 'json',
         fl: 'original,timestamp,statuscode',
         filter: 'statuscode:200',
+        collapse: 'urlkey',
         limit: 10,
       },
     });

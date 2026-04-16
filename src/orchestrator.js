@@ -1,9 +1,7 @@
 const { generateQueries } = require('./queryPlanner');
 const { dedupe } = require('./deduper');
 const { score } = require('./scorer');
-const brave = require('./connectors/brave');
-const serpapi = require('./connectors/serpapi');
-const mojeek = require('./connectors/mojeek');
+const { getActive } = require('./connectors/registry');
 const wayback = require('./connectors/wayback');
 const namechk = require('./connectors/namechk');
 const timeSlice = require('./connectors/timeSlice');
@@ -27,14 +25,13 @@ async function run(input, config = {}) {
 
   let all = [];
 
+  const activeConnectors = getActive(apiKeys, mode);
+
   await Promise.all(
     limited.map(async (query) => {
-      const tasks = [];
-      if (apiKeys.brave) tasks.push(brave.search(query, apiKeys.brave));
-      if (apiKeys.serpapi) tasks.push(serpapi.search(query, apiKeys.serpapi));
-      if (apiKeys.mojeek) tasks.push(mojeek.search(query, apiKeys.mojeek));
-
-      const batches = await Promise.all(tasks);
+      const batches = await Promise.all(
+        activeConnectors.map((c) => c.search(query, apiKeys))
+      );
       batches.forEach((b) => all.push(...b));
     })
   );
