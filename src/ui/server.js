@@ -63,7 +63,8 @@ app.post('/search', async (req, res) => {
 });
 
 // ── /engines ─────────────────────────────────────────────────────────────────
-// Returns the total connector count and how many are active for "normal" mode.
+// Returns the total connector count and how many are active with current keys.
+// Uses 'aggressive' mode to report the maximum engine count.
 // The GitHub Pages frontend calls this to display the engine count bar.
 app.get('/engines', (req, res) => {
   const active = getActive(serverApiKeys, 'aggressive');

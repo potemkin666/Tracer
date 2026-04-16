@@ -494,6 +494,9 @@ async function updateEngCount(base){
 
 function fetchWithTimeout(url,opts){return fetch(url,Object.assign({signal:AbortSignal.timeout(10000)},opts||{})).then(r=>r.json())}
 
+// Safely decode HTML entities (StackExchange API returns encoded titles).
+function decodeEntities(s){const el=document.createElement('textarea');el.innerHTML=s;return el.value;}
+
 async function searchDirect(query){
   const q=encodeURIComponent(query);
   const slug=query.replace(/\s+/g,'');
@@ -507,7 +510,7 @@ async function searchDirect(query){
       const d=await fetchWithTimeout(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=8&format=json&origin=*`);
       return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikipedia',
         title:item.title||'',url:`https://en.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
-        snippet:(item.snippet||'').replace(/<[^>]+>/g,'').slice(0,180),
+        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
         score:8-i,seenOn:['wikipedia']}));
     },
 
@@ -551,7 +554,7 @@ async function searchDirect(query){
     async()=>{
       const d=await fetchWithTimeout(`https://api.stackexchange.com/2.3/search?intitle=${q}&site=stackoverflow&pagesize=5&order=desc&sort=relevance`);
       return(d.items||[]).map((item,i)=>({source:'stackoverflow',
-        title:(item.title||'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&quot;/g,'"'),
+        title:decodeEntities(item.title||''),
         url:item.link||'',
         snippet:[item.tags?item.tags.slice(0,4).join(', '):'',item.answer_count!=null?`${item.answer_count} answers`:'',item.score!=null?`score ${item.score}`:''].filter(Boolean).join(' · '),
         score:4-i,seenOn:['stackoverflow']}));
@@ -630,7 +633,7 @@ async function searchDirect(query){
       const d=await fetchWithTimeout(`https://api.crossref.org/works?query=${q}&rows=8`);
       return((d.message&&d.message.items)||[]).map((item,i)=>({source:'crossref',
         title:(item.title||[])[0]||'',url:item.URL||'',
-        snippet:item.abstract?(item.abstract.replace(/<[^>]+>/g,'').slice(0,150)+'…'):'',
+        snippet:item.abstract?(item.abstract.replace(/<\/?[^>]+(>|$)/g,'').slice(0,150)+'…'):'',
         score:4-i,seenOn:['crossref']}));
     },
 
@@ -702,9 +705,9 @@ async function searchDirect(query){
     }
   });
 
-  // Show how many sources actually responded
+  // Show how many sources actually responded (only when used for standalone fallback)
   const bar=document.getElementById('eng-bar');
-  if(bar)bar.textContent=`STANDALONE · ${responded}/${attempted} sources responded`;
+  if(bar&&!connected)bar.textContent=`STANDALONE · ${responded}/${attempted} sources responded`;
 
   return results.sort((a,b)=>(b.score||0)-(a.score||0));
 }
