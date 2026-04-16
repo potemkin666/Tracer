@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://kagi.com/api/v0/search', {
+    const response = await httpClient.get('https://kagi.com/api/v0/search', {
       headers: { Authorization: `Bot ${apiKeys.kagi}` },
       params: { q: query, limit: 10 },
       timeout: 10000,

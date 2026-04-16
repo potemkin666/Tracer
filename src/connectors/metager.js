@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://metager.org/meta/meta.ger3', {
+    const response = await httpClient.get('https://metager.org/meta/meta.ger3', {
       params: { eingabe: query, key: apiKeys.metager, out: 'json' },
       timeout: 10000,
     });

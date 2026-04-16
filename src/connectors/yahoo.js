@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
@@ -14,7 +14,7 @@ function decodeYahooUrl(href) {
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://search.yahoo.com/search', {
+    const response = await httpClient.get('https://search.yahoo.com/search', {
       params: { p: query, n: 10 },
       headers: { 'User-Agent': UA },
       timeout: 10000,

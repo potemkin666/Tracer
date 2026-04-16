@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 const ERAS = [
@@ -10,7 +10,7 @@ const ERAS = [
 
 async function searchEra(query, era) {
   try {
-    const response = await axios.get('https://web.archive.org/cdx/search/cdx', {
+    const response = await httpClient.get('https://web.archive.org/cdx/search/cdx', {
       params: {
         url: `*${query}*`,
         output: 'json',

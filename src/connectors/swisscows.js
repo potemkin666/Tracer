@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://api.swisscows.com/web/search', {
+    const response = await httpClient.get('https://api.swisscows.com/web/search', {
       headers: { 'x-api-key': apiKeys.swisscows },
       params: { query, numberOfItems: 10, itemsOffset: 0 },
       timeout: 10000,

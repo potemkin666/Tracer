@@ -1,10 +1,10 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
     const apiKey = apiKeys.serpapi;
-    const response = await axios.get('https://serpapi.com/search', {
+    const response = await httpClient.get('https://serpapi.com/search', {
       params: { q: query, api_key: apiKey, num: 10 },
     });
 

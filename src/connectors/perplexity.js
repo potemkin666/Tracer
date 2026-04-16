@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 const URL_RE = /https?:\/\/[^\s"'<>)\]]+/g;
@@ -7,7 +7,7 @@ async function search(query, apiKeys = {}) {
   const apiKey = apiKeys.perplexity;
   if (!apiKey) return [];
   try {
-    const response = await axios.post('https://api.perplexity.ai/chat/completions', {
+    const response = await httpClient.post('https://api.perplexity.ai/chat/completions', {
       model: 'sonar',
       messages: [{ role: 'user', content: `Find publicly available information about this person or topic: "${query}". List the top 5 most relevant URLs with brief descriptions of what each page contains.` }],
       max_tokens: 800,

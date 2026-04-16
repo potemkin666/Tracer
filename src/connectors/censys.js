@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.post(
+    const response = await httpClient.post(
       'https://search.censys.io/api/v2/hosts/search',
       { q: query, per_page: 10 },
       {

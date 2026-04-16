@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://api.openverse.org/v1/images/', {
+    const response = await httpClient.get('https://api.openverse.org/v1/images/', {
       params: { q: query, page_size: 10 },
       timeout: 10000,
     });

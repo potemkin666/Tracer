@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
@@ -6,7 +6,7 @@ const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://crowdview.ai/api/search', {
+    const response = await httpClient.get('https://crowdview.ai/api/search', {
       params: { q: query, limit: 10 },
       headers: { 'User-Agent': UA },
       timeout: 10000,
@@ -26,7 +26,7 @@ async function search(query, apiKeys = {}) {
     console.error('[connectors/crowdview]', err.message);
   }
   try {
-    const response = await axios.get(`https://crowdview.ai/?q=${encodeURIComponent(query)}`, {
+    const response = await httpClient.get(`https://crowdview.ai/?q=${encodeURIComponent(query)}`, {
       headers: { 'User-Agent': UA },
       timeout: 10000,
     });

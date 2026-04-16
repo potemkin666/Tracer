@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get(
+    const response = await httpClient.get(
       'https://api.semanticscholar.org/graph/v1/paper/search',
       {
         params: { query, limit: 10, fields: 'title,url,abstract,authors,year' },

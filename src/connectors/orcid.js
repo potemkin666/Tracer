@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://pub.orcid.org/v3.0/expanded-search/', {
+    const response = await httpClient.get('https://pub.orcid.org/v3.0/expanded-search/', {
       params: { q: query, rows: 10 },
       headers: { Accept: 'application/json' },
       timeout: 10000,

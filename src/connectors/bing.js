@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://api.bing.microsoft.com/v7.0/search', {
+    const response = await httpClient.get('https://api.bing.microsoft.com/v7.0/search', {
       headers: { 'Ocp-Apim-Subscription-Key': apiKeys.bing },
       params: { q: query, count: 10, mkt: 'en-US' },
       timeout: 10000,

@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 const DEFAULT_INSTANCES = [
@@ -11,7 +11,7 @@ async function search(query, apiKeys = {}) {
   const instances = apiKeys.searxngUrl ? [apiKeys.searxngUrl] : DEFAULT_INSTANCES;
   for (const instance of instances) {
     try {
-      const response = await axios.get(`${instance}/search`, {
+      const response = await httpClient.get(`${instance}/search`, {
         params: { q: query, format: 'json', language: 'en' },
         headers: { 'User-Agent': 'Tracer/1.0', Accept: 'application/json' },
         timeout: 10000,

@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://api.openalex.org/works', {
+    const response = await httpClient.get('https://api.openalex.org/works', {
       params: { search: query, per_page: 10 },
       timeout: 10000,
     });

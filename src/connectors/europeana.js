@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query) {
   try {
-    const response = await axios.get('https://api.europeana.eu/record/v2/search.json', {
+    const response = await httpClient.get('https://api.europeana.eu/record/v2/search.json', {
       params: { query, rows: 10, profile: 'standard' },
       timeout: 10000,
     });

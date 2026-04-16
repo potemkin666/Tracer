@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://urlscan.io/api/v1/search/', {
+    const response = await httpClient.get('https://urlscan.io/api/v1/search/', {
       params: { q: query, size: 10 },
       timeout: 10000,
     });

@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query) {
   try {
-    const response = await axios.get('https://yacy.searchlab.eu/yacysearch.json', {
+    const response = await httpClient.get('https://yacy.searchlab.eu/yacysearch.json', {
       params: { query, maximumRecords: 10, resource: 'global', verify: 'true' },
       headers: { 'User-Agent': 'Tracer/1.0', Accept: 'application/json' },
       timeout: 10000,

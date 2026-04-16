@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 import { generateDocQueries } from '../queryPlanner.js';
 
@@ -31,7 +31,7 @@ async function searchWaybackDocs(input) {
   await Promise.all(
     DOC_MIMETYPES.map(async ({ mime, ext }) => {
       try {
-        const response = await axios.get('https://web.archive.org/cdx/search/cdx', {
+        const response = await httpClient.get('https://web.archive.org/cdx/search/cdx', {
           params: {
             url: `*${input.replace(/\s+/g, '*')}*`,
             output: 'json',

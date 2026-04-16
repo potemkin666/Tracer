@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://wiby.me/', {
+    const response = await httpClient.get('https://wiby.me/', {
       params: { q: query, format: 'json' },
       timeout: 10000,
     });

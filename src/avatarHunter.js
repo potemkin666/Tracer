@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from './httpClient.js';
 import crypto from 'crypto';
 
 // Known avatar URL patterns detectable from a plain URL or snippet string.
@@ -37,7 +37,7 @@ function extractAvatarUrl(result) {
 
 async function fetchHash(url) {
   try {
-    const response = await axios.get(url, {
+    const response = await httpClient.get(url, {
       responseType: 'arraybuffer',
       timeout: 8000,
       headers: { 'User-Agent': 'Tracer/1.0' },

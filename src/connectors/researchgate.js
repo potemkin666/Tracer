@@ -1,10 +1,10 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
 async function search(query) {
   try {
-    const response = await axios.get('https://www.researchgate.net/search', {
+    const response = await httpClient.get('https://www.researchgate.net/search', {
       params: { q: query },
       headers: { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36', Accept: 'text/html' },
       timeout: 10000,

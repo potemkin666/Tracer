@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://api.qwant.com/v3/search/web', {
+    const response = await httpClient.get('https://api.qwant.com/v3/search/web', {
       params: { q: query, count: 10, locale: 'en_US', t: 'web' },
       timeout: 10000,
     });

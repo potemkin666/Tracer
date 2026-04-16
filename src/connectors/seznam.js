@@ -1,10 +1,10 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://search.seznam.cz/', {
+    const response = await httpClient.get('https://search.seznam.cz/', {
       params: { q: query },
       headers: {
         'User-Agent': 'Mozilla/5.0',

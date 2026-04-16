@@ -1,10 +1,10 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
     const apiKey = apiKeys.mojeek;
-    const response = await axios.get('https://www.mojeek.com/search', {
+    const response = await httpClient.get('https://www.mojeek.com/search', {
       headers: { 'X-Mojeek-API-Key': apiKey },
       params: { q: query, fmt: 'json' },
     });

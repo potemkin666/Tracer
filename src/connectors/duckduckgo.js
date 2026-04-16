@@ -1,10 +1,10 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://html.duckduckgo.com/html/', {
+    const response = await httpClient.get('https://html.duckduckgo.com/html/', {
       params: { q: query },
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; Tracer/1.0)',

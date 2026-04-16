@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 import { PLATFORMS } from './platforms.js';
 
@@ -13,7 +13,7 @@ async function search(username) {
     NAMECHK_PLATFORMS.map(async (platform) => {
       const url = platform.url(username);
       try {
-        const response = await axios.get(url, {
+        const response = await httpClient.get(url, {
           timeout: 5000,
           maxRedirects: 3,
           validateStatus: () => true,

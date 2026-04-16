@@ -1,10 +1,10 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
     if (!apiKeys.exa) return [];
-    const response = await axios.post(
+    const response = await httpClient.post(
       'https://api.exa.ai/search',
       { query, numResults: 10, useAutoprompt: true },
       {

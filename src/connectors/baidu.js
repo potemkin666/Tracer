@@ -1,10 +1,10 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://www.baidu.com/s', {
+    const response = await httpClient.get('https://www.baidu.com/s', {
       params: { wd: query, rn: 10 },
       headers: {
         'User-Agent': 'Mozilla/5.0',

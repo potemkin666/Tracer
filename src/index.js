@@ -43,6 +43,12 @@ function parseArgs(argv) {
       case '--documents':
         result.documents = true;
         break;
+      case '--proxy':
+        result.proxy = args[++i];
+        break;
+      case '--tor-rotate':
+        result.torRotate = true;
+        break;
       default:
         if (!args[i].startsWith('--')) result.input = args[i];
     }
@@ -52,7 +58,7 @@ function parseArgs(argv) {
 }
 
 async function main() {
-  const { input, mode, apiKeys, output, html, fossils, avatars, timeSliceMode, documents } =
+  const { input, mode, apiKeys, output, html, fossils, avatars, timeSliceMode, documents, proxy, torRotate } =
     parseArgs(process.argv);
 
   if (!input) {
@@ -65,6 +71,9 @@ async function main() {
         '  --avatars                Enable avatar clustering\n' +
         '  --time-slice             Enable time-slice search\n' +
         '  --documents              Enable document search\n' +
+        '  --proxy <url>            Route requests through proxy\n' +
+        '                           (socks5://host:port, http://host:port)\n' +
+        '  --tor-rotate             Request a new Tor circuit before search\n' +
         '\n' +
         'API keys are loaded from environment variables (TRACER_BRAVE_KEY,\n' +
         'TRACER_SERPAPI_KEY, etc.) or from a JSON config file via --config.\n' +
@@ -96,12 +105,36 @@ async function main() {
         '  TRACER_NETLAS_KEY         Netlas API key\n' +
         '  TRACER_EXA_KEY            Exa AI API key\n' +
         '  TRACER_PERPLEXITY_KEY     Perplexity AI API key\n' +
-        '  TRACER_TINEYE_KEY         TinEye API key'
+        '  TRACER_TINEYE_KEY         TinEye API key\n' +
+        '\n' +
+        'Proxy env vars:\n' +
+        '  TRACER_PROXY_URL          Proxy URL (overridden by --proxy)\n' +
+        '  TRACER_TOR_CONTROL_PORT   Tor control port (default 9051)\n' +
+        '  TRACER_TOR_CONTROL_PASSWORD  Tor control password'
     );
     process.exit(1);
   }
 
-  console.log(`Searching for: "${input}" (mode: ${mode || 'normal'})`);
+  // If --proxy was provided, set the env var so httpClient picks it up.
+  if (proxy) {
+    process.env.TRACER_PROXY_URL = proxy;
+  }
+
+  // Request a fresh Tor circuit before searching.
+  if (torRotate) {
+    const { rotateTorCircuit } = await import('./proxyAgent.js');
+    try {
+      await rotateTorCircuit();
+      console.log('Tor circuit rotated (NEWNYM).');
+    } catch (err) {
+      console.error(`Tor rotation failed: ${err.message}`);
+    }
+  }
+
+  const proxyLabel = process.env.TRACER_PROXY_URL
+    ? ` via ${process.env.TRACER_PROXY_URL}`
+    : '';
+  console.log(`Searching for: "${input}" (mode: ${mode || 'normal'})${proxyLabel}`);
 
   const { results, avatarClusters } = await run(input, {
     mode,

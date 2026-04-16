@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query) {
   try {
-    const response = await axios.get('https://api.company-information.service.gov.uk/search/companies', {
+    const response = await httpClient.get('https://api.company-information.service.gov.uk/search/companies', {
       params: { q: query, items_per_page: 10 },
       timeout: 10000,
     });

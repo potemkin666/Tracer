@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const searchResp = await axios.post(
+    const searchResp = await httpClient.post(
       'https://2.intelx.io/intelligent/search',
       {
         term: query,
@@ -25,7 +25,7 @@ async function search(query, apiKeys = {}) {
     const id = searchResp.data && searchResp.data.id;
     if (!id) return [];
 
-    const resultResp = await axios.get('https://2.intelx.io/intelligent/search/result', {
+    const resultResp = await httpClient.get('https://2.intelx.io/intelligent/search/result', {
       params: { id, limit: 10, apikey: apiKeys.intelx },
       headers: { 'x-key': apiKeys.intelx },
       timeout: 10000,

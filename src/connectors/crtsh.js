@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://crt.sh/', {
+    const response = await httpClient.get('https://crt.sh/', {
       params: { q: query, output: 'json' },
       timeout: 10000,
     });

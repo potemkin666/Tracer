@@ -1,10 +1,10 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
 async function search(query) {
   try {
-    const response = await axios.get('https://opensearch.krugle.org/document/search/', {
+    const response = await httpClient.get('https://opensearch.krugle.org/document/search/', {
       params: { query, page_size: 10, page_index: 1 },
       headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'text/html,application/json' },
       timeout: 10000,

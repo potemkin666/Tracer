@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 const GQL_QUERY = `
@@ -18,7 +18,7 @@ query Search($q: String!) {
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.post(
+    const response = await httpClient.post(
       'https://sourcegraph.com/.api/graphql',
       { query: GQL_QUERY, variables: { q: query } },
       { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }

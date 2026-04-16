@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://stract.com/beta/api/search', {
+    const response = await httpClient.get('https://stract.com/beta/api/search', {
       params: { q: query, numResults: 10 },
       headers: { Accept: 'application/json' },
       timeout: 10000,

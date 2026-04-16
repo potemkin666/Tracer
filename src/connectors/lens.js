@@ -1,11 +1,11 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
     const headers = { 'Content-Type': 'application/json' };
     if (apiKeys.lens) headers['Authorization'] = `Bearer ${apiKeys.lens}`;
-    const response = await axios.post(
+    const response = await httpClient.post(
       'https://api.lens.org/scholarly/search',
       { query: { multi_match: { query, fields: ['title', 'author'] } }, size: 10 },
       { headers, timeout: 10000 }

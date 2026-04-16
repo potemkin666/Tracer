@@ -1,11 +1,11 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
     const [user, key] = (apiKeys.yandex || ':').split(':');
-    const response = await axios.get('https://yandex.com/search/xml', {
+    const response = await httpClient.get('https://yandex.com/search/xml', {
       params: {
         user,
         key,

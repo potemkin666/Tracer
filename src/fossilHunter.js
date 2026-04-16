@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from './httpClient.js';
 import { normalise } from './normaliser.js';
 
 // Profile-like paths that often preserve old bios, contact info, and usernames.
@@ -31,7 +31,7 @@ function deriveLegacyUrls(input) {
 
 async function fetchOldCaptures(urlPattern, input) {
   try {
-    const response = await axios.get('https://web.archive.org/cdx/search/cdx', {
+    const response = await httpClient.get('https://web.archive.org/cdx/search/cdx', {
       params: {
         url: urlPattern,
         output: 'json',

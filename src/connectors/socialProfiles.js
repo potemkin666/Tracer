@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 import { PLATFORMS } from './platforms.js';
 
@@ -28,7 +28,7 @@ function pLimit(concurrency) {
 
 async function checkUrl(url, username) {
   try {
-    const res = await axios.get(url, {
+    const res = await httpClient.get(url, {
       timeout: 5000,
       maxRedirects: 3,
       validateStatus: () => true,
@@ -48,7 +48,7 @@ async function checkUrl(url, username) {
 
 async function checkHackerNews(u) {
   try {
-    const res = await axios.get(`https://hacker-news.firebaseio.com/v0/user/${u}.json`, { timeout: 5000 });
+    const res = await httpClient.get(`https://hacker-news.firebaseio.com/v0/user/${u}.json`, { timeout: 5000 });
     return res.data && res.data.created ? { found: true, url: `https://news.ycombinator.com/user?id=${u}` } : { found: false };
   } catch (err) {
     console.error('[connectors/socialProfiles]', err.message);
@@ -58,7 +58,7 @@ async function checkHackerNews(u) {
 
 async function checkStackOverflow(u) {
   try {
-    const res = await axios.get('https://api.stackexchange.com/2.3/users', {
+    const res = await httpClient.get('https://api.stackexchange.com/2.3/users', {
       params: { site: 'stackoverflow', filter: '!9Z(-wwYGT', inname: u, pagesize: 5 },
       timeout: 5000,
     });

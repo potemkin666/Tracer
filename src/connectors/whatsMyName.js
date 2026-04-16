@@ -1,11 +1,11 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 let cachedData = null;
 
 async function fetchData() {
   if (cachedData) return cachedData;
-  const response = await axios.get(
+  const response = await httpClient.get(
     'https://raw.githubusercontent.com/WebBreacher/WhatsMyName/main/wmn-data.json',
     { timeout: 10000 }
   );
@@ -18,7 +18,7 @@ async function checkSite(site, username) {
   if (!checkUri) return null;
 
   try {
-    const res = await axios.get(checkUri, {
+    const res = await httpClient.get(checkUri, {
       timeout: 5000,
       maxRedirects: 3,
       validateStatus: () => true,

@@ -1,10 +1,10 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://export.arxiv.org/api/query', {
+    const response = await httpClient.get('https://export.arxiv.org/api/query', {
       params: { search_query: `all:${query}`, max_results: 10, sortBy: 'relevance' },
       timeout: 10000,
     });

@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://searchcode.com/api/codesearch_I/', {
+    const response = await httpClient.get('https://searchcode.com/api/codesearch_I/', {
       params: { q: query, p: 0, per_page: 10 },
       timeout: 10000,
     });

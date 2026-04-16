@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
@@ -8,7 +8,7 @@ function stripTags(html) {
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://openapi.naver.com/v1/search/webkr.json', {
+    const response = await httpClient.get('https://openapi.naver.com/v1/search/webkr.json', {
       headers: {
         'X-Naver-Client-Id': apiKeys.naverClientId,
         'X-Naver-Client-Secret': apiKeys.naverClientSecret,

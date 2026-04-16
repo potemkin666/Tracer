@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
+    const response = await httpClient.get('https://www.googleapis.com/customsearch/v1', {
       params: { q: query, key: apiKeys.google, cx: apiKeys.googleCx, num: 10 },
       timeout: 10000,
     });

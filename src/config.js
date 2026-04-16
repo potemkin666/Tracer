@@ -1,5 +1,6 @@
 /**
- * Shared configuration — API-key loading from environment variables.
+ * Shared configuration — API-key loading from environment variables
+ * and proxy settings.
  *
  * Both the CLI entry point (index.js) and the web server (ui/server.js)
  * import from here so the env-var mapping is defined in exactly one place.
@@ -33,6 +34,21 @@ export const ENV_KEY_MAP = {
   TRACER_PERPLEXITY_KEY: 'perplexity',
   TRACER_TINEYE_KEY: 'tineye',
 };
+
+/**
+ * Proxy-related environment variable names.
+ *
+ *   TRACER_PROXY_URL             – full proxy URL, e.g.
+ *       socks5://127.0.0.1:9050   (Tor default)
+ *       http://proxy:8080
+ *   TRACER_TOR_CONTROL_PORT      – Tor control port for NEWNYM (default 9051)
+ *   TRACER_TOR_CONTROL_PASSWORD  – plaintext password for AUTHENTICATE
+ */
+export const PROXY_ENV_VARS = [
+  'TRACER_PROXY_URL',
+  'TRACER_TOR_CONTROL_PORT',
+  'TRACER_TOR_CONTROL_PASSWORD',
+];
 
 export function loadKeysFromEnv() {
   const keys = {};

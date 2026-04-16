@@ -1,10 +1,10 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get(
+    const response = await httpClient.get(
       `https://publicwww.com/websites/${encodeURIComponent(query)}/`,
       {
         params: apiKeys.publicwww

@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get(
+    const response = await httpClient.get(
       `https://api.marginalia.nu/search/${encodeURIComponent(query)}`,
       { params: { count: 10 }, timeout: 10000 }
     );

@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://listen-api.listennotes.com/api/v2/search', {
+    const response = await httpClient.get('https://listen-api.listennotes.com/api/v2/search', {
       headers: { 'X-ListenAPI-Key': apiKeys.listennotes },
       params: { q: query, type: 'episode', page_size: 10 },
       timeout: 10000,

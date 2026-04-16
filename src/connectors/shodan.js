@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://api.shodan.io/shodan/host/search', {
+    const response = await httpClient.get('https://api.shodan.io/shodan/host/search', {
       params: { key: apiKeys.shodan, query, page: 1 },
       timeout: 10000,
     });

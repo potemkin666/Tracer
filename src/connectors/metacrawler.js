@@ -1,4 +1,4 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
 
@@ -6,7 +6,7 @@ const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Geck
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://www.metacrawler.com/serp', {
+    const response = await httpClient.get('https://www.metacrawler.com/serp', {
       params: { q: query },
       headers: { 'User-Agent': UA, Accept: 'text/html' },
       timeout: 10000,

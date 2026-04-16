@@ -1,9 +1,9 @@
-import axios from 'axios';
+import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
 
 async function search(query) {
   try {
-    const response = await axios.get('https://web.archive.org/cdx/search/cdx', {
+    const response = await httpClient.get('https://web.archive.org/cdx/search/cdx', {
       params: {
         url: `*${query.replace(/\s+/g, '')}*`,
         output: 'json',
