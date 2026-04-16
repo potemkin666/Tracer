@@ -259,6 +259,20 @@
     .hist-clear{font-size:.65rem;color:var(--dim);cursor:pointer;margin-left:.5rem}
     .hist-clear:hover{color:var(--red)}
 
+    /* === EXPORT BUTTONS === */
+    .export-bar{display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap}
+    .export-bar .btn-sm{font-size:.44rem;padding:.35rem .6rem}
+
+    /* === LIVE PROGRESS === */
+    .progress-wrap{margin-top:.6rem}
+    .progress-label{font-family:'Press Start 2P',monospace;font-size:.42rem;color:var(--dim);letter-spacing:.08em;margin-bottom:.4rem}
+    .progress-grid{display:flex;flex-wrap:wrap;gap:.18rem .55rem;font-size:.62rem;line-height:1.5}
+    .progress-grid .pg-pending{color:var(--dim);opacity:.4}
+    .progress-grid .pg-ok{color:var(--bright)}
+    .progress-grid .pg-fail{color:var(--red)}
+    .progress-grid .pg-empty{color:var(--dim)}
+    .progress-counter{font-family:'Press Start 2P',monospace;font-size:.46rem;color:var(--cyan);margin-top:.3rem;letter-spacing:.06em}
+
     /* === FOOTER === */
     footer{
       position:fixed;bottom:0;width:100%;z-index:20;
@@ -398,10 +412,14 @@
     <div class="err" id="err"></div>
   </div>
 
-  <!-- LOADING -->
+  <!-- LOADING (with live progress) -->
   <div id="loading">
     <div class="sonar"></div>
     <p>SCANNING THE DEEP…</p>
+    <div class="progress-wrap" id="live-progress" style="display:none">
+      <div class="progress-counter" id="progress-counter"></div>
+      <div class="progress-grid" id="progress-grid"></div>
+    </div>
   </div>
 
   <!-- RESULTS -->
@@ -409,6 +427,10 @@
     <div class="res-hdr">
       <span>SIGNALS DETECTED</span>
       <span id="res-count"></span>
+    </div>
+    <div class="export-bar" id="export-bar" style="display:none">
+      <button class="btn btn-sm" onclick="exportJSON()">⬇ JSON</button>
+      <button class="btn btn-sm" onclick="exportCSV()">⬇ CSV</button>
     </div>
     <div id="avatar-clusters"></div>
     <div id="results-list"></div>
@@ -773,11 +795,25 @@ async function searchDirect(query){
 
   const attempted=namedFetchers.length;
   const sourceStatus=[];   // {name, status:'ok'|'fail'|'empty', reason?}
-  const settled=await Promise.allSettled(namedFetchers.map(f=>f.fn()));
   const results=[];
   let responded=0;
-  settled.forEach((s,idx)=>{
-    const name=namedFetchers[idx].name;
+
+  // ── Live progress: init progress grid ──
+  initLiveProgress(namedFetchers.map(f=>f.name));
+
+  // Run all fetchers in parallel but update progress as each completes
+  const wrapped=namedFetchers.map((f,idx)=>
+    f.fn().then(val=>({idx,status:'fulfilled',value:val}),reason=>({idx,status:'rejected',reason}))
+      .then(result=>{
+        updateLiveProgress(f.name,result.status==='fulfilled'&&Array.isArray(result.value)&&result.value.length>0?'ok':
+          result.status==='fulfilled'?'empty':'fail');
+        return result;
+      })
+  );
+  const settled=await Promise.all(wrapped);
+
+  settled.forEach(s=>{
+    const name=namedFetchers[s.idx].name;
     if(s.status==='fulfilled'&&Array.isArray(s.value)){
       if(s.value.length){
         responded++;
@@ -817,8 +853,11 @@ async function searchDirect(query){
     return tokens.some(t=>text.includes(t));
   });
 
+  // ── Client-side deduplication (mirrors backend deduper.js) ──
+  const deduped=dedupeStandalone(relevant);
+
   // ── Client-side confidence scoring (mirrors backend scorer.js) ──
-  return scoreStandalone(relevant,query);
+  return scoreStandalone(deduped,query);
 }
 
 // ── SEARCH ────────────────────────────────────────────────────────────────────
@@ -863,7 +902,9 @@ async function doSearch(){
   }
 
   renderResults(results,avatarClusters);
+  _lastResults=results;
   addToHistory(query,results.length);
+  hideLiveProgress();
   showLoading(false);
 }
 document.getElementById('query').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch()});
@@ -900,6 +941,10 @@ function renderResults(results,clusters){
   document.getElementById('results-section').style.display='block';
   document.getElementById('res-count').textContent=
     results.length+' SIGNAL'+(results.length!==1?'S':'')+' DETECTED';
+
+  // Show export buttons when there are results
+  const expBar=document.getElementById('export-bar');
+  if(expBar)expBar.style.display=results.length?'flex':'none';
 
   const cd=document.getElementById('avatar-clusters');cd.innerHTML='';
   (clusters||[]).forEach(c=>{
@@ -1007,6 +1052,101 @@ function scoreStandalone(results,originalInput){
   return scored.sort((a,b)=>b.confidence-a.confidence);
 }
 
+// ── CLIENT-SIDE DEDUPLICATION (mirrors backend deduper.js) ───────────────────
+function dedupeStandalone(results){
+  const map=new Map();
+  for(const r of results){
+    if(!r.url)continue;
+    if(!map.has(r.url)){
+      map.set(r.url,{...r,seenOn:[...(r.seenOn||[r.source||''].filter(Boolean))]});
+      continue;
+    }
+    const existing=map.get(r.url);
+    // Accumulate distinct source names into seenOn
+    const newSources=(r.seenOn||[r.source||''].filter(Boolean));
+    for(const s of newSources){
+      if(s&&!existing.seenOn.includes(s))existing.seenOn.push(s);
+    }
+    // Prefer non-empty title/snippet
+    if(!existing.title&&r.title)existing.title=r.title;
+    if(!existing.snippet&&r.snippet)existing.snippet=r.snippet;
+    // Keep the higher raw score (before confidence rescoring)
+    if((r.score||0)>(existing.score||0))existing.score=r.score;
+  }
+  return Array.from(map.values());
+}
+
+// ── LIVE PROGRESS ────────────────────────────────────────────────────────────
+let _progressTotal=0,_progressDone=0;
+function initLiveProgress(sourceNames){
+  _progressTotal=sourceNames.length;_progressDone=0;
+  const wrap=document.getElementById('live-progress');
+  const grid=document.getElementById('progress-grid');
+  const counter=document.getElementById('progress-counter');
+  if(!wrap||!grid||!counter)return;
+  wrap.style.display='block';
+  counter.textContent=`0 / ${_progressTotal} sources`;
+  grid.innerHTML=sourceNames.map(name=>
+    `<span class="pg-pending" id="pg-${name}">${esc(name)}</span>`
+  ).join('');
+}
+function updateLiveProgress(name,status){
+  _progressDone++;
+  const el=document.getElementById('pg-'+name);
+  if(el){
+    el.className=status==='ok'?'pg-ok':status==='empty'?'pg-empty':'pg-fail';
+    const icon=status==='ok'?'✓':status==='empty'?'○':'✗';
+    el.textContent=icon+' '+name;
+  }
+  const counter=document.getElementById('progress-counter');
+  if(counter)counter.textContent=`${_progressDone} / ${_progressTotal} sources`;
+}
+function hideLiveProgress(){
+  const wrap=document.getElementById('live-progress');
+  if(wrap)wrap.style.display='none';
+}
+
+// ── EXPORT (JSON + CSV) ──────────────────────────────────────────────────────
+let _lastResults=[];
+function exportJSON(){
+  if(!_lastResults.length)return;
+  const data=_lastResults.map(r=>({
+    title:r.title||'',url:r.url||'',source:r.source||'',
+    snippet:r.snippet||'',score:r.score||0,
+    seenOn:r.seenOn||[]
+  }));
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  downloadBlob(blob,'tracer-results.json');
+}
+function exportCSV(){
+  if(!_lastResults.length)return;
+  const header='Score,Source,Title,URL,Snippet,Seen On';
+  const rows=_lastResults.map(r=>{
+    const fields=[
+      r.score||0,
+      csvSafe(r.source||''),
+      csvSafe(r.title||''),
+      csvSafe(r.url||''),
+      csvSafe((r.snippet||'').slice(0,300)),
+      csvSafe((r.seenOn||[]).join('; '))
+    ];
+    return fields.join(',');
+  });
+  const blob=new Blob([header+'\n'+rows.join('\n')],{type:'text/csv'});
+  downloadBlob(blob,'tracer-results.csv');
+}
+function csvSafe(s){
+  s=String(s||'').replace(/"/g,'""');
+  return /[,"\n\r]/.test(s)?'"'+s+'"':s;
+}
+function downloadBlob(blob,filename){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},100);
+}
+
 // ── SEARCH HISTORY ───────────────────────────────────────────────────────────
 const HISTORY_KEY='tracer_search_history';
 const HISTORY_MAX=20;
@@ -1072,7 +1212,7 @@ function rerunSearch(query){
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function showLoading(v){document.getElementById('loading').style.display=v?'block':'none';document.getElementById('srch-btn').disabled=v}
-function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML=''}
+function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';_lastResults=[]}
 function showErr(msg,isErr){const el=document.getElementById('err');el.textContent=msg;el.style.display=msg?'block':'none';if(!isErr)el.style.color='var(--bright)'}
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
