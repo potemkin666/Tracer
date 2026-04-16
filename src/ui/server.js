@@ -1,7 +1,11 @@
-const path = require('path');
-const express = require('express');
-const { run } = require('../orchestrator');
-const { loadKeysFromEnv } = require('../config');
+import path from 'path';
+import { fileURLToPath } from 'url';
+import express from 'express';
+import { run } from '../orchestrator.js';
+import { loadKeysFromEnv } from '../config.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load API keys once at startup from server-side environment variables.
 // Client requests never supply keys — this prevents the server from being
@@ -60,4 +64,4 @@ function shutdown(signal) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT', () => shutdown('SIGINT'));
 
-module.exports = app;
+export default app;

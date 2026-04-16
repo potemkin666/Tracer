@@ -6,8 +6,8 @@
  * contract: always returns an array (never throws to the caller).
  *
  * @example
- *   const Connector = require('./Connector');
- *   const { normalise } = require('../normaliser');
+ *   import Connector from './Connector.js';
+ *   import { normalise } from '../normaliser.js';
  *
  *   class BraveConnector extends Connector {
  *     constructor() {
@@ -67,4 +67,4 @@ class Connector {
   }
 }
 
-module.exports = Connector;
+export default Connector;

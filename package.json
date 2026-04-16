@@ -2,6 +2,7 @@
   "name": "tracer",
   "version": "1.0.0",
   "description": "Multi-source identity search tool",
+  "type": "module",
   "main": "src/index.js",
   "engines": {
     "node": ">=18"
@@ -9,7 +10,7 @@
   "scripts": {
     "start": "node src/index.js",
     "serve": "node src/ui/server.js",
-    "test": "jest",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "lint": "eslint ."
   },
   "dependencies": {

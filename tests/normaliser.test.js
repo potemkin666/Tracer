@@ -1,4 +1,4 @@
-const { normalise } = require('../src/normaliser');
+import { normalise } from '../src/normaliser.js';
 
 describe('normalise', () => {
   test('returns object with all required fields', () => {

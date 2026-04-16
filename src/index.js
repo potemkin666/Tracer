@@ -1,7 +1,7 @@
-const { run } = require('./orchestrator');
-const { exportJSON, exportHTML } = require('./exporter');
-const { loadKeysFromEnv } = require('./config');
-const fs = require('fs');
+import { run } from './orchestrator.js';
+import { exportJSON, exportHTML } from './exporter.js';
+import { loadKeysFromEnv } from './config.js';
+import fs from 'fs';
 
 function parseArgs(argv) {
   const args = argv.slice(2);

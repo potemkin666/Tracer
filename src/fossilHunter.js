@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('./normaliser');
+import axios from 'axios';
+import { normalise } from './normaliser.js';
 
 // Profile-like paths that often preserve old bios, contact info, and usernames.
 const LEGACY_PATHS = ['/about', '/bio', '/contact', '/profile', '/user', '/me', '/whois'];
@@ -67,7 +67,7 @@ async function fetchOldCaptures(urlPattern, input) {
   } catch (err) { console.error('[fossilHunter]', err.message); return []; }
 }
 
-async function hunt(input, results) {
+export async function hunt(input, results) {
   const profileUrls = extractProfileUrls(results);
   const legacyUrlPatterns = deriveLegacyUrls(input);
 
@@ -85,4 +85,3 @@ async function hunt(input, results) {
   return batches.flat();
 }
 
-module.exports = { hunt };

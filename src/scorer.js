@@ -5,7 +5,7 @@
 //
 // To retrain: collect a labeled dataset of (result, isMatch) pairs, extract
 // features with extractFeatures(), and run gradient descent on the log-loss.
-const WEIGHTS = {
+export const WEIGHTS = {
   titleExact:       3.2,   // full input appears in title
   snippetExact:     2.1,   // full input appears in snippet
   urlUsername:       1.8,   // no-spaces input appears in URL
@@ -34,7 +34,7 @@ function sigmoid(z) {
  * Extract numeric features from a single result.
  * All features are either 0/1 (binary) or a small positive number.
  */
-function extractFeatures(r, lowerInput, tokens, urlMap) {
+export function extractFeatures(r, lowerInput, tokens, urlMap) {
   const title   = (r.title   || '').toLowerCase();
   const snippet = (r.snippet || '').toLowerCase();
   const url     = (r.url     || '').toLowerCase();
@@ -63,7 +63,7 @@ function extractFeatures(r, lowerInput, tokens, urlMap) {
  * weights. Returns a value in (0, 1) that can be interpreted as the
  * probability the result is a true match.
  */
-function computeConfidence(features) {
+export function computeConfidence(features) {
   let z = 0;
   for (const [feat, val] of Object.entries(features)) {
     z += (WEIGHTS[feat] || 0) * val;
@@ -82,7 +82,7 @@ function computeConfidence(features) {
  * @param {string} originalInput - the user's original search term
  * @returns {object[]} results sorted by confidence descending
  */
-function score(results, originalInput) {
+export function score(results, originalInput) {
   const lowerInput = originalInput.toLowerCase();
   const tokens = lowerInput.split(/\s+/).filter(Boolean);
   const urlMap = {};
@@ -100,4 +100,3 @@ function score(results, originalInput) {
   return scored.sort((a, b) => b.confidence - a.confidence);
 }
 
-module.exports = { score, extractFeatures, computeConfidence, WEIGHTS };

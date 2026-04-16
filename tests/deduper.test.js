@@ -1,4 +1,4 @@
-const { dedupe } = require('../src/deduper');
+import { dedupe } from '../src/deduper.js';
 
 describe('dedupe', () => {
   test('returns unique results by URL', () => {

@@ -1,4 +1,4 @@
-const { generateQueries } = require('../src/queryPlanner');
+import { generateQueries } from '../src/queryPlanner.js';
 
 describe('generateQueries', () => {
   const results = generateQueries('john smith');

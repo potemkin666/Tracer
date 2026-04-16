@@ -1,4 +1,4 @@
-const { score, extractFeatures, computeConfidence, WEIGHTS } = require('../src/scorer');
+import { score, extractFeatures, computeConfidence, WEIGHTS } from '../src/scorer.js';
 
 describe('score', () => {
   test('adds score and confidence properties to each result', () => {

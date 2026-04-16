@@ -1,4 +1,4 @@
-function dedupe(results) {
+export function dedupe(results) {
   const map = new Map();
 
   for (const r of results) {
@@ -42,4 +42,3 @@ function dedupe(results) {
   return Array.from(map.values());
 }
 
-module.exports = { dedupe };

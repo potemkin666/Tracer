@@ -1,13 +1,13 @@
-const { generateQueries } = require('./queryPlanner');
-const { dedupe } = require('./deduper');
-const { score } = require('./scorer');
-const { getActive } = require('./connectors/registry');
-const wayback = require('./connectors/wayback');
-const namechk = require('./connectors/namechk');
-const timeSlice = require('./connectors/timeSlice');
-const docSearch = require('./connectors/docSearch');
-const fossilHunter = require('./fossilHunter');
-const avatarHunter = require('./avatarHunter');
+import { generateQueries } from './queryPlanner.js';
+import { dedupe } from './deduper.js';
+import { score } from './scorer.js';
+import { getActive } from './connectors/registry.js';
+import * as wayback from './connectors/wayback.js';
+import * as namechk from './connectors/namechk.js';
+import * as timeSlice from './connectors/timeSlice.js';
+import * as docSearch from './connectors/docSearch.js';
+import * as fossilHunter from './fossilHunter.js';
+import * as avatarHunter from './avatarHunter.js';
 
 /**
  * Run the Tracer pipeline.
@@ -18,7 +18,7 @@ const avatarHunter = require('./avatarHunter');
  *   { phase: string, connector?: string, resultsSoFar: number } after each
  *   connector completes. Allows callers to stream incremental progress.
  */
-async function run(input, config = {}) {
+export async function run(input, config = {}) {
   const {
     apiKeys = {},
     mode = 'normal',
@@ -98,5 +98,3 @@ async function run(input, config = {}) {
   notify({ phase: 'done', resultsSoFar: scored.length });
   return { results: scored, avatarClusters };
 }
-
-module.exports = { run };

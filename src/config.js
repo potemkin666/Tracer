@@ -6,7 +6,7 @@
  */
 
 // Map of environment variable names to apiKeys property names.
-const ENV_KEY_MAP = {
+export const ENV_KEY_MAP = {
   TRACER_BRAVE_KEY: 'brave',
   TRACER_SERPAPI_KEY: 'serpapi',
   TRACER_MOJEEK_KEY: 'mojeek',
@@ -34,7 +34,7 @@ const ENV_KEY_MAP = {
   TRACER_TINEYE_KEY: 'tineye',
 };
 
-function loadKeysFromEnv() {
+export function loadKeysFromEnv() {
   const keys = {};
   for (const [envVar, keyName] of Object.entries(ENV_KEY_MAP)) {
     if (process.env[envVar]) {
@@ -44,4 +44,3 @@ function loadKeysFromEnv() {
   return keys;
 }
 
-module.exports = { ENV_KEY_MAP, loadKeysFromEnv };
