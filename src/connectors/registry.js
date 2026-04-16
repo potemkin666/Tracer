@@ -82,6 +82,9 @@ const ALL_CONNECTORS = [
   { id: 'intelx', label: 'IntelX', tier: 'osint', requiresKey: 'intelx', search: lazySearch('./intelx.js') },
   { id: 'publicwww', label: 'PublicWWW', tier: 'osint', requiresKey: 'publicwww', search: lazySearch('./publicwww.js') },
   { id: 'tineye', label: 'TinEye', tier: 'osint', requiresKey: 'tineye', search: lazySearch('./tineye.js') },
+  { id: 'dehashed', label: 'DeHashed', tier: 'osint', requiresKey: 'dehashed', search: lazySearch('./dehashed.js') },
+  { id: 'haveibeenpwned', label: 'Have I Been Pwned', tier: 'osint', requiresKey: 'hibp', search: lazySearch('./haveibeenpwned.js') },
+  { id: 'greynoise', label: 'GreyNoise', tier: 'osint', requiresKey: 'greynoise', search: lazySearch('./greynoise.js') },
 
   // ── REGIONAL ──────────────────────────────────────────────────────────────
   { id: 'yandex', label: 'Yandex', tier: 'regional', requiresKey: 'yandex', search: lazySearch('./yandex.js') },
@@ -224,6 +227,18 @@ const ALL_CONNECTORS = [
   { id: 'drc-precop-cd', label: 'DRC PreCOP Environment', tier: 'regional', requiresKey: null, search: lazySearch('./drcPrecopCd.js') },
   { id: 'julisha-cd', label: 'Julisha Congo', tier: 'regional', requiresKey: null, search: lazySearch('./julishaCd.js') },
   { id: 'pnmls-cd', label: 'PNMLS Documentation', tier: 'regional', requiresKey: null, search: lazySearch('./pnmlsCd.js') },
+
+  // ── REGIONAL – Argentina ────────────────────────────────────────────────────
+  { id: 'infoleg-ar', label: 'InfoLeg Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./infolegAr.js') },
+  { id: 'justicia-ar', label: 'Argentina Justicia', tier: 'regional', requiresKey: null, search: lazySearch('./justiciaAr.js') },
+  { id: 'mseg-ar', label: 'MSEG Buenos Aires', tier: 'regional', requiresKey: null, search: lazySearch('./msegAr.js') },
+  { id: 'pjn-ar', label: 'PJN Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./pjnAr.js') },
+  { id: 'cij-ar', label: 'CIJ Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./cijAr.js') },
+  { id: 'boletin-oficial-ar', label: 'Boletín Oficial Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./boletinOficialAr.js') },
+  { id: 'afip-ar', label: 'AFIP Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./afipAr.js') },
+  { id: 'datos-abiertos-ar', label: 'Datos Abiertos Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./datosAbiertosAr.js') },
+  { id: 'migraciones-ar', label: 'Migraciones Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./migracionesAr.js') },
+  { id: 'comprar-ar', label: 'Comprar Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./comprarAr.js') },
 
   // ── META ──────────────────────────────────────────────────────────────────
   { id: 'startpage', label: 'Startpage', tier: 'meta', requiresKey: null, search: lazySearch('./startpage.js') },
