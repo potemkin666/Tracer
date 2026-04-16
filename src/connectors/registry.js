@@ -240,6 +240,80 @@ const ALL_CONNECTORS = [
   { id: 'migraciones-ar', label: 'Migraciones Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./migracionesAr.js') },
   { id: 'comprar-ar', label: 'Comprar Argentina', tier: 'regional', requiresKey: null, search: lazySearch('./comprarAr.js') },
 
+  // ── REGIONAL – Romania ──────────────────────────────────────────────────────
+  { id: 'politia-ro', label: 'Romanian Police', tier: 'regional', requiresKey: null, search: lazySearch('./politiaRo.js') },
+  { id: 'politia-frontiera-ro', label: 'Border Police Romania', tier: 'regional', requiresKey: null, search: lazySearch('./politiaFrontieraRo.js') },
+  { id: 'onrc-ro', label: 'ONRC Romania', tier: 'regional', requiresKey: null, search: lazySearch('./onrcRo.js') },
+  { id: 'listafirme-ro', label: 'Lista Firme', tier: 'regional', requiresKey: null, search: lazySearch('./listafirmeRo.js') },
+  { id: 'romanian-companies', label: 'Romanian Companies', tier: 'regional', requiresKey: null, search: lazySearch('./romanianCompanies.js') },
+  { id: 'arhiva-nationala-ro', label: 'National Archives Romania', tier: 'regional', requiresKey: null, search: lazySearch('./arhivaNationalaRo.js') },
+  { id: 'biblioteca-nationala-ro', label: 'National Library Romania', tier: 'regional', requiresKey: null, search: lazySearch('./bibliotecaNationalaRo.js') },
+  { id: 'e-licitatie-ro', label: 'e-Licitatie Romania', tier: 'regional', requiresKey: null, search: lazySearch('./eLicitatieRo.js') },
+  { id: 'anaf-ro', label: 'ANAF Romania', tier: 'regional', requiresKey: null, search: lazySearch('./anafRo.js') },
+  { id: 'portal-just-ro', label: 'Portal Just Romania', tier: 'regional', requiresKey: null, search: lazySearch('./portalJustRo.js') },
+  { id: 'rejust-ro', label: 'ReJust Romania', tier: 'regional', requiresKey: null, search: lazySearch('./rejustRo.js') },
+  { id: 'rolii-ro', label: 'ROLII Romania', tier: 'regional', requiresKey: null, search: lazySearch('./roliiRo.js') },
+  { id: 'genealogica-ro', label: 'Genealogica Romania', tier: 'regional', requiresKey: null, search: lazySearch('./genealogicaRo.js') },
+  { id: 'sicap-ro', label: 'SICAP Romania', tier: 'regional', requiresKey: null, search: lazySearch('./sicapRo.js') },
+
+  // ── REGIONAL – Eritrea ──────────────────────────────────────────────────────
+  { id: 'shabait-er', label: 'Shabait Eritrea', tier: 'regional', requiresKey: null, search: lazySearch('./shabaitEr.js') },
+  { id: 'eritrea-info-er', label: 'Eritrea Information', tier: 'regional', requiresKey: null, search: lazySearch('./eritreaInfoEr.js') },
+  { id: 'eritrea-yellow-pages', label: 'Eritrea Yellow Pages', tier: 'regional', requiresKey: null, search: lazySearch('./eritreaYellowPages.js') },
+  { id: 'erilaw-er', label: 'EriLaw', tier: 'regional', requiresKey: null, search: lazySearch('./erilawEr.js') },
+  { id: 'worldlii-er', label: 'WorldLII Eritrea', tier: 'regional', requiresKey: null, search: lazySearch('./worldliiEr.js') },
+
+  // ── REGIONAL – Iran ─────────────────────────────────────────────────────────
+  { id: 'irandoc-ir', label: 'IranDoc', tier: 'regional', requiresKey: null, search: lazySearch('./irandocIr.js') },
+  { id: 'sid-ir', label: 'SID Iran', tier: 'regional', requiresKey: null, search: lazySearch('./sidIr.js') },
+  { id: 'nlai-ir', label: 'National Library Iran', tier: 'regional', requiresKey: null, search: lazySearch('./nlaiIr.js') },
+  { id: 'jref-ir', label: 'JREF Iran', tier: 'regional', requiresKey: null, search: lazySearch('./jrefIr.js') },
+  { id: 'vlist-ir', label: 'VList Iran', tier: 'regional', requiresKey: null, search: lazySearch('./vlistIr.js') },
+  { id: 'company-register-ir', label: 'Company Register Iran', tier: 'regional', requiresKey: null, search: lazySearch('./companyRegisterIr.js') },
+  { id: 'symposia-ir', label: 'Symposia Iran', tier: 'regional', requiresKey: null, search: lazySearch('./symposiaIr.js') },
+  { id: 'trade-with-iran', label: 'Trade With Iran', tier: 'regional', requiresKey: null, search: lazySearch('./tradeWithIranIr.js') },
+  { id: 'mfa-ir', label: 'MFA Iran', tier: 'regional', requiresKey: null, search: lazySearch('./mfaIr.js') },
+  { id: 'iran-law-ir', label: 'Iran Law Journal', tier: 'regional', requiresKey: null, search: lazySearch('./iranLawIr.js') },
+
+  // ── REGIONAL – Luxembourg ───────────────────────────────────────────────────
+  { id: 'lbr-lu', label: 'LBR Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./lbrLu.js') },
+  { id: 'guichet-lu', label: 'Guichet Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./guichetLu.js') },
+  { id: 'legilux-lu', label: 'Legilux', tier: 'regional', requiresKey: null, search: lazySearch('./legiluxLu.js') },
+  { id: 'justice-lu', label: 'Justice Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./justiceLu.js') },
+  { id: 'data-lu', label: 'Data Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./dataLu.js') },
+  { id: 'geoportail-lu', label: 'Geoportail Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./geoportailLu.js') },
+  { id: 'police-lu', label: 'Police Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./policeLu.js') },
+  { id: 'editus-lu', label: 'Editus Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./editusLu.js') },
+  { id: 'proff-lu', label: 'Proff Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./proffLu.js') },
+  { id: 'archives-lu', label: 'Archives Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./archivesLu.js') },
+  { id: 'bnl-lu', label: 'National Library Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./bnlLu.js') },
+  { id: 'cc-lu', label: 'Chamber of Commerce Luxembourg', tier: 'regional', requiresKey: null, search: lazySearch('./ccLu.js') },
+
+  // ── REGIONAL – London Boroughs ──────────────────────────────────────────────
+  { id: 'harrow-planning', label: 'Harrow Planning', tier: 'regional', requiresKey: null, search: lazySearch('./harrowPlanning.js') },
+  { id: 'richmond-planning', label: 'Richmond Planning', tier: 'regional', requiresKey: null, search: lazySearch('./richmondPlanning.js') },
+  { id: 'wandsworth-planning', label: 'Wandsworth Planning', tier: 'regional', requiresKey: null, search: lazySearch('./wandsworthPlanning.js') },
+  { id: 'merton-planning', label: 'Merton Planning', tier: 'regional', requiresKey: null, search: lazySearch('./mertonPlanning.js') },
+  { id: 'bromley-planning', label: 'Bromley Planning', tier: 'regional', requiresKey: null, search: lazySearch('./bromleyPlanning.js') },
+  { id: 'sutton-planning', label: 'Sutton Planning', tier: 'regional', requiresKey: null, search: lazySearch('./suttonPlanning.js') },
+  { id: 'kingston-planning', label: 'Kingston Planning', tier: 'regional', requiresKey: null, search: lazySearch('./kingstonPlanning.js') },
+  { id: 'enfield-planning', label: 'Enfield Planning', tier: 'regional', requiresKey: null, search: lazySearch('./enfieldPlanning.js') },
+  { id: 'hackney-archives', label: 'Hackney Archives', tier: 'regional', requiresKey: null, search: lazySearch('./hackneyArchives.js') },
+  { id: 'london-archives', label: 'London Archives', tier: 'regional', requiresKey: null, search: lazySearch('./londonArchives.js') },
+  { id: 'met-police', label: 'Metropolitan Police', tier: 'regional', requiresKey: null, search: lazySearch('./metPolice.js') },
+  { id: 'gmp-police', label: 'Greater Manchester Police', tier: 'regional', requiresKey: null, search: lazySearch('./gmpPolice.js') },
+
+  // ── REGIONAL – Cornwall ─────────────────────────────────────────────────────
+  { id: 'cornwall-gov', label: 'Cornwall Council', tier: 'regional', requiresKey: null, search: lazySearch('./cornwallGov.js') },
+  { id: 'devon-cornwall-police', label: 'Devon & Cornwall Police', tier: 'regional', requiresKey: null, search: lazySearch('./devonCornwallPolice.js') },
+
+  // ── REGIONAL – Isle of Man ──────────────────────────────────────────────────
+  { id: 'gov-im', label: 'Isle of Man Gov', tier: 'regional', requiresKey: null, search: lazySearch('./govIm.js') },
+  { id: 'planning-im', label: 'Isle of Man Planning', tier: 'regional', requiresKey: null, search: lazySearch('./planningIm.js') },
+
+  // ── REGIONAL – Birmingham ───────────────────────────────────────────────────
+  { id: 'birmingham-planning', label: 'Birmingham Planning', tier: 'regional', requiresKey: null, search: lazySearch('./birminghamPlanning.js') },
+
   // ── META ──────────────────────────────────────────────────────────────────
   { id: 'startpage', label: 'Startpage', tier: 'meta', requiresKey: null, search: lazySearch('./startpage.js') },
   { id: 'dogpile', label: 'Dogpile', tier: 'meta', requiresKey: null, search: lazySearch('./dogpile.js') },
