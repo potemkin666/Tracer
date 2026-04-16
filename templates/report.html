@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tracer Report</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #333; }
+    header { background: #1a73e8; color: #fff; padding: 1rem 2rem; }
+    header h1 { font-size: 1.4rem; }
+    .tabs { display: flex; gap: 0; border-bottom: 2px solid #ddd; background: #fff; }
+    .tabs button { flex: 1; padding: 0.75rem; border: none; background: #fff; cursor: pointer; font-size: 0.95rem; font-weight: 600; color: #555; }
+    .tabs button.active { color: #1a73e8; border-bottom: 3px solid #1a73e8; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    #graphTab { position: relative; background: #fff; }
+    #graphSvg { width: 100%; height: 600px; display: block; }
+
+    /* Legend */
+    .legend { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.95); border: 1px solid #ddd; border-radius: 4px; padding: 8px 12px; font-size: 0.8rem; }
+    .legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .legend-swatch { width: 14px; height: 4px; border-radius: 2px; }
+
+    /* Result list */
+    #listTab { padding: 1rem 2rem; }
+    .result-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 1rem; margin-bottom: 0.75rem; }
+    .result-card h3 { font-size: 0.95rem; margin-bottom: 0.25rem; }
+    .result-card h3 a { color: #1a73e8; text-decoration: none; }
+    .result-card .meta { font-size: 0.8rem; color: #888; }
+    .result-card .snippet { font-size: 0.85rem; margin-top: 0.25rem; color: #555; }
+    .score-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; color: #fff; }
+
+    /* Tooltip */
+    .graph-tooltip { position: absolute; pointer-events: none; background: rgba(0,0,0,0.8); color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 0.8rem; max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Tracer &mdash; Identity Report</h1>
+</header>
+
+<div class="tabs">
+  <button class="active" data-tab="graphTab">Network Graph</button>
+  <button data-tab="listTab">Result List ({{results.length}})</button>
+</div>
+
+<div id="graphTab" class="tab-content active">
+  <svg id="graphSvg"></svg>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-swatch" style="background:#e74c3c"></div> Same avatar</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#3498db"></div> Same domain</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#2ecc71"></div> Shared email domain</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#f39c12"></div> Cross-linked</div>
+  </div>
+  <div class="graph-tooltip" id="tooltip"></div>
+</div>
+
+<div id="listTab" class="tab-content">
+  {{#each results}}
+  <div class="result-card">
+    <h3>
+      <span class="score-badge" style="background:{{scoreColor this.score}}">{{this.score}}</span>
+      <a href="{{this.url}}" target="_blank" rel="noopener">{{this.title}}</a>
+    </h3>
+    <div class="meta">{{this.source}} &middot; rank {{this.rank}}{{#if this.meta.tags}} &middot; {{joinTags this.meta.tags}}{{/if}}</div>
+    {{#if this.snippet}}<div class="snippet">{{this.snippet}}</div>{{/if}}
+  </div>
+  {{/each}}
+</div>
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────────────────
+document.querySelectorAll('.tabs button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ── Graph data (injected by Handlebars) ────────────────────────────────────
+const graphData = {{{graphJSON}}};
+
+// ── D3 force-directed graph ────────────────────────────────────────────────
+(function renderGraph() {
+  if (!graphData || !graphData.nodes || graphData.nodes.length === 0) {
+    document.getElementById('graphSvg').outerHTML = '<p style="padding:2rem;color:#888;">No graph data available. Run with <code>--avatars</code> for richer connections.</p>';
+    return;
+  }
+
+  const svg = document.getElementById('graphSvg');
+  const width = svg.clientWidth || 900;
+  const height = 600;
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+  const ns = 'http://www.w3.org/2000/svg';
+
+  const EDGE_COLORS = {
+    sameAvatar: '#e74c3c',
+    sameDomain: '#3498db',
+    sharedEmail: '#2ecc71',
+    crossLinked: '#f39c12',
+  };
+
+  function scoreToColor(s) {
+    if (s >= 70) return '#27ae60';
+    if (s >= 40) return '#f39c12';
+    return '#e74c3c';
+  }
+
+  // Build index for quick lookup
+  const nodeById = {};
+  graphData.nodes.forEach(n => { nodeById[n.id] = n; });
+
+  // ── Simulation ─────────────────────────────────────────────────────────
+  // Minimal force simulation (no D3 dependency — pure JS)
+  const nodes = graphData.nodes.map((n, i) => ({
+    ...n,
+    x: width / 2 + (Math.random() - 0.5) * width * 0.6,
+    y: height / 2 + (Math.random() - 0.5) * height * 0.6,
+    vx: 0,
+    vy: 0,
+    index: i,
+  }));
+  const nodeIndex = {};
+  nodes.forEach((n, i) => { nodeIndex[n.id] = i; });
+
+  const links = graphData.edges
+    .filter(e => nodeIndex[e.source] !== undefined && nodeIndex[e.target] !== undefined)
+    .map(e => ({ source: nodeIndex[e.source], target: nodeIndex[e.target], type: e.type, detail: e.detail }));
+
+  // Run force-directed layout (simple spring-electric model)
+  const ITERATIONS = 300;
+  const k = Math.sqrt((width * height) / Math.max(nodes.length, 1));
+  const REPULSION = k * k;
+  const SPRING_LEN = k * 0.8;
+  const COOLING = 0.97;
+  let temp = width / 5;
+
+  for (let iter = 0; iter < ITERATIONS; iter++) {
+    // Repulsion between all pairs
+    for (let i = 0; i < nodes.length; i++) {
+      nodes[i].vx = 0;
+      nodes[i].vy = 0;
+      for (let j = 0; j < nodes.length; j++) {
+        if (i === j) continue;
+        let dx = nodes[i].x - nodes[j].x;
+        let dy = nodes[i].y - nodes[j].y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+        const force = REPULSION / (dist * dist);
+        nodes[i].vx += (dx / dist) * force;
+        nodes[i].vy += (dy / dist) * force;
+      }
+    }
+    // Attraction along edges
+    for (const link of links) {
+      const a = nodes[link.source];
+      const b = nodes[link.target];
+      let dx = b.x - a.x;
+      let dy = b.y - a.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const force = (dist - SPRING_LEN) / dist * 0.4;
+      a.vx += dx * force;
+      a.vy += dy * force;
+      b.vx -= dx * force;
+      b.vy -= dy * force;
+    }
+    // Center gravity
+    for (const n of nodes) {
+      n.vx += (width / 2 - n.x) * 0.01;
+      n.vy += (height / 2 - n.y) * 0.01;
+    }
+    // Apply & cool
+    for (const n of nodes) {
+      const mag = Math.sqrt(n.vx * n.vx + n.vy * n.vy) || 1;
+      const capped = Math.min(mag, temp);
+      n.x += (n.vx / mag) * capped;
+      n.y += (n.vy / mag) * capped;
+      n.x = Math.max(20, Math.min(width - 20, n.x));
+      n.y = Math.max(20, Math.min(height - 20, n.y));
+    }
+    temp *= COOLING;
+  }
+
+  // ── Render SVG ─────────────────────────────────────────────────────────
+  // Edges
+  for (const link of links) {
+    const a = nodes[link.source];
+    const b = nodes[link.target];
+    const line = document.createElementNS(ns, 'line');
+    line.setAttribute('x1', a.x);
+    line.setAttribute('y1', a.y);
+    line.setAttribute('x2', b.x);
+    line.setAttribute('y2', b.y);
+    line.setAttribute('stroke', EDGE_COLORS[link.type] || '#999');
+    line.setAttribute('stroke-width', link.type === 'sameAvatar' ? 3 : 1.5);
+    line.setAttribute('stroke-opacity', 0.6);
+    svg.appendChild(line);
+  }
+
+  // Nodes
+  const tooltip = document.getElementById('tooltip');
+  for (const n of nodes) {
+    const r = Math.max(4, Math.min(12, n.score / 10));
+    const circle = document.createElementNS(ns, 'circle');
+    circle.setAttribute('cx', n.x);
+    circle.setAttribute('cy', n.y);
+    circle.setAttribute('r', r);
+    circle.setAttribute('fill', scoreToColor(n.score));
+    circle.setAttribute('stroke', '#fff');
+    circle.setAttribute('stroke-width', 1.5);
+    circle.style.cursor = 'pointer';
+    circle.addEventListener('mouseenter', (e) => {
+      tooltip.textContent = `[${n.score}] ${n.label}`;
+      tooltip.style.left = (e.offsetX + 12) + 'px';
+      tooltip.style.top = (e.offsetY - 8) + 'px';
+      tooltip.style.display = 'block';
+    });
+    circle.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+    circle.addEventListener('click', () => { window.open(n.id, '_blank'); });
+    svg.appendChild(circle);
+  }
+
+  // Labels for high-score nodes
+  for (const n of nodes) {
+    if (n.score < 50) continue;
+    const text = document.createElementNS(ns, 'text');
+    text.setAttribute('x', n.x);
+    text.setAttribute('y', n.y - 10);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-size', '10');
+    text.setAttribute('fill', '#333');
+    const shortLabel = (n.label || '').slice(0, 30);
+    text.textContent = shortLabel;
+    svg.appendChild(text);
+  }
+})();
+</script>
+
+</body>
+</html>
