@@ -51,7 +51,7 @@ const PLATFORMS = [
   { re: /crossref\.org/i, category: 'academic' },
 
   // Government
-  { re: /\.gov(\/|$|\.\w{2})/i, category: 'gov' },
+  { re: /\.gov(\/|$|\.\w{2}$)/i, category: 'gov' },
   { re: /\.mil(\/|$)/i, category: 'gov' },
 
   // News / media

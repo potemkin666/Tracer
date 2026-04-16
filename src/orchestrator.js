@@ -25,15 +25,14 @@ const DEFAULT_CONCURRENCY = 12;
 /**
  * Run a function with a timeout. Resolves to the result or rejects
  * with a timeout error if the function takes longer than `ms`.
+ * Uses Promise.race to ensure the timer is always cleaned up.
  */
 function withTimeout(fn, ms) {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('connector timeout')), ms);
-    fn().then(
-      (val) => { clearTimeout(timer); resolve(val); },
-      (err) => { clearTimeout(timer); reject(err); },
-    );
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('connector timeout')), ms);
   });
+  return Promise.race([fn(), timeout]).finally(() => clearTimeout(timer));
 }
 
 /**

@@ -64,6 +64,13 @@ const USERNAME_PATTERNS = [
 ];
 
 /**
+ * Maximum number of nodes sharing a username before we skip edge creation.
+ * Very common usernames (e.g. 'admin', 'test') would create too many
+ * false-positive edges, so we cap the group size.
+ */
+const MAX_USERNAME_GROUP = 30;
+
+/**
  * Attempt to extract a cross-platform username from a URL.
  * Returns { username, domain } or null.
  */
@@ -181,7 +188,7 @@ export function buildGraph(results, avatarClusters = []) {
     byUsername.get(node.username).push(node);
   }
   for (const [username, matchNodes] of byUsername) {
-    if (matchNodes.length < 2 || matchNodes.length > 30) continue;
+    if (matchNodes.length < 2 || matchNodes.length > MAX_USERNAME_GROUP) continue;
     // Only link nodes on *different* domains (same-domain is already covered)
     for (let i = 0; i < matchNodes.length; i++) {
       for (let j = i + 1; j < matchNodes.length; j++) {
