@@ -246,6 +246,158 @@ const ALL_CONNECTORS = [
     id: 'alltheinternet', label: 'AllTheInternet', tier: 'obscure', requiresKey: null,
     search: (q, ak) => require('./alltheinternet').search(q, ak),
   },
+
+  // ── ADDITIONAL CORE ───────────────────────────────────────────────────────
+  {
+    id: 'exa', label: 'Exa AI', tier: 'core', requiresKey: 'exa',
+    search: (q, ak) => require('./exa').search(q, ak),
+  },
+  {
+    id: 'perplexity', label: 'Perplexity AI', tier: 'core', requiresKey: 'perplexity',
+    search: (q, ak) => require('./perplexity').search(q, ak),
+  },
+
+  // ── ADDITIONAL OPEN ───────────────────────────────────────────────────────
+  {
+    id: 'social-profiles', label: 'Social Profile Checker', tier: 'open', requiresKey: null,
+    search: (q, ak) => require('./socialProfiles').search(q, ak),
+  },
+  {
+    id: 'arxiv', label: 'ArXiv', tier: 'open', requiresKey: null,
+    search: (q, ak) => require('./arxiv').search(q, ak),
+  },
+  {
+    id: 'lens', label: 'Lens.org', tier: 'open', requiresKey: null,
+    search: (q, ak) => require('./lens').search(q, ak),
+  },
+  {
+    id: 'orcid', label: 'ORCID', tier: 'open', requiresKey: null,
+    search: (q, ak) => require('./orcid').search(q, ak),
+  },
+  {
+    id: 'stract', label: 'Stract', tier: 'open', requiresKey: null,
+    search: (q, ak) => require('./stract').search(q, ak),
+  },
+  {
+    id: 'crowdview', label: 'CrowdView', tier: 'open', requiresKey: null,
+    search: (q, ak) => require('./crowdview').search(q, ak),
+  },
+  {
+    id: 'yacy', label: 'YaCy', tier: 'open', requiresKey: null,
+    search: (q, ak) => require('./yacy').search(q, ak),
+  },
+  {
+    id: 'europeana', label: 'Europeana', tier: 'open', requiresKey: null,
+    search: (q, ak) => require('./europeana').search(q, ak),
+  },
+  {
+    id: 'jstor', label: 'JSTOR', tier: 'open', requiresKey: null,
+    search: (q, ak) => require('./jstor').search(q, ak),
+  },
+  {
+    id: 'companies-house', label: 'UK Companies House', tier: 'open', requiresKey: null,
+    search: (q, ak) => require('./companieshouse').search(q, ak),
+  },
+
+  // ── ADDITIONAL OSINT ──────────────────────────────────────────────────────
+  {
+    id: 'tineye', label: 'TinEye', tier: 'osint', requiresKey: 'tineye',
+    search: (q, ak) => require('./tineye').search(q, ak),
+  },
+
+  // ── ADDITIONAL REGIONAL ───────────────────────────────────────────────────
+  {
+    id: 'mail.ru', label: 'Mail.ru', tier: 'regional', requiresKey: null,
+    search: (q, ak) => require('./mailru').search(q, ak),
+  },
+  {
+    id: 'rambler', label: 'Rambler', tier: 'regional', requiresKey: null,
+    search: (q, ak) => require('./rambler').search(q, ak),
+  },
+
+  // ── ADDITIONAL META ───────────────────────────────────────────────────────
+  {
+    id: 'yahoo', label: 'Yahoo', tier: 'meta', requiresKey: null,
+    search: (q, ak) => require('./yahoo').search(q, ak),
+  },
+  {
+    id: 'gibiru', label: 'Gibiru', tier: 'meta', requiresKey: null,
+    search: (q, ak) => require('./gibiru').search(q, ak),
+  },
+  {
+    id: 'freespoke', label: 'Freespoke', tier: 'meta', requiresKey: null,
+    search: (q, ak) => require('./freespoke').search(q, ak),
+  },
+  {
+    id: 'mamma', label: 'Mamma', tier: 'meta', requiresKey: null,
+    search: (q, ak) => require('./mamma').search(q, ak),
+  },
+  {
+    id: 'you.com', label: 'You.com', tier: 'meta', requiresKey: null,
+    search: (q, ak) => require('./youcom').search(q, ak),
+  },
+
+  // ── ADDITIONAL OBSCURE ────────────────────────────────────────────────────
+  {
+    id: 'oscobo', label: 'Oscobo', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./oscobo').search(q, ak),
+  },
+  {
+    id: 'searchencrypt', label: 'SearchEncrypt', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./searchencrypt').search(q, ak),
+  },
+  {
+    id: 'info', label: 'Info.com', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./info').search(q, ak),
+  },
+  {
+    id: 'searchalot', label: 'SearchAlot', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./searchalot').search(q, ak),
+  },
+  {
+    id: 'anoox', label: 'Anoox', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./anoox').search(q, ak),
+  },
+  {
+    id: 'secretsearch', label: 'Secret Search Engine Labs', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./secretsearch').search(q, ak),
+  },
+  {
+    id: 'blog-search', label: 'Blog Search', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./blogsearch').search(q, ak),
+  },
+  {
+    id: 'findsounds', label: 'FindSounds', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./findsounds').search(q, ak),
+  },
+  {
+    id: 'rpmfind', label: 'RPMFind', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./rpmfind').search(q, ak),
+  },
+  {
+    id: 'worldwidescience', label: 'WorldWideScience', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./worldwidescience').search(q, ak),
+  },
+  {
+    id: 'scienceopen', label: 'ScienceOpen', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./scienceopen').search(q, ak),
+  },
+  {
+    id: 'krugle', label: 'Krugle', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./krugle').search(q, ak),
+  },
+  {
+    id: 'researchgate', label: 'ResearchGate', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./researchgate').search(q, ak),
+  },
+  {
+    id: 'academia', label: 'Academia.edu', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./academia').search(q, ak),
+  },
+  {
+    id: 'ssrn', label: 'SSRN', tier: 'obscure', requiresKey: null,
+    search: (q, ak) => require('./ssrn').search(q, ak),
+  },
 ];
 
 function getActive(apiKeys, mode) {
