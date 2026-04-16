@@ -43,20 +43,21 @@ async function checkUrl(url) {
   try {
     const res = await axios.head(url, {
       timeout: 5000,
-      maxRedirects: 3,
-      validateStatus: s => s < 500,
+      maxRedirects: 0,
+      validateStatus: () => true,
     });
-    return res.status === 200 || res.status === 301 || res.status === 302;
+    return res.status === 200;
   } catch {
     try {
       const res = await axios.get(url, {
         timeout: 5000,
-        maxRedirects: 3,
-        validateStatus: s => s < 500,
+        maxRedirects: 0,
+        validateStatus: () => true,
         responseType: 'stream',
       });
+      const found = res.status === 200;
       res.data.destroy();
-      return res.status === 200 || res.status === 301 || res.status === 302;
+      return found;
     } catch {
       return false;
     }
