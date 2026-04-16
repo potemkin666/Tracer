@@ -1,0 +1,47 @@
+const axios = require('axios');
+const cheerio = require('cheerio');
+const { normalise } = require('../normaliser');
+
+const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
+
+async function search(query, apiKeys = {}) {
+  try {
+    const response = await axios.get('https://crowdview.ai/api/search', {
+      params: { q: query, limit: 10 },
+      headers: { 'User-Agent': UA },
+      timeout: 10000,
+    });
+    const items = Array.isArray(response.data) ? response.data : (response.data && response.data.results) || [];
+    if (items.length > 0) {
+      return items.map((item, i) =>
+        normalise('crowdview', query, {
+          title: item.title || '',
+          url: item.url || '',
+          snippet: item.snippet || item.description || '',
+          rank: i + 1,
+        })
+      );
+    }
+  } catch {
+    // fall through to scrape
+  }
+  try {
+    const response = await axios.get(`https://crowdview.ai/?q=${encodeURIComponent(query)}`, {
+      headers: { 'User-Agent': UA },
+      timeout: 10000,
+    });
+    const $ = cheerio.load(response.data);
+    const results = [];
+    $('.result-item, .search-result').each((i, el) => {
+      const title = $(el).find('a').first().text().trim();
+      const url = $(el).find('a').first().attr('href') || '';
+      const snippet = $(el).find('p, .snippet').first().text().trim();
+      if (title || url) results.push(normalise('crowdview', query, { title, url, snippet, rank: i + 1 }));
+    });
+    return results;
+  } catch {
+    return [];
+  }
+}
+
+module.exports = { search };
