@@ -1,8 +1,9 @@
 const axios = require('axios');
 const { normalise } = require('../normaliser');
 
-async function search(query, apiKey) {
+async function search(query, apiKeys = {}) {
   try {
+    const apiKey = apiKeys.brave;
     const response = await axios.get('https://api.search.brave.com/res/v1/web/search', {
       headers: {
         Accept: 'application/json',

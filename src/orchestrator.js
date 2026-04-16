@@ -38,22 +38,22 @@ async function run(input, config = {}) {
   const queries = generateQueries(input);
   const limited = aggressive ? queries : queries.slice(0, 3);
 
-  let all = [];
-
   const activeConnectors = getActive(apiKeys, mode);
 
-  await Promise.all(
+  // Collect results via return values — no shared mutable array.
+  const connectorBatches = await Promise.all(
     limited.map(async (query) => {
       const batches = await Promise.all(
         activeConnectors.map(async (c) => {
           const batch = await c.search(query, apiKeys);
-          all.push(...batch);
-          notify({ phase: 'connectors', connector: c.id, resultsSoFar: all.length });
+          notify({ phase: 'connectors', connector: c.id, resultsSoFar: batch.length });
           return batch;
         })
       );
+      return batches.flat();
     })
   );
+  let all = connectorBatches.flat();
 
   notify({ phase: 'wayback', resultsSoFar: all.length });
 
@@ -62,20 +62,20 @@ async function run(input, config = {}) {
     namechk.search(input.split(/\s+/)[0]),
   ]);
 
-  all.push(...waybackResults, ...namechkResults);
+  all = all.concat(waybackResults, namechkResults);
   notify({ phase: 'namechk', resultsSoFar: all.length });
 
   // Time-slice: search historical eras via Wayback CDX
   if (timeSliceMode || aggressive) {
     const sliceResults = await timeSlice.search(input);
-    all.push(...sliceResults);
+    all = all.concat(sliceResults);
     notify({ phase: 'timeSlice', resultsSoFar: all.length });
   }
 
   // Document edge scraping: PDFs, DOCs, PPTs via Wayback + filetype: operators
   if (documents || aggressive) {
     const docResults = await docSearch.search(input, apiKeys);
-    all.push(...docResults);
+    all = all.concat(docResults);
     notify({ phase: 'docSearch', resultsSoFar: all.length });
   }
 

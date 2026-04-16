@@ -88,8 +88,8 @@ async function searchWithFiletype(input, apiKeys) {
   await Promise.all(
     docQueries.map(async (dq) => {
       const fetches = [];
-      if (brave) fetches.push(brave.search(dq, apiKeys.brave));
-      if (serpapi) fetches.push(serpapi.search(dq, apiKeys.serpapi));
+      if (brave) fetches.push(brave.search(dq, apiKeys));
+      if (serpapi) fetches.push(serpapi.search(dq, apiKeys));
 
       const batches = await Promise.all(fetches);
       const fileType = extFromQuery(dq);

@@ -1,8 +1,9 @@
 const axios = require('axios');
 const { normalise } = require('../normaliser');
 
-async function search(query, apiKey) {
+async function search(query, apiKeys = {}) {
   try {
+    const apiKey = apiKeys.serpapi;
     const response = await axios.get('https://serpapi.com/search', {
       params: { q: query, api_key: apiKey, num: 10 },
     });

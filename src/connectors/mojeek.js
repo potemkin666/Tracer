@@ -1,8 +1,9 @@
 const axios = require('axios');
 const { normalise } = require('../normaliser');
 
-async function search(query, apiKey) {
+async function search(query, apiKeys = {}) {
   try {
+    const apiKey = apiKeys.mojeek;
     const response = await axios.get('https://www.mojeek.com/search', {
       headers: { 'X-Mojeek-API-Key': apiKey },
       params: { q: query, fmt: 'json' },

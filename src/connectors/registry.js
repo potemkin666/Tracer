@@ -31,9 +31,9 @@ function lazySearch(modulePath, keyExtractor) {
 
 const ALL_CONNECTORS = [
   // ── CORE ──────────────────────────────────────────────────────────────────
-  { id: 'brave', label: 'Brave Search', tier: 'core', requiresKey: 'brave', search: lazySearch('./brave', ak => ak.brave) },
-  { id: 'serpapi', label: 'SerpAPI', tier: 'core', requiresKey: 'serpapi', search: lazySearch('./serpapi', ak => ak.serpapi) },
-  { id: 'mojeek', label: 'Mojeek', tier: 'core', requiresKey: 'mojeek', search: lazySearch('./mojeek', ak => ak.mojeek) },
+  { id: 'brave', label: 'Brave Search', tier: 'core', requiresKey: 'brave', search: lazySearch('./brave') },
+  { id: 'serpapi', label: 'SerpAPI', tier: 'core', requiresKey: 'serpapi', search: lazySearch('./serpapi') },
+  { id: 'mojeek', label: 'Mojeek', tier: 'core', requiresKey: 'mojeek', search: lazySearch('./mojeek') },
   { id: 'kagi', label: 'Kagi', tier: 'core', requiresKey: 'kagi', search: lazySearch('./kagi') },
   { id: 'bing', label: 'Bing', tier: 'core', requiresKey: 'bing', search: lazySearch('./bing') },
   { id: 'google', label: 'Google Custom Search', tier: 'core', requiresKey: ['google', 'googleCx'], search: lazySearch('./google') },
