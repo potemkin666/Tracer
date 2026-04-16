@@ -553,10 +553,12 @@ async function updateEngCount(base){
 // Sources that lack CORS support from browsers are still included (they fail silently).
 
 // ── fetchWithRetry: single retry with exponential backoff + 429 handling ──
+// Uses separate counters so a 429 retry doesn't consume the generic-error budget.
 const _rateLimitWarnings=[];
 async function fetchWithRetry(url,opts,maxRetries=1){
   const timeout=10000;
-  let remaining=maxRetries;
+  let rateLimitRetries=maxRetries;
+  let errorRetries=maxRetries;
   async function attempt(){
     const r=await fetch(url,Object.assign({signal:AbortSignal.timeout(timeout)},opts||{}));
     if(r.status===429){
@@ -570,8 +572,8 @@ async function fetchWithRetry(url,opts,maxRetries=1){
         else{const d=Date.parse(raHeader);if(!isNaN(d))waitSec=Math.min(120,Math.max(1,Math.ceil((d-Date.now())/1000)))}
       }
       _rateLimitWarnings.push(`${src} rate-limited — retry in ${waitSec}s`);
-      if(remaining>0){
-        remaining--;
+      if(rateLimitRetries>0){
+        rateLimitRetries--;
         await new Promise(ok=>setTimeout(ok,waitSec*1000));
         return attempt();
       }
@@ -582,8 +584,8 @@ async function fetchWithRetry(url,opts,maxRetries=1){
   }
   try{return await attempt()}
   catch(e){
-    if(remaining>0&&!e._rateLimited){
-      remaining--;
+    if(errorRetries>0&&!e._rateLimited){
+      errorRetries--;
       await new Promise(ok=>setTimeout(ok,2000));
       return attempt();
     }
