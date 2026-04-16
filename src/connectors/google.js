@@ -11,9 +11,7 @@ async function search(query, apiKeys = {}) {
     return items.map((item, i) =>
       normalise('google', query, { title: item.title, url: item.link, snippet: item.snippet, rank: i + 1 })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/google]', err.message); return []; }
 }
 
 module.exports = { search };

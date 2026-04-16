@@ -11,9 +11,7 @@ async function search(query, apiKeys = {}) {
     return items.map((item, i) =>
       normalise('metager', query, { title: item.title, url: item.link, snippet: item.description, rank: i + 1 })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/metager]', err.message); return []; }
 }
 
 module.exports = { search };

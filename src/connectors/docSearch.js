@@ -67,8 +67,8 @@ async function searchWaybackDocs(input) {
             })
           );
         });
-      } catch {
-        // continue with remaining mime types
+      } catch (err) {
+        console.error('[connectors/docSearch]', err.message);
       }
     })
   );

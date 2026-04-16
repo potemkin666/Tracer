@@ -16,9 +16,7 @@ async function search(query, apiKeys = {}) {
       }
     }
     return results;
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/yep]', err.message); return []; }
 }
 
 module.exports = { search };

@@ -13,6 +13,6 @@ async function search(query) {
     return items.slice(0, 10).map((item, i) =>
       normalise('yacy', query, { title: item.title || '', url: item.link || '', snippet: item.description || '', rank: i + 1 })
     );
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/yacy]', err.message); return []; }
 }
 module.exports = { search };

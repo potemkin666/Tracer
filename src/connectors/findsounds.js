@@ -19,6 +19,6 @@ async function search(query) {
       if (url) results.push(normalise('findsounds', query, { title, url, snippet, rank: i + 1 }));
     });
     return results.slice(0, 10);
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/findsounds]', err.message); return []; }
 }
 module.exports = { search };

@@ -12,9 +12,7 @@ async function search(query, apiKeys = {}) {
     return items.map((item, i) =>
       normalise('bing', query, { title: item.name, url: item.url, snippet: item.snippet, rank: i + 1 })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/bing]', err.message); return []; }
 }
 
 module.exports = { search };

@@ -21,9 +21,7 @@ async function search(query, apiKeys = {}) {
       if (title || url) results.push(normalise('carrot2', query, { title, url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/carrot2]', err.message); return []; }
 }
 
 module.exports = { search };

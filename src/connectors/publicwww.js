@@ -32,9 +32,7 @@ async function search(query, apiKeys = {}) {
       if (url) results.push(normalise('publicwww', query, { title: url, url, snippet: '', rank: i + 1 }));
     });
     return results.slice(0, 10);
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/publicwww]', err.message); return []; }
 }
 
 module.exports = { search };

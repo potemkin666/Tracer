@@ -18,6 +18,6 @@ async function search(query) {
       if (title || url) results.push(normalise('scienceopen', query, { title, url: url.startsWith('http') ? url : 'https://www.scienceopen.com' + url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/scienceopen]', err.message); return []; }
 }
 module.exports = { search };

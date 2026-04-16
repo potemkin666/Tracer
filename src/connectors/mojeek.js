@@ -17,9 +17,7 @@ async function search(query, apiKey) {
         rank: i + 1,
       })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/mojeek]', err.message); return []; }
 }
 
 module.exports = { search };

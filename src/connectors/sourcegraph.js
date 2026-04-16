@@ -40,9 +40,7 @@ async function search(query, apiKeys = {}) {
         rank: i + 1,
       });
     });
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/sourcegraph]', err.message); return []; }
 }
 
 module.exports = { search };

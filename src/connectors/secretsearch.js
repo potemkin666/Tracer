@@ -19,6 +19,6 @@ async function search(query) {
       }
     });
     return results.slice(0, 10);
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/secretsearch]', err.message); return []; }
 }
 module.exports = { search };

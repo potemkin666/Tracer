@@ -21,8 +21,8 @@ async function search(query, apiKeys = {}) {
       return items.map((item, i) =>
         normalise('searxng', query, { title: item.title, url: item.url, snippet: item.content, rank: i + 1 })
       );
-    } catch {
-      // try next instance
+    } catch (err) {
+      console.error('[connectors/searxng]', err.message);
     }
   }
   return [];

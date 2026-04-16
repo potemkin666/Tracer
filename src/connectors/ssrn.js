@@ -18,6 +18,6 @@ async function search(query) {
       if (title) results.push(normalise('ssrn', query, { title, url, snippet: '', rank: i + 1 }));
     });
     return results.slice(0, 10);
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/ssrn]', err.message); return []; }
 }
 module.exports = { search };

@@ -22,9 +22,7 @@ async function search(query, apiKeys = {}) {
       if (title || url) results.push(normalise('seznam', query, { title, url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/seznam]', err.message); return []; }
 }
 
 module.exports = { search };

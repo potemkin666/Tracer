@@ -12,9 +12,7 @@ async function search(query, apiKeys = {}) {
     return items.map((item, i) =>
       normalise('kagi', query, { title: item.title, url: item.url, snippet: item.snippet, rank: i + 1 })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/kagi]', err.message); return []; }
 }
 
 module.exports = { search };

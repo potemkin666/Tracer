@@ -20,9 +20,7 @@ async function search(query, apiKeys = {}) {
         rank: i + 1,
       })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/opensanctions]', err.message); return []; }
 }
 
 module.exports = { search };

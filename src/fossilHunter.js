@@ -64,9 +64,7 @@ async function fetchOldCaptures(urlPattern, input) {
         meta: { era: parseInt(year, 10), tags: ['fossil'] },
       });
     });
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[fossilHunter]', err.message); return []; }
 }
 
 async function hunt(input, results) {

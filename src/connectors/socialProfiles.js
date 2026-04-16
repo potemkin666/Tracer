@@ -47,7 +47,8 @@ async function checkUrl(url) {
       validateStatus: () => true,
     });
     return res.status === 200;
-  } catch {
+  } catch (err) {
+    console.error('[connectors/socialProfiles] HEAD failed:', err.message);
     try {
       const res = await axios.get(url, {
         timeout: 5000,
@@ -58,7 +59,8 @@ async function checkUrl(url) {
       const found = res.status === 200;
       res.data.destroy();
       return found;
-    } catch {
+    } catch (err2) {
+      console.error('[connectors/socialProfiles] GET failed:', err2.message);
       return false;
     }
   }
@@ -68,7 +70,8 @@ async function checkHackerNews(u) {
   try {
     const res = await axios.get(`https://hacker-news.firebaseio.com/v0/user/${u}.json`, { timeout: 5000 });
     return res.data && res.data.created ? { found: true, url: `https://news.ycombinator.com/user?id=${u}` } : { found: false };
-  } catch {
+  } catch (err) {
+    console.error('[connectors/socialProfiles]', err.message);
     return { found: false };
   }
 }
@@ -84,7 +87,8 @@ async function checkStackOverflow(u) {
       return { found: true, url: items[0].link };
     }
     return { found: false };
-  } catch {
+  } catch (err) {
+    console.error('[connectors/socialProfiles]', err.message);
     return { found: false };
   }
 }
@@ -144,9 +148,7 @@ async function search(query, apiKeys = {}) {
         meta: { tags: ['social', 'profile'] },
       })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/socialProfiles]', err.message); return []; }
 }
 
 module.exports = { search };

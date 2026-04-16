@@ -39,9 +39,7 @@ async function search(query, apiKeys = {}) {
         rank: i + 1,
       })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/intelx]', err.message); return []; }
 }
 
 module.exports = { search };

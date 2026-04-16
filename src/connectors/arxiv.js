@@ -19,9 +19,7 @@ async function search(query, apiKeys = {}) {
       });
     });
     return items.map(item => normalise('arxiv', query, item));
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/arxiv]', err.message); return []; }
 }
 
 module.exports = { search };

@@ -47,7 +47,8 @@ async function fetchHash(url) {
       .createHash('md5')
       .update(Buffer.from(response.data))
       .digest('hex');
-  } catch {
+  } catch (err) {
+    console.error('[avatarHunter]', err.message);
     return null;
   }
 }

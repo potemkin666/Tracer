@@ -26,9 +26,7 @@ async function search(query, apiKeys = {}) {
       if (url) results.push(normalise('yandex', query, { title, url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/yandex]', err.message); return []; }
 }
 
 module.exports = { search };

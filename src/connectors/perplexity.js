@@ -23,6 +23,6 @@ async function search(query, apiKeys = {}) {
       const snippet = line.replace(url, '').replace(/^[\s\-.*]+/, '').trim().slice(0, 200);
       return normalise('perplexity', query, { title: url, url, snippet, rank: i + 1 });
     });
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/perplexity]', err.message); return []; }
 }
 module.exports = { search };

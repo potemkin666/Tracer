@@ -20,6 +20,6 @@ async function search(query) {
       if (title) results.push(normalise('academia', query, { title, url, snippet, rank: i + 1 }));
     });
     return results.slice(0, 10);
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/academia]', err.message); return []; }
 }
 module.exports = { search };

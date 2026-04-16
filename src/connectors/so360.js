@@ -22,9 +22,7 @@ async function search(query, apiKeys = {}) {
       if (title || url) results.push(normalise('so360', query, { title, url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/so360]', err.message); return []; }
 }
 
 module.exports = { search };

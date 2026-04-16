@@ -20,6 +20,6 @@ async function search(query) {
       if (title || href) results.push(normalise('jstor', query, { title, url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/jstor]', err.message); return []; }
 }
 module.exports = { search };

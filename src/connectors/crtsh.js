@@ -25,9 +25,7 @@ async function search(query, apiKeys = {}) {
       if (results.length >= 10) break;
     }
     return results;
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/crtsh]', err.message); return []; }
 }
 
 module.exports = { search };

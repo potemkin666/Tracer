@@ -22,9 +22,7 @@ async function search(query, apiKeys = {}) {
       }
     }
     return results;
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/qwant]', err.message); return []; }
 }
 
 module.exports = { search };

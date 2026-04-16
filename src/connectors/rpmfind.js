@@ -21,6 +21,6 @@ async function search(query) {
       if (title) results.push(normalise('rpmfind', query, { title, url, snippet, rank: i }));
     });
     return results.slice(0, 10);
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/rpmfind]', err.message); return []; }
 }
 module.exports = { search };

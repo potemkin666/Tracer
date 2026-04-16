@@ -8,7 +8,7 @@ function decodeYahooUrl(href) {
   try {
     const match = href.match(/RU=([^/]+)/);
     if (match) return decodeURIComponent(match[1]);
-  } catch {}
+  } catch (err) { console.error('[connectors/yahoo]', err.message); }
   return href;
 }
 
@@ -30,9 +30,7 @@ async function search(query, apiKeys = {}) {
       if (title || url) results.push(normalise('yahoo', query, { title, url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/yahoo]', err.message); return []; }
 }
 
 module.exports = { search };

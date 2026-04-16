@@ -38,9 +38,7 @@ async function search(query, apiKeys = {}) {
         }),
       ];
     }
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/hunter]', err.message); return []; }
 }
 
 module.exports = { search };

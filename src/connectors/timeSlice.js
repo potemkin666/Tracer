@@ -42,9 +42,7 @@ async function searchEra(query, era) {
         meta: { era: era.year, tags: ['timeslice'] },
       });
     });
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/timeSlice]', err.message); return []; }
 }
 
 /**

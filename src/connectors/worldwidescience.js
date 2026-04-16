@@ -18,6 +18,6 @@ async function search(query) {
       if (title || url) results.push(normalise('worldwidescience', query, { title, url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/worldwidescience]', err.message); return []; }
 }
 module.exports = { search };

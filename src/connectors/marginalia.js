@@ -11,9 +11,7 @@ async function search(query, apiKeys = {}) {
     return items.map((item, i) =>
       normalise('marginalia', query, { title: item.title, url: item.url, snippet: item.description, rank: i + 1 })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/marginalia]', err.message); return []; }
 }
 
 module.exports = { search };

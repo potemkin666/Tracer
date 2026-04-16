@@ -26,8 +26,8 @@ async function search(username) {
             })
           );
         }
-      } catch {
-        // skip platforms that error or return non-200
+      } catch (err) {
+        console.error('[connectors/namechk]', err.message);
       }
     })
   );

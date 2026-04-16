@@ -10,6 +10,7 @@ async function search(query, apiKey) {
         'X-Subscription-Token': apiKey,
       },
       params: { q: query, count: 10 },
+      timeout: 10000,
     });
 
     const items = (response.data.web && response.data.web.results) || [];
@@ -21,9 +22,7 @@ async function search(query, apiKey) {
         rank: i + 1,
       })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/brave]', err.message); return []; }
 }
 
 module.exports = { search };

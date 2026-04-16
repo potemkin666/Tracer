@@ -23,6 +23,6 @@ async function search(query) {
       if (title || url) results.push(normalise('krugle', query, { title, url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/krugle]', err.message); return []; }
 }
 module.exports = { search };

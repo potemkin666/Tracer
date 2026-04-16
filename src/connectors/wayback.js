@@ -31,9 +31,7 @@ async function search(query) {
         rank: i + 1,
       });
     });
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/wayback]', err.message); return []; }
 }
 
 module.exports = { search };
