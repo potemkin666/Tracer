@@ -306,11 +306,37 @@
           <button class="btn btn-sm" onclick="checkConn()">PING</button>
         </div>
         <div id="guide" style="font-size:.8rem;line-height:1.7;color:var(--silver)">
-          <p>Run a local Tracer server for full power (192 connectors):</p>
-          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.6rem .8rem;margin:.5rem 0;color:var(--glow);overflow-x:auto;font-size:.78rem">git clone https://github.com/potemkin666/Tracer
-cd Tracer &amp;&amp; npm install
-npm run serve</pre>
-          <p style="color:var(--dim)">Then click <strong style="color:var(--bright)">PING</strong> to connect.</p>
+          <p style="margin-bottom:.6rem">Want the <strong style="color:var(--bright)">full 192-engine power</strong>? Follow these steps. <em style="color:var(--dim)">(Yes, every single one.)</em></p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 0 — Do you have Node.js?</strong></p>
+          <p style="margin-bottom:.2rem">Open a terminal (Command Prompt on Windows, Terminal on Mac/Linux) and type:</p>
+          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.5rem .8rem;margin:.3rem 0 .4rem;color:var(--glow);overflow-x:auto;font-size:.78rem">node -v</pre>
+          <p style="margin-bottom:.6rem">If you see a version number (like <code style="color:var(--bright)">v18.x</code> or higher) → great, skip to Step 1.<br>
+          If you get "command not found" → go to <a href="https://nodejs.org" target="_blank" style="color:var(--cyan);text-decoration:underline">nodejs.org</a>, download the <strong>LTS</strong> version, install it (just click Next → Next → Next → Finish), then <strong>close and re-open your terminal</strong>.</p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 1 — Download Tracer</strong></p>
+          <p style="margin-bottom:.2rem">In your terminal, type this and press Enter:</p>
+          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.5rem .8rem;margin:.3rem 0 .4rem;color:var(--glow);overflow-x:auto;font-size:.78rem">git clone https://github.com/potemkin666/Tracer</pre>
+          <p style="margin-bottom:.6rem;color:var(--dim)">This downloads the whole project into a folder called <code>Tracer</code>. If you don't have git, grab the <a href="https://github.com/potemkin666/Tracer/archive/refs/heads/main.zip" style="color:var(--cyan);text-decoration:underline">.zip from GitHub</a> and unzip it instead.</p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 2 — Go into the folder</strong></p>
+          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.5rem .8rem;margin:.3rem 0 .4rem;color:var(--glow);overflow-x:auto;font-size:.78rem">cd Tracer</pre>
+          <p style="margin-bottom:.6rem;color:var(--dim)">You're now inside the project folder. If you downloaded the zip, <code>cd</code> into wherever you unzipped it.</p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 3 — Install dependencies</strong></p>
+          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.5rem .8rem;margin:.3rem 0 .4rem;color:var(--glow);overflow-x:auto;font-size:.78rem">npm install</pre>
+          <p style="margin-bottom:.6rem;color:var(--dim)">This downloads all the libraries Tracer needs. It might take a minute. Wait until you see your cursor blinking again — that means it's done.</p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 4 — Start the server</strong></p>
+          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.5rem .8rem;margin:.3rem 0 .4rem;color:var(--glow);overflow-x:auto;font-size:.78rem">npm run serve</pre>
+          <p style="margin-bottom:.6rem;color:var(--dim)">You should see something like <code style="color:var(--bright)">Tracer server listening on port 3000</code>. <strong>Don't close this terminal window</strong> — the server runs as long as it's open.</p>
+
+          <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 5 — Connect this page to your server</strong></p>
+          <p style="margin-bottom:.3rem">Come back to this page. The endpoint box above should already say <code style="color:var(--bright)">http://localhost:3000</code>.</p>
+          <p style="margin-bottom:.6rem">Click the <strong style="color:var(--bright)">PING</strong> button. If it turns green — you're connected to all 192 engines. Search away! 🎉<br>
+          <span style="color:var(--dim);font-size:.75rem">Still red? Make sure the terminal from Step 4 is still open, shows no errors, and you're using <code>http://</code> (not https).</span></p>
+
+          <p style="color:var(--gold);font-size:.75rem;margin-top:.3rem">💡 <strong>Tip:</strong> Next time you want to use it, just open a terminal, <code>cd Tracer</code>, and <code>npm run serve</code>. Steps 0-3 are one-time only.</p>
         </div>
       </div>
     </details>
