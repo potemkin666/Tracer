@@ -490,7 +490,7 @@ async function updateEngCount(base){
 // Each fetcher is a self-contained async function that returns an array of results.
 // Sources that lack CORS support from browsers are still included (they fail silently).
 
-function _ft(url,opts){return fetch(url,Object.assign({signal:AbortSignal.timeout(10000)},opts||{}))}
+function fetchWithTimeout(url,opts){return fetch(url,Object.assign({signal:AbortSignal.timeout(10000)},opts||{})).then(r=>r.json())}
 
 async function searchDirect(query){
   const q=encodeURIComponent(query);
@@ -502,7 +502,7 @@ async function searchDirect(query){
 
     // ── Wikipedia ──
     async()=>{
-      const d=await(await _ft(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=8&format=json&origin=*`)).json();
+      const d=await fetchWithTimeout(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=8&format=json&origin=*`);
       return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikipedia',
         title:item.title||'',url:`https://en.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
         snippet:(item.snippet||'').replace(/<[^>]+>/g,'').slice(0,180),
@@ -511,7 +511,7 @@ async function searchDirect(query){
 
     // ── Wikidata ──
     async()=>{
-      const d=await(await _ft(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${q}&language=en&limit=5&format=json&origin=*`)).json();
+      const d=await fetchWithTimeout(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${q}&language=en&limit=5&format=json&origin=*`);
       return(d.search||[]).map((item,i)=>({source:'wikidata',
         title:item.label||item.id||'',url:item.concepturi||`https://www.wikidata.org/wiki/${item.id}`,
         snippet:item.description||'',
@@ -520,7 +520,7 @@ async function searchDirect(query){
 
     // ── GitHub Users ──
     async()=>{
-      const d=await(await _ft(`https://api.github.com/search/users?q=${q}&per_page=5`)).json();
+      const d=await fetchWithTimeout(`https://api.github.com/search/users?q=${q}&per_page=5`);
       return(d.items||[]).map((u,i)=>({source:'github',
         title:u.login||'',url:u.html_url||'',
         snippet:`GitHub user · Score ${u.score||0}`,
@@ -529,7 +529,7 @@ async function searchDirect(query){
 
     // ── GitHub Repos ──
     async()=>{
-      const d=await(await _ft(`https://api.github.com/search/repositories?q=${q}&per_page=5&sort=stars`)).json();
+      const d=await fetchWithTimeout(`https://api.github.com/search/repositories?q=${q}&per_page=5&sort=stars`);
       return(d.items||[]).map((r,i)=>({source:'github',
         title:r.full_name||'',url:r.html_url||'',
         snippet:[r.description||'',r.stargazers_count?`★ ${r.stargazers_count}`:'',r.language||''].filter(Boolean).join(' · ').slice(0,180),
@@ -538,7 +538,7 @@ async function searchDirect(query){
 
     // ── Hacker News (Algolia) ──
     async()=>{
-      const d=await(await _ft(`https://hn.algolia.com/api/v1/search?query=${q}&hitsPerPage=8`)).json();
+      const d=await fetchWithTimeout(`https://hn.algolia.com/api/v1/search?query=${q}&hitsPerPage=8`);
       return(d.hits||[]).map((h,i)=>({source:'hackernews',
         title:h.title||h.story_title||'',url:h.url||h.story_url||`https://news.ycombinator.com/item?id=${h.objectID}`,
         snippet:[h.author?`by ${h.author}`:'',h.num_comments!=null?`${h.num_comments} comments`:'',h.points?`${h.points} pts`:''].filter(Boolean).join(' · '),
@@ -547,7 +547,7 @@ async function searchDirect(query){
 
     // ── StackExchange ──
     async()=>{
-      const d=await(await _ft(`https://api.stackexchange.com/2.3/search?intitle=${q}&site=stackoverflow&pagesize=5&order=desc&sort=relevance`)).json();
+      const d=await fetchWithTimeout(`https://api.stackexchange.com/2.3/search?intitle=${q}&site=stackoverflow&pagesize=5&order=desc&sort=relevance`);
       return(d.items||[]).map((item,i)=>({source:'stackoverflow',
         title:(item.title||'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&#39;/g,"'").replace(/&quot;/g,'"'),
         url:item.link||'',
@@ -557,7 +557,7 @@ async function searchDirect(query){
 
     // ── Archive.org (Internet Archive) ──
     async()=>{
-      const d=await(await _ft(`https://archive.org/advancedsearch.php?q=${q}&output=json&rows=6&fl[]=identifier,title,description,mediatype`)).json();
+      const d=await fetchWithTimeout(`https://archive.org/advancedsearch.php?q=${q}&output=json&rows=6&fl[]=identifier,title,description,mediatype`);
       return((d.response&&d.response.docs)||[]).map((item,i)=>({source:'archive.org',
         title:item.title||item.identifier||'',url:`https://archive.org/details/${item.identifier}`,
         snippet:[item.mediatype||'',typeof item.description==='string'?item.description.slice(0,150):Array.isArray(item.description)?(item.description[0]||'').slice(0,150):''].filter(Boolean).join(' · '),
@@ -566,7 +566,7 @@ async function searchDirect(query){
 
     // ── OpenLibrary ──
     async()=>{
-      const d=await(await _ft(`https://openlibrary.org/search.json?q=${q}&limit=5&fields=key,title,author_name,first_publish_year,edition_count`)).json();
+      const d=await fetchWithTimeout(`https://openlibrary.org/search.json?q=${q}&limit=5&fields=key,title,author_name,first_publish_year,edition_count`);
       return(d.docs||[]).map((item,i)=>({source:'openlibrary',
         title:item.title||'',url:`https://openlibrary.org${item.key}`,
         snippet:[(item.author_name||[]).slice(0,2).join(', '),item.first_publish_year?`Published ${item.first_publish_year}`:'',item.edition_count?`${item.edition_count} editions`:''].filter(Boolean).join(' · '),
@@ -575,10 +575,10 @@ async function searchDirect(query){
 
     // ── PubMed (NCBI) ──
     async()=>{
-      const ids=await(await _ft(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${q}&retmax=5&retmode=json`)).json();
+      const ids=await fetchWithTimeout(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${q}&retmax=5&retmode=json`);
       const idList=(ids.esearchresult&&ids.esearchresult.idlist)||[];
       if(!idList.length)return[];
-      const summ=await(await _ft(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${idList.join(',')}&retmode=json`)).json();
+      const summ=await fetchWithTimeout(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${idList.join(',')}&retmode=json`);
       return idList.map((id,i)=>{const a=summ.result&&summ.result[id];if(!a)return null;return{source:'pubmed',
         title:a.title||'',url:`https://pubmed.ncbi.nlm.nih.gov/${id}/`,
         snippet:[(a.authors||[]).slice(0,2).map(x=>x.name).join(', '),a.source||'',a.pubdate||''].filter(Boolean).join(' · '),
@@ -587,7 +587,7 @@ async function searchDirect(query){
 
     // ── DuckDuckGo Instant Answer ──
     async()=>{
-      const d=await(await _ft(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=0`)).json();
+      const d=await fetchWithTimeout(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=0`);
       const out=[];
       if(d.AbstractText)out.push({source:'duckduckgo',title:d.Heading||query,url:d.AbstractURL||'',snippet:d.AbstractText.slice(0,200),score:9,seenOn:['duckduckgo']});
       (d.RelatedTopics||[]).slice(0,5).forEach((t,i)=>{
@@ -598,7 +598,7 @@ async function searchDirect(query){
 
     // ── npm registry ──
     async()=>{
-      const d=await(await _ft(`https://registry.npmjs.org/-/v1/search?text=${q}&size=5`)).json();
+      const d=await fetchWithTimeout(`https://registry.npmjs.org/-/v1/search?text=${q}&size=5`);
       return(d.objects||[]).map((o,i)=>{const p=o.package||{};return{source:'npm',
         title:p.name||'',url:p.links&&p.links.npm||`https://www.npmjs.com/package/${p.name}`,
         snippet:[p.description||'',p.version?`v${p.version}`:''].filter(Boolean).join(' · ').slice(0,180),
@@ -607,7 +607,7 @@ async function searchDirect(query){
 
     // ── OpenAlex ──
     async()=>{
-      const d=await(await _ft(`https://api.openalex.org/works?search=${q}&per_page=8`)).json();
+      const d=await fetchWithTimeout(`https://api.openalex.org/works?search=${q}&per_page=8`);
       return(d.results||[]).map((item,i)=>({source:'openalex',title:item.title||'',
         url:item.doi?`https://doi.org/${item.doi.replace('https://doi.org/','')}`:(item.id||''),
         snippet:`${item.publication_year||''} · ${(item.authorships||[]).slice(0,2).map(a=>a.author&&a.author.display_name||'').join(', ')}`,
@@ -616,7 +616,7 @@ async function searchDirect(query){
 
     // ── Semantic Scholar ──
     async()=>{
-      const d=await(await _ft(`https://api.semanticscholar.org/graph/v1/paper/search?query=${q}&limit=8&fields=title,url,abstract,authors,year`)).json();
+      const d=await fetchWithTimeout(`https://api.semanticscholar.org/graph/v1/paper/search?query=${q}&limit=8&fields=title,url,abstract,authors,year`);
       return(d.data||[]).map((item,i)=>({source:'semantic-scholar',title:item.title||'',
         url:item.url||`https://www.semanticscholar.org/paper/${item.paperId}`,
         snippet:item.abstract?(item.abstract.slice(0,180)+'…'):`Year: ${item.year||''}`,
@@ -625,7 +625,7 @@ async function searchDirect(query){
 
     // ── CrossRef ──
     async()=>{
-      const d=await(await _ft(`https://api.crossref.org/works?query=${q}&rows=8`)).json();
+      const d=await fetchWithTimeout(`https://api.crossref.org/works?query=${q}&rows=8`);
       return((d.message&&d.message.items)||[]).map((item,i)=>({source:'crossref',
         title:(item.title||[])[0]||'',url:item.URL||'',
         snippet:item.abstract?(item.abstract.replace(/<[^>]+>/g,'').slice(0,150)+'…'):'',
@@ -634,7 +634,7 @@ async function searchDirect(query){
 
     // ── ORCID ──
     async()=>{
-      const d=await(await _ft(`https://pub.orcid.org/v3.0/expanded-search/?q=${q}&rows=5`,{headers:{Accept:'application/json'}})).json();
+      const d=await fetchWithTimeout(`https://pub.orcid.org/v3.0/expanded-search/?q=${q}&rows=5`,{headers:{Accept:'application/json'}});
       return((d['expanded-result'])||[]).map((r,i)=>({source:'orcid',
         title:`${r['given-names']||''} ${r['family-names']||''}`.trim()||r['orcid-id']||'',
         url:`https://orcid.org/${r['orcid-id']}`,
@@ -644,7 +644,7 @@ async function searchDirect(query){
 
     // ── Wayback CDX ──
     async()=>{
-      const rows=await(await _ft(`https://web.archive.org/cdx/search/cdx?url=*${encodeURIComponent(slug)}*&output=json&fl=original,timestamp,statuscode&filter=statuscode:200&limit=8&collapse=urlkey`)).json();
+      const rows=await fetchWithTimeout(`https://web.archive.org/cdx/search/cdx?url=*${encodeURIComponent(slug)}*&output=json&fl=original,timestamp,statuscode&filter=statuscode:200&limit=8&collapse=urlkey`);
       if(!Array.isArray(rows)||rows.length<=1)return[];
       const hi=rows[0].indexOf('original'),ti=rows[0].indexOf('timestamp');
       return rows.slice(1).map((row,i)=>{
@@ -658,7 +658,7 @@ async function searchDirect(query){
 
     // ── crt.sh (no CORS — will only work if browser allows it) ──
     async()=>{
-      const arr=await(await _ft(`https://crt.sh/?q=${q}&output=json`)).json();
+      const arr=await fetchWithTimeout(`https://crt.sh/?q=${q}&output=json`);
       const seen=new Set();const out=[];
       arr.slice(0,20).forEach(item=>{
         if(!seen.has(item.common_name)){seen.add(item.common_name);
@@ -671,7 +671,7 @@ async function searchDirect(query){
 
     // ── UK Companies House (no CORS — will only work if browser allows it) ──
     async()=>{
-      const d=await(await _ft(`https://api.company-information.service.gov.uk/search/companies?q=${q}&items_per_page=5`)).json();
+      const d=await fetchWithTimeout(`https://api.company-information.service.gov.uk/search/companies?q=${q}&items_per_page=5`);
       return((d&&d.items)||[]).map((item,i)=>({source:'companies-house',
         title:item.title||'',
         url:`https://find-and-update.company-information.service.gov.uk/company/${item.company_number}`,
@@ -681,7 +681,7 @@ async function searchDirect(query){
 
     // ── OpenCorporates (limited CORS) ──
     async()=>{
-      const d=await(await _ft(`https://api.opencorporates.com/v0.4/companies/search?q=${q}&per_page=5`)).json();
+      const d=await fetchWithTimeout(`https://api.opencorporates.com/v0.4/companies/search?q=${q}&per_page=5`);
       const companies=((d.results&&d.results.companies)||[]);
       return companies.map((c,i)=>{const co=c.company||c;return{source:'opencorporates',
         title:co.name||'',url:co.opencorporates_url||'',
