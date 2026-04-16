@@ -311,7 +311,7 @@
       </span>
     </div>
 
-    <div id="eng-bar">ENGINES READY: <span id="eng-count">26 open APIs (standalone) · add API keys for more</span></div>
+    <div id="eng-bar">ENGINES READY: <span id="eng-count">open APIs (standalone) · add API keys for more</span></div>
 
     <!-- PRIMARY SEARCH ROW -->
     <div class="search-row">
@@ -1361,11 +1361,14 @@ function clearResults(){document.getElementById('results-section').style.display
 function showErr(msg,isErr){const el=document.getElementById('err');el.textContent=msg;el.style.display=msg?'block':'none';if(!isErr)el.style.color='var(--bright)'}
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
+// Must match the number of open sources in namedFetchers (before key-backed sources).
 const OPEN_SOURCE_COUNT=26;
+// Key IDs that gate the key-backed fetchers added in searchDirect().
+const KEY_BACKED_IDS=['brave','google','serpapi','mojeek','exa','shodan','hunter','intelx'];
 function updateStandaloneEngCount(){
   if(connected)return;
   const keys=collectKeys();
-  const keyBacked=['brave','google','serpapi','mojeek','exa','shodan','hunter','intelx']
+  const keyBacked=KEY_BACKED_IDS
     .filter(k=>k==='google'?(keys.google&&keys.googleCx):!!keys[k]).length;
   const total=OPEN_SOURCE_COUNT+keyBacked;
   document.getElementById('eng-count').textContent=
