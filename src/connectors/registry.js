@@ -1,10 +1,29 @@
 // Connector module cache — modules are loaded on first search() call only.
 const _cache = new Map();
 
+/**
+ * Build a lazy-loaded search function for a connector module.
+ *
+ * All connector modules must export a `search(query, apiKeys)` function that
+ * returns a Promise<object[]> of normalised results. The optional
+ * `keyExtractor` adapts the full apiKeys map to the single-key format some
+ * connectors still use (e.g. brave takes just the token string).
+ *
+ * New connectors should extend the Connector base class in
+ * `src/connectors/Connector.js` for automatic error handling and contract
+ * enforcement.
+ *
+ * @param {string} modulePath – relative path to the connector module
+ * @param {function} [keyExtractor] – (apiKeys) => value passed as 2nd arg
+ */
 function lazySearch(modulePath, keyExtractor) {
   return (q, ak) => {
     if (!_cache.has(modulePath)) {
-      _cache.set(modulePath, require(modulePath));
+      const mod = require(modulePath);
+      if (typeof mod.search !== 'function') {
+        throw new Error(`Connector at ${modulePath} does not export a search() function`);
+      }
+      _cache.set(modulePath, mod);
     }
     return _cache.get(modulePath).search(q, keyExtractor ? keyExtractor(ak) : ak);
   };
