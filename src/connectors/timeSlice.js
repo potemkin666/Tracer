@@ -5,7 +5,7 @@ const ERAS = [
   { year: 2013, from: '20120101', to: '20141231' },
   { year: 2016, from: '20150101', to: '20171231' },
   { year: 2019, from: '20180101', to: '20201231' },
-  { year: 2021, from: '20200101', to: '20221231' },
+  { year: 2022, from: '20210101', to: '20231231' },
 ];
 
 async function searchEra(query, era) {
@@ -37,7 +37,7 @@ async function searchEra(query, era) {
       return normalise('timeslice', query, {
         title: `[${era.year}] ${url}`,
         url: `https://web.archive.org/web/${timestamp}/${url}`,
-        snippet: `Captured in ${era.year} era (${timestamp.slice(0, 8)}) — people were sloppier then`,
+        snippet: `Wayback capture from ${era.year} era (${timestamp.slice(0, 8)})`,
         rank: i + 1,
         meta: { era: era.year, tags: ['timeslice'] },
       });
@@ -48,7 +48,7 @@ async function searchEra(query, era) {
 /**
  * Search across one or more historical eras via the Wayback CDX API.
  * @param {string} query
- * @param {number[]} [years] - subset of [2013, 2016, 2019, 2021]; defaults to all
+ * @param {number[]} [years] - subset of [2013, 2016, 2019, 2022]; defaults to all
  */
 async function search(query, years) {
   const targetEras =

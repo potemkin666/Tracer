@@ -11,7 +11,6 @@ function generateQueries(input) {
     `${quoted} site:reddit.com`,
     `${quoted} site:facebook.com`,
     `${quoted} site:web.archive.org`,
-    `cache:${quoted}`,
     noSpaces,
     underscored,
     input,
