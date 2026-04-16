@@ -272,7 +272,7 @@
       </span>
     </div>
 
-    <div id="eng-bar">ENGINES READY: <span id="eng-count">8 open APIs (standalone)</span></div>
+    <div id="eng-bar">ENGINES READY: <span id="eng-count">19 open APIs (standalone)</span></div>
 
     <!-- PRIMARY SEARCH ROW -->
     <div class="search-row">
@@ -296,7 +296,7 @@
 
     <!-- LOCAL SERVER (collapsible, advanced) -->
     <details>
-      <summary>LOCAL SERVER — connect for 395+ engines</summary>
+      <summary>LOCAL SERVER — connect for 550+ engines</summary>
       <div>
         <div style="display:flex;gap:.6rem;margin-bottom:.8rem;align-items:center">
           <span style="font-family:'Press Start 2P',monospace;font-size:.46rem;color:var(--dim);white-space:nowrap">API ENDPOINT</span>
@@ -306,7 +306,7 @@
           <button class="btn btn-sm" onclick="checkConn()">PING</button>
         </div>
         <div id="guide" style="font-size:.8rem;line-height:1.7;color:var(--silver)">
-          <p style="margin-bottom:.6rem">Want the <strong style="color:var(--bright)">full 395-engine power</strong>? Follow these steps. <em style="color:var(--dim)">(Yes, every single one.)</em></p>
+          <p style="margin-bottom:.6rem">Want the <strong style="color:var(--bright)">full 550+ engine power</strong>? Follow these steps. <em style="color:var(--dim)">(Yes, every single one.)</em></p>
 
           <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 0 — Do you have Node.js?</strong></p>
           <p style="margin-bottom:.2rem">Open a terminal (Command Prompt on Windows, Terminal on Mac/Linux) and type:</p>
@@ -333,10 +333,12 @@
 
           <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 5 — Connect this page to your server</strong></p>
           <p style="margin-bottom:.3rem">Come back to this page. The endpoint box above should already say <code style="color:var(--bright)">http://localhost:3000</code>.</p>
-          <p style="margin-bottom:.6rem">Click the <strong style="color:var(--bright)">PING</strong> button. If it turns green — you're connected to all 395 engines. Search away! 🎉<br>
+          <p style="margin-bottom:.6rem">Click the <strong style="color:var(--bright)">PING</strong> button. If it turns green — you're connected to all 550+ engines. Search away! 🎉<br>
           <span style="color:var(--dim);font-size:.75rem">Still red? Make sure the terminal from Step 4 is still open, shows no errors, and you're using <code>http://</code> (not https).</span></p>
 
           <p style="color:var(--gold);font-size:.75rem;margin-top:.3rem">💡 <strong>Tip:</strong> Next time you want to use it, just open a terminal, <code>cd Tracer</code>, and <code>npm run serve</code>. Steps 0-3 are one-time only.</p>
+
+          <p style="color:var(--gold);font-size:.75rem;margin-top:.3rem">🌐 <strong>Works from anywhere:</strong> This page auto-detects your local server — even from GitHub Pages. Just start <code>npm run serve</code> on your machine, then search from this page and it will use all 550+ engines automatically.</p>
         </div>
       </div>
     </details>
@@ -486,94 +488,226 @@ async function updateEngCount(base){
 }
 
 // ── DIRECT CLIENT-SIDE SEARCH (no local server needed) ───────────────────────
+// All sources run in parallel via Promise.allSettled for maximum speed.
+// Each fetcher is a self-contained async function that returns an array of results.
+// Sources that lack CORS support from browsers are still included (they fail silently).
+
+function fetchWithTimeout(url,opts){return fetch(url,Object.assign({signal:AbortSignal.timeout(10000)},opts||{})).then(r=>r.json())}
+
+// Safely decode HTML entities (StackExchange API returns encoded titles).
+function decodeEntities(s){const el=document.createElement('textarea');el.innerHTML=s;return el.value;}
+
 async function searchDirect(query){
-  const results=[];
   const q=encodeURIComponent(query);
+  const slug=query.replace(/\s+/g,'');
+  let responded=0,attempted=0;
 
-  // OpenAlex
-  try{
-    const d=await(await fetch(`https://api.openalex.org/works?search=${q}&per_page=8`)).json();
-    (d.results||[]).forEach((item,i)=>results.push({source:'openalex',title:item.title||'',
-      url:item.doi?`https://doi.org/${item.doi.replace('https://doi.org/','')}`:item.id||'',
-      snippet:`${item.publication_year||''} · ${(item.authorships||[]).slice(0,2).map(a=>a.author&&a.author.display_name||'').join(', ')}`,
-      score:6-i,seenOn:['openalex']}));
-  }catch{}
+  // Each fetcher returns an array of result objects
+  const fetchers=[
 
-  // Semantic Scholar
-  try{
-    const d=await(await fetch(`https://api.semanticscholar.org/graph/v1/paper/search?query=${q}&limit=8&fields=title,url,abstract,authors,year`)).json();
-    (d.data||[]).forEach((item,i)=>results.push({source:'semantic-scholar',title:item.title||'',
-      url:item.url||`https://www.semanticscholar.org/paper/${item.paperId}`,
-      snippet:item.abstract?(item.abstract.slice(0,180)+'…'):`Year: ${item.year||''}`,
-      score:5-i,seenOn:['semantic-scholar']}));
-  }catch{}
+    // ── Wikipedia ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=8&format=json&origin=*`);
+      return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikipedia',
+        title:item.title||'',url:`https://en.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
+        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
+        score:8-i,seenOn:['wikipedia']}));
+    },
 
-  // CrossRef
-  try{
-    const d=await(await fetch(`https://api.crossref.org/works?query=${q}&rows=8`)).json();
-    ((d.message&&d.message.items)||[]).forEach((item,i)=>results.push({source:'crossref',
-      title:(item.title||[])[0]||'',url:item.URL||'',
-      snippet:item.abstract?(item.abstract.replace(/<[^>]+>/g,'').slice(0,150)+'…'):'',
-      score:4-i,seenOn:['crossref']}));
-  }catch{}
+    // ── Wikidata ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://www.wikidata.org/w/api.php?action=wbsearchentities&search=${q}&language=en&limit=5&format=json&origin=*`);
+      return(d.search||[]).map((item,i)=>({source:'wikidata',
+        title:item.label||item.id||'',url:item.concepturi||`https://www.wikidata.org/wiki/${item.id}`,
+        snippet:item.description||'',
+        score:6-i,seenOn:['wikidata']}));
+    },
 
-  // ORCID
-  try{
-    const d=await(await fetch(`https://pub.orcid.org/v3.0/expanded-search/?q=${q}&rows=5`,{headers:{Accept:'application/json'}})).json();
-    ((d['expanded-result'])||[]).forEach((r,i)=>results.push({source:'orcid',
-      title:`${r['given-names']||''} ${r['family-names']||''}`.trim()||r['orcid-id']||'',
-      url:`https://orcid.org/${r['orcid-id']}`,
-      snippet:(r['institution-name']||[]).slice(0,2).join(' · '),
-      score:5-i,seenOn:['orcid']}));
-  }catch{}
+    // ── GitHub Users ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://api.github.com/search/users?q=${q}&per_page=5`);
+      return(d.items||[]).map((u,i)=>({source:'github',
+        title:u.login||'',url:u.html_url||'',
+        snippet:`GitHub user · Score ${u.score||0}`,
+        score:7-i,seenOn:['github']}));
+    },
 
-  // Wayback CDX
-  try{
-    const slug=query.replace(/\s+/g,'');
-    const rows=await(await fetch(`https://web.archive.org/cdx/search/cdx?url=*${encodeURIComponent(slug)}*&output=json&fl=original,timestamp,statuscode&filter=statuscode:200&limit=8&collapse=urlkey`)).json();
-    if(Array.isArray(rows)&&rows.length>1){
+    // ── GitHub Repos ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://api.github.com/search/repositories?q=${q}&per_page=5&sort=stars`);
+      return(d.items||[]).map((r,i)=>({source:'github',
+        title:r.full_name||'',url:r.html_url||'',
+        snippet:[r.description||'',r.stargazers_count?`★ ${r.stargazers_count}`:'',r.language||''].filter(Boolean).join(' · ').slice(0,180),
+        score:6-i,seenOn:['github']}));
+    },
+
+    // ── Hacker News (Algolia) ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://hn.algolia.com/api/v1/search?query=${q}&hitsPerPage=8`);
+      return(d.hits||[]).map((h,i)=>({source:'hackernews',
+        title:h.title||h.story_title||'',url:h.url||h.story_url||`https://news.ycombinator.com/item?id=${h.objectID}`,
+        snippet:[h.author?`by ${h.author}`:'',h.num_comments!=null?`${h.num_comments} comments`:'',h.points?`${h.points} pts`:''].filter(Boolean).join(' · '),
+        score:5-i,seenOn:['hackernews']}));
+    },
+
+    // ── StackExchange ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://api.stackexchange.com/2.3/search?intitle=${q}&site=stackoverflow&pagesize=5&order=desc&sort=relevance`);
+      return(d.items||[]).map((item,i)=>({source:'stackoverflow',
+        title:decodeEntities(item.title||''),
+        url:item.link||'',
+        snippet:[item.tags?item.tags.slice(0,4).join(', '):'',item.answer_count!=null?`${item.answer_count} answers`:'',item.score!=null?`score ${item.score}`:''].filter(Boolean).join(' · '),
+        score:4-i,seenOn:['stackoverflow']}));
+    },
+
+    // ── Archive.org (Internet Archive) ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://archive.org/advancedsearch.php?q=${q}&output=json&rows=6&fl[]=identifier,title,description,mediatype`);
+      return((d.response&&d.response.docs)||[]).map((item,i)=>({source:'archive.org',
+        title:item.title||item.identifier||'',url:`https://archive.org/details/${item.identifier}`,
+        snippet:[item.mediatype||'',typeof item.description==='string'?item.description.slice(0,150):Array.isArray(item.description)?(item.description[0]||'').slice(0,150):''].filter(Boolean).join(' · '),
+        score:4-i,seenOn:['archive.org']}));
+    },
+
+    // ── OpenLibrary ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://openlibrary.org/search.json?q=${q}&limit=5&fields=key,title,author_name,first_publish_year,edition_count`);
+      return(d.docs||[]).map((item,i)=>({source:'openlibrary',
+        title:item.title||'',url:`https://openlibrary.org${item.key}`,
+        snippet:[(item.author_name||[]).slice(0,2).join(', '),item.first_publish_year?`Published ${item.first_publish_year}`:'',item.edition_count?`${item.edition_count} editions`:''].filter(Boolean).join(' · '),
+        score:3-i,seenOn:['openlibrary']}));
+    },
+
+    // ── PubMed (NCBI) ──
+    async()=>{
+      const ids=await fetchWithTimeout(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=${q}&retmax=5&retmode=json`);
+      const idList=(ids.esearchresult&&ids.esearchresult.idlist)||[];
+      if(!idList.length)return[];
+      const summ=await fetchWithTimeout(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id=${idList.join(',')}&retmode=json`);
+      return idList.map((id,i)=>{const a=summ.result&&summ.result[id];if(!a)return null;return{source:'pubmed',
+        title:a.title||'',url:`https://pubmed.ncbi.nlm.nih.gov/${id}/`,
+        snippet:[(a.authors||[]).slice(0,2).map(x=>x.name).join(', '),a.source||'',a.pubdate||''].filter(Boolean).join(' · '),
+        score:4-i,seenOn:['pubmed']};}).filter(Boolean);
+    },
+
+    // ── DuckDuckGo Instant Answer ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=0`);
+      const out=[];
+      if(d.AbstractText)out.push({source:'duckduckgo',title:d.Heading||query,url:d.AbstractURL||'',snippet:d.AbstractText.slice(0,200),score:9,seenOn:['duckduckgo']});
+      (d.RelatedTopics||[]).slice(0,5).forEach((t,i)=>{
+        if(t.Text&&t.FirstURL)out.push({source:'duckduckgo',title:t.Text.slice(0,100),url:t.FirstURL,snippet:t.Text.slice(0,180),score:6-i,seenOn:['duckduckgo']});
+      });
+      return out;
+    },
+
+    // ── npm registry ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://registry.npmjs.org/-/v1/search?text=${q}&size=5`);
+      return(d.objects||[]).map((o,i)=>{const p=o.package||{};return{source:'npm',
+        title:p.name||'',url:p.links&&p.links.npm||`https://www.npmjs.com/package/${p.name}`,
+        snippet:[p.description||'',p.version?`v${p.version}`:''].filter(Boolean).join(' · ').slice(0,180),
+        score:3-i,seenOn:['npm']};});
+    },
+
+    // ── OpenAlex ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://api.openalex.org/works?search=${q}&per_page=8`);
+      return(d.results||[]).map((item,i)=>({source:'openalex',title:item.title||'',
+        url:item.doi?`https://doi.org/${item.doi.replace('https://doi.org/','')}`:(item.id||''),
+        snippet:`${item.publication_year||''} · ${(item.authorships||[]).slice(0,2).map(a=>a.author&&a.author.display_name||'').join(', ')}`,
+        score:6-i,seenOn:['openalex']}));
+    },
+
+    // ── Semantic Scholar ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://api.semanticscholar.org/graph/v1/paper/search?query=${q}&limit=8&fields=title,url,abstract,authors,year`);
+      return(d.data||[]).map((item,i)=>({source:'semantic-scholar',title:item.title||'',
+        url:item.url||`https://www.semanticscholar.org/paper/${item.paperId}`,
+        snippet:item.abstract?(item.abstract.slice(0,180)+'…'):`Year: ${item.year||''}`,
+        score:5-i,seenOn:['semantic-scholar']}));
+    },
+
+    // ── CrossRef ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://api.crossref.org/works?query=${q}&rows=8`);
+      return((d.message&&d.message.items)||[]).map((item,i)=>({source:'crossref',
+        title:(item.title||[])[0]||'',url:item.URL||'',
+        snippet:item.abstract?(item.abstract.replace(/<\/?[^>]+(>|$)/g,'').slice(0,150)+'…'):'',
+        score:4-i,seenOn:['crossref']}));
+    },
+
+    // ── ORCID ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://pub.orcid.org/v3.0/expanded-search/?q=${q}&rows=5`,{headers:{Accept:'application/json'}});
+      return((d['expanded-result'])||[]).map((r,i)=>({source:'orcid',
+        title:`${r['given-names']||''} ${r['family-names']||''}`.trim()||r['orcid-id']||'',
+        url:`https://orcid.org/${r['orcid-id']}`,
+        snippet:(r['institution-name']||[]).slice(0,2).join(' · '),
+        score:5-i,seenOn:['orcid']}));
+    },
+
+    // ── Wayback CDX ──
+    async()=>{
+      const rows=await fetchWithTimeout(`https://web.archive.org/cdx/search/cdx?url=*${encodeURIComponent(slug)}*&output=json&fl=original,timestamp,statuscode&filter=statuscode:200&limit=8&collapse=urlkey`);
+      if(!Array.isArray(rows)||rows.length<=1)return[];
       const hi=rows[0].indexOf('original'),ti=rows[0].indexOf('timestamp');
-      rows.slice(1).forEach((row,i)=>{
+      return rows.slice(1).map((row,i)=>{
         const url=row[hi],ts=row[ti];
-        results.push({source:'wayback',title:`Archived: ${url}`,
+        return{source:'wayback',title:`Archived: ${url}`,
           url:`https://web.archive.org/web/${ts}/${url}`,
           snippet:`Captured ${ts.slice(0,4)}-${ts.slice(4,6)}-${ts.slice(6,8)}`,
-          score:3-i,seenOn:['wayback']});
+          score:3-i,seenOn:['wayback']};
       });
+    },
+
+    // ── crt.sh (no CORS — will only work if browser allows it) ──
+    async()=>{
+      const arr=await fetchWithTimeout(`https://crt.sh/?q=${q}&output=json`);
+      const seen=new Set();const out=[];
+      arr.slice(0,20).forEach(item=>{
+        if(!seen.has(item.common_name)){seen.add(item.common_name);
+          out.push({source:'crt.sh',title:`[SSL] ${item.common_name}`,
+            url:`https://crt.sh/?q=${encodeURIComponent(item.common_name)}`,
+            snippet:`Issuer: ${item.issuer_name}`,score:2,seenOn:['crt.sh']});}
+      });
+      return out;
+    },
+
+    // ── UK Companies House (no CORS — will only work if browser allows it) ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://api.company-information.service.gov.uk/search/companies?q=${q}&items_per_page=5`);
+      return((d&&d.items)||[]).map((item,i)=>({source:'companies-house',
+        title:item.title||'',
+        url:`https://find-and-update.company-information.service.gov.uk/company/${item.company_number}`,
+        snippet:[item.company_type,item.company_status,item.address_snippet].filter(Boolean).join(' | '),
+        score:3-i,seenOn:['companies-house']}));
+    },
+
+    // ── OpenCorporates (limited CORS) ──
+    async()=>{
+      const d=await fetchWithTimeout(`https://api.opencorporates.com/v0.4/companies/search?q=${q}&per_page=5`);
+      const companies=((d.results&&d.results.companies)||[]);
+      return companies.map((c,i)=>{const co=c.company||c;return{source:'opencorporates',
+        title:co.name||'',url:co.opencorporates_url||'',
+        snippet:[co.jurisdiction_code,co.company_type,co.company_status].filter(Boolean).join(' | '),
+        score:3-i,seenOn:['opencorporates']};});
+    },
+  ];
+
+  attempted=fetchers.length;
+  const settled=await Promise.allSettled(fetchers.map(fn=>fn()));
+  const results=[];
+  settled.forEach(s=>{
+    if(s.status==='fulfilled'&&Array.isArray(s.value)&&s.value.length){
+      responded++;
+      s.value.forEach(r=>results.push(r));
     }
-  }catch{}
+  });
 
-  // crt.sh
-  try{
-    const arr=await(await fetch(`https://crt.sh/?q=${q}&output=json`)).json();
-    const seen=new Set();
-    arr.slice(0,20).forEach(item=>{
-      if(!seen.has(item.common_name)){seen.add(item.common_name);
-        results.push({source:'crt.sh',title:`[SSL] ${item.common_name}`,
-          url:`https://crt.sh/?q=${encodeURIComponent(item.common_name)}`,
-          snippet:`Issuer: ${item.issuer_name}`,score:2,seenOn:['crt.sh']});}
-    });
-  }catch{}
-
-  // UK Companies House
-  try{
-    const d=await(await fetch(`https://api.company-information.service.gov.uk/search/companies?q=${q}&items_per_page=5`)).json();
-    ((d&&d.items)||[]).forEach((item,i)=>results.push({source:'companies-house',
-      title:item.title||'',
-      url:`https://find-and-update.company-information.service.gov.uk/company/${item.company_number}`,
-      snippet:[item.company_type,item.company_status,item.address_snippet].filter(Boolean).join(' | '),
-      score:3-i,seenOn:['companies-house']}));
-  }catch{}
-
-  // OpenCorporates
-  try{
-    const d=await(await fetch(`https://api.opencorporates.com/v0.4/companies/search?q=${q}&per_page=5`)).json();
-    const companies=((d.results&&d.results.companies)||[]);
-    companies.forEach((c,i)=>{const co=c.company||c;results.push({source:'opencorporates',
-      title:co.name||'',url:co.opencorporates_url||'',
-      snippet:[co.jurisdiction_code,co.company_type,co.company_status].filter(Boolean).join(' | '),
-      score:3-i,seenOn:['opencorporates']});});
-  }catch{}
+  // Show how many sources actually responded (only when used for standalone fallback)
+  const bar=document.getElementById('eng-bar');
+  if(bar&&!connected)bar.textContent=`STANDALONE · ${responded}/${attempted} sources responded`;
 
   return results.sort((a,b)=>(b.score||0)-(a.score||0));
 }
@@ -584,10 +718,13 @@ async function doSearch(){
   if(!query)return;
   showLoading(true);clearResults();showErr('',false);
 
-  const base=document.getElementById('endpoint').value.replace(/\/$/,'');
-  const online=await checkConn();
   let results=[],avatarClusters=[];
 
+  // Always try the local server first (even on GitHub Pages — the user may have
+  // launched `npm run serve` locally and the server now has CORS enabled).
+  // Fall back to standalone client-side search if the server isn't reachable.
+  const base=document.getElementById('endpoint').value.replace(/\/$/,'');
+  const online=connected||await checkConn();
   if(online){
     try{
       const resp=await fetch(base+'/search',{
@@ -632,6 +769,8 @@ const TIER_MAP={
   'whats-my-name':'open','social-searcher':'open',orcid:'open',arxiv:'open',
   lens:'open',stract:'open',crowdview:'open',yacy:'open',europeana:'open',jstor:'open',
   'companies-house':'open','social-profiles':'social',
+  wikipedia:'open',wikidata:'open',github:'open',hackernews:'open',stackoverflow:'open',
+  'archive.org':'open',openlibrary:'open',pubmed:'open',npm:'open',
   shodan:'osint',censys:'osint',hunter:'osint',intelx:'osint',publicwww:'osint',tineye:'osint',
   yandex:'regional',baidu:'regional',naver:'regional',sogou:'regional',so360:'regional',seznam:'regional','mail.ru':'regional',rambler:'regional',
   startpage:'meta',dogpile:'meta',metacrawler:'meta',etools:'meta',ecosia:'meta',
@@ -697,11 +836,19 @@ function showErr(msg,isErr){const el=document.getElementById('err');el.textConte
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 loadKeys();
-if(!isGHPages){checkConn();setInterval(checkConn,20000);}
-else{
+// Always try the local server first. On GitHub Pages we start in STANDALONE
+// mode but immediately attempt a connection — if the user has `npm run serve`
+// running, the dot goes green and searches use the full engine set.
+if(isGHPages){
   document.getElementById('dot').className='dot standalone';
   document.getElementById('conn-lbl').textContent='STANDALONE';
+  // Silently try to reach the server; if it's there, the dot turns green.
+  checkConn();
+}else{
+  checkConn();
 }
+// Re-check periodically in case the server starts/stops while the page is open.
+setInterval(checkConn,20000);
 </script>
 </body>
 </html>
