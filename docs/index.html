@@ -538,22 +538,28 @@ async function fetchWithRetry(url,opts,retries=1){
     const r=await fetch(url,Object.assign({signal:AbortSignal.timeout(timeout)},opts||{}));
     if(r.status===429){
       const src=new URL(url).hostname;
-      const retryAfter=parseInt(r.headers.get('Retry-After'),10);
-      const waitSec=retryAfter&&retryAfter>0&&retryAfter<=120?retryAfter:30;
+      // Retry-After may be seconds (integer) or an HTTP-date; handle both
+      const raHeader=r.headers.get('Retry-After');
+      let waitSec=30;
+      if(raHeader){
+        const asNum=parseInt(raHeader,10);
+        if(!isNaN(asNum)&&asNum>0&&asNum<=120)waitSec=asNum;
+        else{const d=Date.parse(raHeader);if(d)waitSec=Math.min(120,Math.max(1,Math.ceil((d-Date.now())/1000)))}
+      }
       _rateLimitWarnings.push(`${src} rate-limited — retry in ${waitSec}s`);
       if(retries>0){
         await new Promise(ok=>setTimeout(ok,waitSec*1000));
         retries--;
         return attempt();
       }
-      throw new Error(`429 rate-limited: ${src}`);
+      const err=new Error(`429 rate-limited: ${src}`);err._rateLimited=true;throw err;
     }
     if(!r.ok)throw new Error(`HTTP ${r.status}`);
     return r.json();
   }
   try{return await attempt()}
   catch(e){
-    if(retries>0&&!e.message.includes('rate-limited')){
+    if(retries>0&&!e._rateLimited){
       retries--;
       await new Promise(ok=>setTimeout(ok,2000));
       return attempt();
@@ -781,11 +787,13 @@ async function searchDirect(query){
         sourceStatus.push({name,status:'empty'});
       }
     }else{
-      const reason=s.status==='rejected'?(s.reason&&s.reason.message||'error'):'unknown';
-      const isCors=reason.includes('Failed to fetch')||reason.includes('NetworkError')||reason.includes('CORS');
-      const isTimeout=reason.includes('timeout')||reason.includes('abort');
-      const isRate=reason.includes('429')||reason.includes('rate-limited');
-      sourceStatus.push({name,status:'fail',reason:isRate?'rate-limited':isTimeout?'timeout':isCors?'CORS':reason.slice(0,30)});
+      const err=s.status==='rejected'?s.reason:null;
+      const msg=err&&err.message||'unknown';
+      // Classify error using structured properties when available, falling back to message heuristics
+      const isRate=!!(err&&err._rateLimited)||msg.includes('429');
+      const isTimeout=!!(err&&err.name==='TimeoutError')||(err instanceof DOMException&&err.name==='AbortError')||msg.includes('timeout');
+      const isCors=(err instanceof TypeError&&msg.includes('fetch'))||msg.includes('NetworkError');
+      sourceStatus.push({name,status:'fail',reason:isRate?'rate-limited':isTimeout?'timeout':isCors?'CORS':msg.slice(0,30)});
     }
   });
 
@@ -1031,16 +1039,31 @@ function renderHistory(){
     list.innerHTML='<div style="padding:.4rem;color:var(--dim);font-size:.7rem">No recent scans</div>';
     return;
   }
-  list.innerHTML=hist.map((h,i)=>{
+  list.innerHTML='';
+  hist.forEach((h,i)=>{
     const d=new Date(h.time);
     const ts=d.toLocaleDateString()+' '+d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    const safeQ=h.query.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-    return'<div class="hist-item">'+
-      `<span class="hist-query" onclick="rerunSearch('${esc(safeQ)}')" title="Re-run this search">${esc(h.query)}</span>`+
-      `<span class="hist-meta">${h.results} signals · ${ts}</span>`+
-    '</div>';
-  }).join('')+
-  '<div style="padding:.3rem .5rem;text-align:right"><span class="hist-clear" onclick="clearHistory()">CLEAR HISTORY</span></div>';
+    const item=document.createElement('div');item.className='hist-item';
+    const qSpan=document.createElement('span');
+    qSpan.className='hist-query';
+    qSpan.textContent=h.query;
+    qSpan.title='Re-run this search';
+    qSpan.addEventListener('click',()=>rerunSearch(h.query));
+    const meta=document.createElement('span');
+    meta.className='hist-meta';
+    meta.textContent=`${h.results} signals · ${ts}`;
+    item.appendChild(qSpan);
+    item.appendChild(meta);
+    list.appendChild(item);
+  });
+  const clearWrap=document.createElement('div');
+  clearWrap.style.cssText='padding:.3rem .5rem;text-align:right';
+  const clearBtn=document.createElement('span');
+  clearBtn.className='hist-clear';
+  clearBtn.textContent='CLEAR HISTORY';
+  clearBtn.addEventListener('click',clearHistory);
+  clearWrap.appendChild(clearBtn);
+  list.appendChild(clearWrap);
 }
 function rerunSearch(query){
   document.getElementById('query').value=query;
