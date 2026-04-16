@@ -1,11 +1,11 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import cheerio from 'cheerio';
+import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
     const [user, key] = (apiKeys.yandex || ':').split(':');
-    const response = await axios.get('https://yandex.com/search/xml', {
+    const response = await httpClient.get('https://yandex.com/search/xml', {
       params: {
         user,
         key,
@@ -26,9 +26,7 @@ async function search(query, apiKeys = {}) {
       if (url) results.push(normalise('yandex', query, { title, url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/yandex]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

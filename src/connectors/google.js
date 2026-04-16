@@ -1,9 +1,9 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://www.googleapis.com/customsearch/v1', {
+    const response = await httpClient.get('https://www.googleapis.com/customsearch/v1', {
       params: { q: query, key: apiKeys.google, cx: apiKeys.googleCx, num: 10 },
       timeout: 10000,
     });
@@ -11,9 +11,7 @@ async function search(query, apiKeys = {}) {
     return items.map((item, i) =>
       normalise('google', query, { title: item.title, url: item.link, snippet: item.snippet, rank: i + 1 })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/google]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

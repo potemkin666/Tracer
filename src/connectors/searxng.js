@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 const DEFAULT_INSTANCES = [
   'https://searx.be',
@@ -11,7 +11,7 @@ async function search(query, apiKeys = {}) {
   const instances = apiKeys.searxngUrl ? [apiKeys.searxngUrl] : DEFAULT_INSTANCES;
   for (const instance of instances) {
     try {
-      const response = await axios.get(`${instance}/search`, {
+      const response = await httpClient.get(`${instance}/search`, {
         params: { q: query, format: 'json', language: 'en' },
         headers: { 'User-Agent': 'Tracer/1.0', Accept: 'application/json' },
         timeout: 10000,
@@ -21,11 +21,11 @@ async function search(query, apiKeys = {}) {
       return items.map((item, i) =>
         normalise('searxng', query, { title: item.title, url: item.url, snippet: item.content, rank: i + 1 })
       );
-    } catch {
-      // try next instance
+    } catch (err) {
+      console.error('[connectors/searxng]', err.message);
     }
   }
   return [];
 }
 
-module.exports = { search };
+export { search };

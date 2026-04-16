@@ -1,10 +1,10 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import cheerio from 'cheerio';
+import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://search.seznam.cz/', {
+    const response = await httpClient.get('https://search.seznam.cz/', {
       params: { q: query },
       headers: {
         'User-Agent': 'Mozilla/5.0',
@@ -22,9 +22,7 @@ async function search(query, apiKeys = {}) {
       if (title || url) results.push(normalise('seznam', query, { title, url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/seznam]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

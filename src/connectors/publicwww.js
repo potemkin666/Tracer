@@ -1,10 +1,10 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import cheerio from 'cheerio';
+import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get(
+    const response = await httpClient.get(
       `https://publicwww.com/websites/${encodeURIComponent(query)}/`,
       {
         params: apiKeys.publicwww
@@ -32,9 +32,7 @@ async function search(query, apiKeys = {}) {
       if (url) results.push(normalise('publicwww', query, { title: url, url, snippet: '', rank: i + 1 }));
     });
     return results.slice(0, 10);
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/publicwww]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

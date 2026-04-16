@@ -1,9 +1,10 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
-async function search(query, apiKey) {
+async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://serpapi.com/search', {
+    const apiKey = apiKeys.serpapi;
+    const response = await httpClient.get('https://serpapi.com/search', {
       params: { q: query, api_key: apiKey, num: 10 },
     });
 
@@ -16,9 +17,7 @@ async function search(query, apiKey) {
         rank: i + 1,
       })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/serpapi]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

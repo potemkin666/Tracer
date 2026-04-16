@@ -1,9 +1,9 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://pub.orcid.org/v3.0/expanded-search/', {
+    const response = await httpClient.get('https://pub.orcid.org/v3.0/expanded-search/', {
       params: { q: query, rows: 10 },
       headers: { Accept: 'application/json' },
       timeout: 10000,
@@ -17,9 +17,7 @@ async function search(query, apiKeys = {}) {
         rank: i + 1,
       })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/orcid]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

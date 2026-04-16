@@ -1,72 +1,39 @@
-const express = require('express');
-const { run } = require('../orchestrator');
+import path from 'path';
+import { fileURLToPath } from 'url';
+import express from 'express';
+import { run } from '../orchestrator.js';
+import { loadKeysFromEnv } from '../config.js';
+import { buildGraph } from '../graphBuilder.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load API keys once at startup from server-side environment variables.
+// Client requests never supply keys — this prevents the server from being
+// used as an open proxy to third-party APIs with arbitrary credentials.
+const serverApiKeys = loadKeysFromEnv();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-
-app.get('/', (req, res) => {
-  res.send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Tracer</title>
-  <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 4rem auto; padding: 1rem; }
-    h1 { margin-bottom: 1.5rem; }
-    label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
-    input, select { width: 100%; padding: 0.5rem; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 4px; }
-    button { padding: 0.6rem 1.5rem; background: #1a73e8; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-    button:hover { background: #1558b0; }
-  </style>
-</head>
-<body>
-  <h1>Tracer Search</h1>
-  <form id="searchForm">
-    <label for="input">Name / Username</label>
-    <input type="text" id="input" name="input" placeholder="e.g. john smith" required>
-    <label for="mode">Mode</label>
-    <select id="mode" name="mode">
-      <option value="normal">Normal</option>
-      <option value="aggressive">Aggressive</option>
-    </select>
-    <button type="submit">Search</button>
-  </form>
-  <pre id="output" style="margin-top:2rem;white-space:pre-wrap;"></pre>
-  <script>
-    document.getElementById('searchForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const input = document.getElementById('input').value;
-      const mode = document.getElementById('mode').value;
-      document.getElementById('output').textContent = 'Searching...';
-      const res = await fetch('/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, mode }),
-      });
-      const data = await res.json();
-      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
-    });
-  </script>
-</body>
-</html>`);
-});
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.post('/search', async (req, res) => {
-  const { input, mode, apiKeys, fossils, avatars, timeSliceMode, documents } = req.body || {};
+  const { input, mode, fossils, avatars, timeSliceMode, documents } = req.body || {};
   if (!input) return res.status(400).json({ error: 'input is required' });
 
   try {
     const { results, avatarClusters } = await run(input, {
       mode,
-      apiKeys,
+      apiKeys: serverApiKeys,
       fossils,
       avatars,
       timeSliceMode,
       documents,
     });
-    res.json({ results, avatarClusters });
+    const graph = buildGraph(results, avatarClusters);
+    res.json({ results, avatarClusters, graph });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -76,8 +43,27 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Tracer UI running at http://localhost:${PORT}`);
 });
 
-module.exports = app;
+// Graceful shutdown: stop accepting new connections, let in-flight requests
+// finish (up to 10 s), then exit.
+function shutdown(signal) {
+  console.log(`\n${signal} received — shutting down gracefully…`);
+  server.close(() => {
+    console.log('All connections closed.');
+    process.exit(0);
+  });
+
+  // Force-exit if lingering connections don't drain in time.
+  setTimeout(() => {
+    console.error('Forcibly shutting down after timeout.');
+    process.exit(1);
+  }, 10000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+export default app;

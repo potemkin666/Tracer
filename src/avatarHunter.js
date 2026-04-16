@@ -1,5 +1,5 @@
-const axios = require('axios');
-const crypto = require('crypto');
+import httpClient from './httpClient.js';
+import crypto from 'crypto';
 
 // Known avatar URL patterns detectable from a plain URL or snippet string.
 const AVATAR_REGEXES = [
@@ -37,7 +37,7 @@ function extractAvatarUrl(result) {
 
 async function fetchHash(url) {
   try {
-    const response = await axios.get(url, {
+    const response = await httpClient.get(url, {
       responseType: 'arraybuffer',
       timeout: 8000,
       headers: { 'User-Agent': 'Tracer/1.0' },
@@ -47,7 +47,8 @@ async function fetchHash(url) {
       .createHash('md5')
       .update(Buffer.from(response.data))
       .digest('hex');
-  } catch {
+  } catch (err) {
+    console.error('[avatarHunter]', err.message);
     return null;
   }
 }
@@ -58,7 +59,7 @@ async function fetchHash(url) {
  * urls is the list of result URLs that share the same avatar image bytes.
  * Only clusters with two or more distinct result URLs are returned.
  */
-async function hunt(results) {
+export async function hunt(results) {
   // Map resultUrl -> avatarUrl
   const resultAvatarMap = new Map();
   const avatarUrls = new Set();
@@ -97,4 +98,3 @@ async function hunt(results) {
     .map(([hash, urlSet]) => ({ avatarHash: hash, urls: [...urlSet] }));
 }
 
-module.exports = { hunt };

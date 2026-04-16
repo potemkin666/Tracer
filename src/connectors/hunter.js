@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 function looksLikeDomain(q) {
   return /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(q.replace(/^https?:\/\//, '').split('/')[0]);
@@ -9,7 +9,7 @@ async function search(query, apiKeys = {}) {
   try {
     if (looksLikeDomain(query)) {
       const domain = query.replace(/^https?:\/\//, '').split('/')[0];
-      const response = await axios.get('https://api.hunter.io/v2/domain-search', {
+      const response = await httpClient.get('https://api.hunter.io/v2/domain-search', {
         params: { domain, api_key: apiKeys.hunter, limit: 10 },
         timeout: 10000,
       });
@@ -23,7 +23,7 @@ async function search(query, apiKeys = {}) {
         })
       );
     } else {
-      const response = await axios.get('https://api.hunter.io/v2/email-finder', {
+      const response = await httpClient.get('https://api.hunter.io/v2/email-finder', {
         params: { full_name: query, api_key: apiKeys.hunter },
         timeout: 10000,
       });
@@ -38,9 +38,7 @@ async function search(query, apiKeys = {}) {
         }),
       ];
     }
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/hunter]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

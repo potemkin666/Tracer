@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 const GQL_QUERY = `
 query Search($q: String!) {
@@ -18,7 +18,7 @@ query Search($q: String!) {
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.post(
+    const response = await httpClient.post(
       'https://sourcegraph.com/.api/graphql',
       { query: GQL_QUERY, variables: { q: query } },
       { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }
@@ -40,9 +40,7 @@ async function search(query, apiKeys = {}) {
         rank: i + 1,
       });
     });
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/sourcegraph]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

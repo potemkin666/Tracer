@@ -1,9 +1,9 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 async function search(query) {
   try {
-    const response = await axios.get('https://yacy.searchlab.eu/yacysearch.json', {
+    const response = await httpClient.get('https://yacy.searchlab.eu/yacysearch.json', {
       params: { query, maximumRecords: 10, resource: 'global', verify: 'true' },
       headers: { 'User-Agent': 'Tracer/1.0', Accept: 'application/json' },
       timeout: 10000,
@@ -13,6 +13,6 @@ async function search(query) {
     return items.slice(0, 10).map((item, i) =>
       normalise('yacy', query, { title: item.title || '', url: item.link || '', snippet: item.description || '', rank: i + 1 })
     );
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/yacy]', err.message); return []; }
 }
-module.exports = { search };
+export { search };

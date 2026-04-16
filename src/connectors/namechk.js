@@ -1,33 +1,44 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
+import { PLATFORMS } from './platforms.js';
 
-const PLATFORMS = [
-  { name: 'GitHub', url: (u) => `https://github.com/${u}` },
-  { name: 'Twitter', url: (u) => `https://twitter.com/${u}` },
-  { name: 'Instagram', url: (u) => `https://instagram.com/${u}` },
-  { name: 'Reddit', url: (u) => `https://reddit.com/user/${u}` },
-];
+// Subset of platforms checked by namechk (quick-check tier).
+const NAMECHK_IDS = new Set(['GitHub', 'Twitter/X', 'Instagram', 'Reddit']);
+const NAMECHK_PLATFORMS = PLATFORMS.filter(p => NAMECHK_IDS.has(p.id));
 
 async function search(username) {
   const results = [];
 
   await Promise.all(
-    PLATFORMS.map(async (platform) => {
+    NAMECHK_PLATFORMS.map(async (platform) => {
       const url = platform.url(username);
       try {
-        const response = await axios.head(url, { timeout: 5000 });
-        if (response.status === 200) {
+        const response = await httpClient.get(url, {
+          timeout: 5000,
+          maxRedirects: 3,
+          validateStatus: () => true,
+          headers: { 'User-Agent': 'Tracer/1.0' },
+        });
+        // Content-based validation: only count as found when the page
+        // returns 200 AND the response body contains the username.
+        // This avoids false positives from soft-404 pages, login walls,
+        // and generic homepage redirects.
+        if (
+          response.status === 200 &&
+          typeof response.data === 'string' &&
+          response.data.toLowerCase().includes(username.toLowerCase())
+        ) {
           results.push(
             normalise('namechk', username, {
-              title: `${platform.name}: ${username}`,
+              title: `${platform.id}: ${username}`,
               url,
-              snippet: `Username @${username} exists on ${platform.name}`,
+              snippet: `Username @${username} exists on ${platform.id}`,
               rank: 0,
             })
           );
         }
-      } catch {
-        // skip platforms that error or return non-200
+      } catch (err) {
+        console.error('[connectors/namechk]', err.message);
       }
     })
   );
@@ -35,4 +46,4 @@ async function search(username) {
   return results;
 }
 
-module.exports = { search };
+export { search };

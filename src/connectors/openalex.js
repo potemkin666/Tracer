@@ -1,9 +1,9 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://api.openalex.org/works', {
+    const response = await httpClient.get('https://api.openalex.org/works', {
       params: { search: query, per_page: 10 },
       timeout: 10000,
     });
@@ -23,9 +23,7 @@ async function search(query, apiKeys = {}) {
         rank: i + 1,
       });
     });
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/openalex]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

@@ -1,10 +1,10 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import cheerio from 'cheerio';
+import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://html.duckduckgo.com/html/', {
+    const response = await httpClient.get('https://html.duckduckgo.com/html/', {
       params: { q: query },
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; Tracer/1.0)',
@@ -25,9 +25,7 @@ async function search(query, apiKeys = {}) {
       if (url) results.push(normalise('duckduckgo', query, { title, url, snippet, rank: i + 1 }));
     });
     return results;
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/duckduckgo]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

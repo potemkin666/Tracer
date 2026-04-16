@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('./normaliser');
+import httpClient from './httpClient.js';
+import { normalise } from './normaliser.js';
 
 // Profile-like paths that often preserve old bios, contact info, and usernames.
 const LEGACY_PATHS = ['/about', '/bio', '/contact', '/profile', '/user', '/me', '/whois'];
@@ -31,7 +31,7 @@ function deriveLegacyUrls(input) {
 
 async function fetchOldCaptures(urlPattern, input) {
   try {
-    const response = await axios.get('https://web.archive.org/cdx/search/cdx', {
+    const response = await httpClient.get('https://web.archive.org/cdx/search/cdx', {
       params: {
         url: urlPattern,
         output: 'json',
@@ -64,12 +64,10 @@ async function fetchOldCaptures(urlPattern, input) {
         meta: { era: parseInt(year, 10), tags: ['fossil'] },
       });
     });
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[fossilHunter]', err.message); return []; }
 }
 
-async function hunt(input, results) {
+export async function hunt(input, results) {
   const profileUrls = extractProfileUrls(results);
   const legacyUrlPatterns = deriveLegacyUrls(input);
 
@@ -87,4 +85,3 @@ async function hunt(input, results) {
   return batches.flat();
 }
 
-module.exports = { hunt };

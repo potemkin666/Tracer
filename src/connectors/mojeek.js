@@ -1,9 +1,10 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
-async function search(query, apiKey) {
+async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://www.mojeek.com/search', {
+    const apiKey = apiKeys.mojeek;
+    const response = await httpClient.get('https://www.mojeek.com/search', {
       headers: { 'X-Mojeek-API-Key': apiKey },
       params: { q: query, fmt: 'json' },
     });
@@ -17,9 +18,7 @@ async function search(query, apiKey) {
         rank: i + 1,
       })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/mojeek]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

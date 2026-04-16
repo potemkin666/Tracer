@@ -1,9 +1,9 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get(
+    const response = await httpClient.get(
       'https://api.semanticscholar.org/graph/v1/paper/search',
       {
         params: { query, limit: 10, fields: 'title,url,abstract,authors,year' },
@@ -19,9 +19,7 @@ async function search(query, apiKeys = {}) {
         rank: i + 1,
       })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/semanticscholar]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

@@ -1,15 +1,17 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
-async function search(query, apiKey) {
+async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://api.search.brave.com/res/v1/web/search', {
+    const apiKey = apiKeys.brave;
+    const response = await httpClient.get('https://api.search.brave.com/res/v1/web/search', {
       headers: {
         Accept: 'application/json',
         'Accept-Encoding': 'gzip',
         'X-Subscription-Token': apiKey,
       },
       params: { q: query, count: 10 },
+      timeout: 10000,
     });
 
     const items = (response.data.web && response.data.web.results) || [];
@@ -21,9 +23,7 @@ async function search(query, apiKey) {
         rank: i + 1,
       })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/brave]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

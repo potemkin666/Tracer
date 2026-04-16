@@ -1,9 +1,9 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://metager.org/meta/meta.ger3', {
+    const response = await httpClient.get('https://metager.org/meta/meta.ger3', {
       params: { eingabe: query, key: apiKeys.metager, out: 'json' },
       timeout: 10000,
     });
@@ -11,9 +11,7 @@ async function search(query, apiKeys = {}) {
     return items.map((item, i) =>
       normalise('metager', query, { title: item.title, url: item.link, snippet: item.description, rank: i + 1 })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/metager]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

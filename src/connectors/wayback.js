@@ -1,9 +1,9 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 async function search(query) {
   try {
-    const response = await axios.get('https://web.archive.org/cdx/search/cdx', {
+    const response = await httpClient.get('https://web.archive.org/cdx/search/cdx', {
       params: {
         url: `*${query.replace(/\s+/g, '')}*`,
         output: 'json',
@@ -31,9 +31,7 @@ async function search(query) {
         rank: i + 1,
       });
     });
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/wayback]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

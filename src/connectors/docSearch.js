@@ -1,6 +1,6 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
-const { generateDocQueries } = require('../queryPlanner');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
+import { generateDocQueries } from '../queryPlanner.js';
 
 // Wayback CDX mimetype prefixes for each document family.
 const DOC_MIMETYPES = [
@@ -31,7 +31,7 @@ async function searchWaybackDocs(input) {
   await Promise.all(
     DOC_MIMETYPES.map(async ({ mime, ext }) => {
       try {
-        const response = await axios.get('https://web.archive.org/cdx/search/cdx', {
+        const response = await httpClient.get('https://web.archive.org/cdx/search/cdx', {
           params: {
             url: `*${input.replace(/\s+/g, '*')}*`,
             output: 'json',
@@ -67,8 +67,8 @@ async function searchWaybackDocs(input) {
             })
           );
         });
-      } catch {
-        // continue with remaining mime types
+      } catch (err) {
+        console.error('[connectors/docSearch]', err.message);
       }
     })
   );
@@ -79,8 +79,8 @@ async function searchWaybackDocs(input) {
 async function searchWithFiletype(input, apiKeys) {
   if (!apiKeys.brave && !apiKeys.serpapi) return [];
 
-  const brave = apiKeys.brave ? require('./brave') : null;
-  const serpapi = apiKeys.serpapi ? require('./serpapi') : null;
+  const brave = apiKeys.brave ? await import('./brave.js') : null;
+  const serpapi = apiKeys.serpapi ? await import('./serpapi.js') : null;
 
   const docQueries = generateDocQueries(input);
   const results = [];
@@ -88,8 +88,8 @@ async function searchWithFiletype(input, apiKeys) {
   await Promise.all(
     docQueries.map(async (dq) => {
       const fetches = [];
-      if (brave) fetches.push(brave.search(dq, apiKeys.brave));
-      if (serpapi) fetches.push(serpapi.search(dq, apiKeys.serpapi));
+      if (brave) fetches.push(brave.search(dq, apiKeys));
+      if (serpapi) fetches.push(serpapi.search(dq, apiKeys));
 
       const batches = await Promise.all(fetches);
       const fileType = extFromQuery(dq);
@@ -119,4 +119,4 @@ async function search(input, apiKeys = {}) {
   return [...waybackDocs, ...apiDocs];
 }
 
-module.exports = { search };
+export { search };

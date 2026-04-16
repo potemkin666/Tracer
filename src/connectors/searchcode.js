@@ -1,9 +1,9 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
-    const response = await axios.get('https://searchcode.com/api/codesearch_I/', {
+    const response = await httpClient.get('https://searchcode.com/api/codesearch_I/', {
       params: { q: query, p: 0, per_page: 10 },
       timeout: 10000,
     });
@@ -16,9 +16,7 @@ async function search(query, apiKeys = {}) {
         rank: i + 1,
       })
     );
-  } catch {
-    return [];
-  }
+  } catch (err) { console.error('[connectors/searchcode]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

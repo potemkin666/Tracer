@@ -1,9 +1,9 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import httpClient from '../httpClient.js';
+import { normalise } from '../normaliser.js';
 
 async function search(query) {
   try {
-    const response = await axios.get('https://api.company-information.service.gov.uk/search/companies', {
+    const response = await httpClient.get('https://api.company-information.service.gov.uk/search/companies', {
       params: { q: query, items_per_page: 10 },
       timeout: 10000,
     });
@@ -16,6 +16,6 @@ async function search(query) {
         rank: i + 1,
       })
     );
-  } catch { return []; }
+  } catch (err) { console.error('[connectors/companieshouse]', err.message); return []; }
 }
-module.exports = { search };
+export { search };

@@ -1,4 +1,4 @@
-function normalise(source, query, result) {
+export function normalise(source, query, result) {
   return {
     source: source || '',
     query: query || '',
@@ -9,5 +9,3 @@ function normalise(source, query, result) {
     meta: result.meta && typeof result.meta === 'object' ? result.meta : {},
   };
 }
-
-module.exports = { normalise };
