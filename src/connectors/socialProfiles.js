@@ -3,7 +3,7 @@ import { normalise } from '../normaliser.js';
 import { PLATFORMS } from './platforms.js';
 
 // ── Concurrency limiter (no external deps) ──────────────────────────────────
-const MAX_CONCURRENCY = 10;
+const MAX_CONCURRENCY = 30;
 
 function pLimit(concurrency) {
   let active = 0;

@@ -8,6 +8,10 @@ const NAMECHK_IDS = new Set([
   'YouTube', 'TikTok', 'Medium', 'Pinterest',
   'Twitch', 'SoundCloud', 'Flickr', 'Tumblr',
   'Vimeo', 'Behance', 'Dribbble', 'DeviantArt',
+  'LinkedIn', 'Facebook', 'Snapchat', 'Threads',
+  'Steam', 'Spotify', 'Last.fm', 'Letterboxd',
+  'Mastodon', 'Bluesky', 'GitLab', 'Patreon',
+  'Ko-fi', 'Linktree',
 ]);
 const NAMECHK_PLATFORMS = PLATFORMS.filter(p => NAMECHK_IDS.has(p.id));
 
