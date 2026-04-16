@@ -566,7 +566,7 @@ async function fetchWithRetry(url,opts,retries=1){
       if(raHeader){
         const asNum=parseInt(raHeader,10);
         if(!isNaN(asNum)&&asNum>0&&asNum<=120)waitSec=asNum;
-        else{const d=Date.parse(raHeader);if(d)waitSec=Math.min(120,Math.max(1,Math.ceil((d-Date.now())/1000)))}
+        else{const d=Date.parse(raHeader);if(!isNaN(d))waitSec=Math.min(120,Math.max(1,Math.ceil((d-Date.now())/1000)))}
       }
       _rateLimitWarnings.push(`${src} rate-limited — retry in ${waitSec}s`);
       if(retries>0){
