@@ -3,10 +3,11 @@
  *
  * Nodes are individual results (keyed by URL).
  * Edges represent relationships:
- *   - sameAvatar:  two results share the same avatar image hash
- *   - sameDomain:  two results share the same URL domain (e.g. both on github.com)
- *   - sharedEmail: two result snippets/titles mention the same email domain
- *   - crossLinked: one result's URL appears in another result's snippet (or vice-versa)
+ *   - sameAvatar:     two results share the same avatar image hash
+ *   - sameDomain:     two results share the same URL domain (e.g. both on github.com)
+ *   - sharedEmail:    two result snippets/titles mention the same email domain
+ *   - sharedUsername: two results on different platforms share the same username
+ *   - crossLinked:    one result's URL appears in another result's snippet (or vice-versa)
  *
  * @module graphBuilder
  */
@@ -41,6 +42,44 @@ function emailDomain(email) {
 }
 
 /**
+ * Well-known URL patterns from which a username can be extracted.
+ * The first capture group is the username.
+ */
+const USERNAME_PATTERNS = [
+  /(?:twitter|x)\.com\/([A-Za-z0-9_]{1,40})\/?$/i,
+  /github\.com\/([A-Za-z0-9_-]{1,40})\/?$/i,
+  /gitlab\.com\/([A-Za-z0-9_.-]{1,40})\/?$/i,
+  /instagram\.com\/([A-Za-z0-9_.]{1,40})\/?$/i,
+  /linkedin\.com\/in\/([A-Za-z0-9_-]{1,80})\/?$/i,
+  /reddit\.com\/user\/([A-Za-z0-9_-]{1,40})\/?$/i,
+  /facebook\.com\/([A-Za-z0-9.]{1,80})\/?$/i,
+  /tiktok\.com\/@([A-Za-z0-9_.]{1,40})/i,
+  /medium\.com\/@([A-Za-z0-9_-]{1,60})/i,
+  /bitbucket\.org\/([A-Za-z0-9_-]{1,40})\/?$/i,
+  /codepen\.io\/([A-Za-z0-9_-]{1,40})\/?$/i,
+  /dev\.to\/([A-Za-z0-9_-]{1,40})\/?$/i,
+  /keybase\.io\/([A-Za-z0-9_]{1,40})\/?$/i,
+  /pinterest\.com\/([A-Za-z0-9_]{1,40})\/?$/i,
+  /tumblr\.com\/([A-Za-z0-9_-]{1,40})\/?$/i,
+];
+
+/**
+ * Attempt to extract a cross-platform username from a URL.
+ * Returns { username, domain } or null.
+ */
+function extractUsername(url) {
+  if (!url) return null;
+  const domain = extractDomain(url);
+  if (!domain) return null;
+  for (const re of USERNAME_PATTERNS) {
+    const m = url.match(re);
+    if (m) return { username: m[1].toLowerCase(), domain };
+  }
+  // Also check enricher-injected meta.username (via the result node)
+  return null;
+}
+
+/**
  * Build the identity graph.
  *
  * @param {object[]} results - scored Tracer results (each has url, title, snippet, source, score, meta, …)
@@ -60,6 +99,9 @@ export function buildGraph(results, avatarClusters = []) {
       ...extractEmails(r.title),
       ...extractEmails(r.snippet),
     ];
+    const usernameInfo = extractUsername(r.url);
+    // Also fall back to enricher-injected username from meta
+    const metaUsername = (r.meta && r.meta.username) ? r.meta.username.toLowerCase() : null;
 
     nodeMap.set(r.url, {
       id: r.url,
@@ -68,6 +110,7 @@ export function buildGraph(results, avatarClusters = []) {
       score: r.score ?? 0,
       domain,
       emails,
+      username: (usernameInfo && usernameInfo.username) || metaUsername || null,
       tags: (r.meta && r.meta.tags) || [],
     });
   }
@@ -130,7 +173,26 @@ export function buildGraph(results, avatarClusters = []) {
     }
   }
 
-  // 4. crossLinked — one result's URL appears in another result's snippet
+  // 4. sharedUsername — results on different domains share the same username
+  const byUsername = new Map();
+  for (const node of nodes) {
+    if (!node.username) continue;
+    if (!byUsername.has(node.username)) byUsername.set(node.username, []);
+    byUsername.get(node.username).push(node);
+  }
+  for (const [username, matchNodes] of byUsername) {
+    if (matchNodes.length < 2 || matchNodes.length > 30) continue;
+    // Only link nodes on *different* domains (same-domain is already covered)
+    for (let i = 0; i < matchNodes.length; i++) {
+      for (let j = i + 1; j < matchNodes.length; j++) {
+        if (matchNodes[i].domain !== matchNodes[j].domain) {
+          addEdge(matchNodes[i].id, matchNodes[j].id, 'sharedUsername', username);
+        }
+      }
+    }
+  }
+
+  // 5. crossLinked — one result's URL appears in another result's snippet
   const allUrls = [...nodeMap.keys()];
   for (const r of results) {
     if (!r.url || !r.snippet) continue;

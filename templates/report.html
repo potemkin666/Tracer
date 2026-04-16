@@ -51,6 +51,7 @@
     <div class="legend-item"><div class="legend-swatch" style="background:#e74c3c"></div> Same avatar</div>
     <div class="legend-item"><div class="legend-swatch" style="background:#3498db"></div> Same domain</div>
     <div class="legend-item"><div class="legend-swatch" style="background:#2ecc71"></div> Shared email domain</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:#9b59b6"></div> Shared username</div>
     <div class="legend-item"><div class="legend-swatch" style="background:#f39c12"></div> Cross-linked</div>
   </div>
   <div class="graph-tooltip" id="tooltip"></div>
@@ -101,6 +102,7 @@ const graphData = {{{graphJSON}}};
     sameAvatar: '#e74c3c',
     sameDomain: '#3498db',
     sharedEmail: '#2ecc71',
+    sharedUsername: '#9b59b6',
     crossLinked: '#f39c12',
   };
 
@@ -195,7 +197,7 @@ const graphData = {{{graphJSON}}};
     line.setAttribute('x2', b.x);
     line.setAttribute('y2', b.y);
     line.setAttribute('stroke', EDGE_COLORS[link.type] || '#999');
-    line.setAttribute('stroke-width', link.type === 'sameAvatar' ? 3 : 1.5);
+    line.setAttribute('stroke-width', link.type === 'sameAvatar' ? 3 : link.type === 'sharedUsername' ? 2.5 : 1.5);
     line.setAttribute('stroke-opacity', 0.6);
     svg.appendChild(line);
   }

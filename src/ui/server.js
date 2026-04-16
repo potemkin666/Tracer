@@ -47,7 +47,7 @@ app.post('/search', async (req, res) => {
   }
 
   try {
-    const { results, avatarClusters } = await run(input, {
+    const { results, avatarClusters, connectorStats } = await run(input, {
       mode,
       apiKeys: serverApiKeys,
       fossils,
@@ -56,9 +56,59 @@ app.post('/search', async (req, res) => {
       documents,
     });
     const graph = buildGraph(results, avatarClusters);
-    res.json({ results, avatarClusters, graph });
+    res.json({ results, avatarClusters, graph, connectorStats });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ── /search/stream — Server-Sent Events streaming endpoint ───────────────────
+// Allows the UI to receive real-time progress as each connector completes,
+// instead of waiting 30+ seconds for the full pipeline.
+//
+// Usage:  const es = new EventSource('/search/stream?input=john+smith&mode=normal');
+//         es.addEventListener('progress', (e) => { ... });
+//         es.addEventListener('done', (e) => { es.close(); ... });
+app.get('/search/stream', async (req, res) => {
+  const { input, mode, fossils, avatars, timeSliceMode, documents } = req.query;
+  if (!input) {
+    return res.status(400).json({ error: 'input query parameter is required' });
+  }
+
+  // SSE headers
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  });
+
+  // Keep connection alive
+  const keepAlive = setInterval(() => res.write(': keepalive\n\n'), 15000);
+
+  function sendEvent(event, data) {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  }
+
+  try {
+    const { results, avatarClusters, connectorStats } = await run(input, {
+      mode: mode || 'normal',
+      apiKeys: serverApiKeys,
+      fossils: fossils === 'true',
+      avatars: avatars === 'true',
+      timeSliceMode: timeSliceMode === 'true',
+      documents: documents === 'true',
+      onProgress: (info) => {
+        sendEvent('progress', info);
+      },
+    });
+    const graph = buildGraph(results, avatarClusters);
+    sendEvent('done', { results, avatarClusters, graph, connectorStats });
+  } catch (err) {
+    sendEvent('error', { error: err.message });
+  } finally {
+    clearInterval(keepAlive);
+    res.end();
   }
 });
 
