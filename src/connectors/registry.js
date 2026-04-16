@@ -164,6 +164,7 @@ const ALL_CONNECTORS = [
   { id: 'rijksoverheid', label: 'Rijksoverheid', tier: 'regional', requiresKey: null, search: lazySearch('./rijksoverheid.js') },
   { id: 'werk-nl', label: 'Werk.nl', tier: 'regional', requiresKey: null, search: lazySearch('./werkNl.js') },
   { id: 'nationalevacaturebank', label: 'Nationale Vacaturebank', tier: 'regional', requiresKey: null, search: lazySearch('./nationalevacaturebank.js') },
+  { id: 'zoeken-nl', label: 'Zoeken.nl', tier: 'regional', requiresKey: null, search: lazySearch('./zoekenNl.js') },
 
   // ── REGIONAL – Wales ───────────────────────────────────────────────────────
   { id: 'gov-wales', label: 'Gov.Wales', tier: 'regional', requiresKey: null, search: lazySearch('./govWales.js') },
@@ -390,6 +391,62 @@ const ALL_CONNECTORS = [
   { id: '114-kr', label: '114.co.kr', tier: 'regional', requiresKey: null, search: lazySearch('./kr114.js') },
   { id: 'koreatechdesk', label: 'Korea Tech Desk', tier: 'regional', requiresKey: null, search: lazySearch('./koreaTechDesk.js') },
 
+  // ── REGIONAL – Scotland ────────────────────────────────────────────────────
+  { id: 'nrs-catalogue', label: 'NRS Online Catalogue', tier: 'regional', requiresKey: null, search: lazySearch('./nrsCatalogue.js') },
+  { id: 'scotlands-people', label: 'ScotlandsPeople', tier: 'regional', requiresKey: null, search: lazySearch('./scotlandsPeople.js') },
+  { id: 'trove-scot', label: 'Trove.scot', tier: 'regional', requiresKey: null, search: lazySearch('./troveScot.js') },
+  { id: 'canmore', label: 'Canmore', tier: 'regional', requiresKey: null, search: lazySearch('./canmore.js') },
+  { id: 'pastmap', label: 'PastMap', tier: 'regional', requiresKey: null, search: lazySearch('./pastmap.js') },
+  { id: 'nls-collections', label: 'NLS Collections', tier: 'regional', requiresKey: null, search: lazySearch('./nlsCollections.js') },
+  { id: 'nls-manuscripts', label: 'NLS Manuscripts', tier: 'regional', requiresKey: null, search: lazySearch('./nlsManuscripts.js') },
+  { id: 'nls-maps', label: 'NLS Maps', tier: 'regional', requiresKey: null, search: lazySearch('./nlsMaps.js') },
+  { id: 'electric-scotland', label: 'Electric Scotland', tier: 'regional', requiresKey: null, search: lazySearch('./electricScotland.js') },
+  { id: 'scottish-indexes', label: 'Scottish Indexes', tier: 'regional', requiresKey: null, search: lazySearch('./scottishIndexes.js') },
+  { id: 'directories-scot', label: 'Directories.scot', tier: 'regional', requiresKey: null, search: lazySearch('./directoriesScot.js') },
+  { id: 'opendata-scot', label: 'OpenData.scot', tier: 'regional', requiresKey: null, search: lazySearch('./opendataScot.js') },
+  { id: 'stirling-archives', label: 'Stirling Archives', tier: 'regional', requiresKey: null, search: lazySearch('./stirlingArchives.js') },
+  { id: 'mapgenie-uk', label: 'MapGenie UK', tier: 'regional', requiresKey: null, search: lazySearch('./mapgenieUk.js') },
+
+  // ── REGIONAL – Peru ────────────────────────────────────────────────────────
+  { id: 'debida-diligencia-pe', label: 'Debida Diligencia Peru', tier: 'regional', requiresKey: null, search: lazySearch('./debidaDiligenciaPe.js') },
+  { id: 'pj-pe', label: 'Poder Judicial Peru', tier: 'regional', requiresKey: null, search: lazySearch('./pjPe.js') },
+  { id: 'sunarp-pe', label: 'SUNARP Peru', tier: 'regional', requiresKey: null, search: lazySearch('./sunarpPe.js') },
+  { id: 'osce-pe', label: 'OSCE Peru', tier: 'regional', requiresKey: null, search: lazySearch('./oscePe.js') },
+  { id: 'sunat-pe', label: 'SUNAT Peru', tier: 'regional', requiresKey: null, search: lazySearch('./sunatPe.js') },
+  { id: 'migraciones-pe', label: 'Migraciones Peru', tier: 'regional', requiresKey: null, search: lazySearch('./migracionesPe.js') },
+  { id: 'sbs-pe', label: 'SBS Peru', tier: 'regional', requiresKey: null, search: lazySearch('./sbsPe.js') },
+  { id: 'jne-pe', label: 'JNE Peru', tier: 'regional', requiresKey: null, search: lazySearch('./jnePe.js') },
+
+  // ── REGIONAL – Denmark ─────────────────────────────────────────────────────
+  { id: 'politi-dk', label: 'Danish Police', tier: 'regional', requiresKey: null, search: lazySearch('./politiDk.js') },
+  { id: 'domstol-dk', label: 'Danish Courts', tier: 'regional', requiresKey: null, search: lazySearch('./domstolDk.js') },
+  { id: 'retsinformation-dk', label: 'Retsinformation', tier: 'regional', requiresKey: null, search: lazySearch('./retsinformationDk.js') },
+  { id: 'virk-dk', label: 'Virk.dk', tier: 'regional', requiresKey: null, search: lazySearch('./virkDk.js') },
+  { id: 'cvr-dk', label: 'CVR Denmark', tier: 'regional', requiresKey: null, search: lazySearch('./cvrDk.js') },
+  { id: 'tinglysning-dk', label: 'Tinglysning Denmark', tier: 'regional', requiresKey: null, search: lazySearch('./tinglysningDk.js') },
+  { id: 'skat-dk', label: 'Skat Denmark', tier: 'regional', requiresKey: null, search: lazySearch('./skatDk.js') },
+  { id: 'proff-dk', label: 'Proff.dk', tier: 'regional', requiresKey: null, search: lazySearch('./proffDk.js') },
+  { id: 'krak-dk', label: 'Krak.dk', tier: 'regional', requiresKey: null, search: lazySearch('./krakDk.js') },
+  { id: 'boligen-dk', label: 'Boligsiden Denmark', tier: 'regional', requiresKey: null, search: lazySearch('./boligenDk.js') },
+
+  // ── REGIONAL – Lithuania ───────────────────────────────────────────────────
+  { id: 'police-lt', label: 'Lithuanian Police', tier: 'regional', requiresKey: null, search: lazySearch('./policeLt.js') },
+  { id: 'ird-lt', label: 'IRD Lithuania', tier: 'regional', requiresKey: null, search: lazySearch('./irdLt.js') },
+  { id: 'lkpb-lt', label: 'LKPB Lithuania', tier: 'regional', requiresKey: null, search: lazySearch('./lkpbLt.js') },
+
+  // ── REGIONAL – US (Arizona / Misc) ─────────────────────────────────────────
+  { id: 'azdor-az', label: 'AZ Unclaimed Property', tier: 'regional', requiresKey: null, search: lazySearch('./azdorAz.js') },
+  { id: 'missing-money', label: 'MissingMoney', tier: 'regional', requiresKey: null, search: lazySearch('./missingMoney.js') },
+  { id: 'pima-inmate', label: 'Pima County Inmate Search', tier: 'regional', requiresKey: null, search: lazySearch('./pimaInmate.js') },
+
+  // ── REGIONAL – UK Academic / Archives ──────────────────────────────────────
+  { id: 'uk-data-service', label: 'UK Data Service', tier: 'regional', requiresKey: null, search: lazySearch('./ukDataService.js') },
+  { id: 'paul-mellon-centre', label: 'Paul Mellon Centre', tier: 'regional', requiresKey: null, search: lazySearch('./paulMellonCentre.js') },
+  { id: 'british-newspaper-archive', label: 'British Newspaper Archive', tier: 'regional', requiresKey: null, search: lazySearch('./britishNewspaperArchive.js') },
+  { id: 'gazetteer-uk', label: 'Gazetteer UK', tier: 'regional', requiresKey: null, search: lazySearch('./gazetteerUk.js') },
+  { id: 'genuki', label: 'GENUKI', tier: 'regional', requiresKey: null, search: lazySearch('./genuki.js') },
+  { id: 'british-listed-buildings', label: 'British Listed Buildings', tier: 'regional', requiresKey: null, search: lazySearch('./britishListedBuildings.js') },
+
   // ── META ──────────────────────────────────────────────────────────────────
   { id: 'startpage', label: 'Startpage', tier: 'meta', requiresKey: null, search: lazySearch('./startpage.js') },
   { id: 'dogpile', label: 'Dogpile', tier: 'meta', requiresKey: null, search: lazySearch('./dogpile.js') },
@@ -430,6 +487,13 @@ const ALL_CONNECTORS = [
   { id: 'researchgate', label: 'ResearchGate', tier: 'obscure', requiresKey: null, search: lazySearch('./researchgate.js') },
   { id: 'academia', label: 'Academia.edu', tier: 'obscure', requiresKey: null, search: lazySearch('./academia.js') },
   { id: 'ssrn', label: 'SSRN', tier: 'obscure', requiresKey: null, search: lazySearch('./ssrn.js') },
+  { id: 'gigablast', label: 'Gigablast', tier: 'obscure', requiresKey: null, search: lazySearch('./gigablast.js') },
+  { id: 'webwiki', label: 'WebWiki', tier: 'obscure', requiresKey: null, search: lazySearch('./webwiki.js') },
+  { id: '2lingual', label: '2lingual', tier: 'obscure', requiresKey: null, search: lazySearch('./twoLingual.js') },
+  { id: 'aol', label: 'AOL Search', tier: 'obscure', requiresKey: null, search: lazySearch('./aol.js') },
+  { id: 'exalead', label: 'Exalead', tier: 'obscure', requiresKey: null, search: lazySearch('./exalead.js') },
+  { id: 'givewater', label: 'GiveWater', tier: 'obscure', requiresKey: null, search: lazySearch('./givewater.js') },
+  { id: 'gnod', label: 'Gnod', tier: 'obscure', requiresKey: null, search: lazySearch('./gnod.js') },
 ];
 
 export function getActive(apiKeys, mode) {
