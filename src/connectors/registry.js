@@ -74,6 +74,25 @@ const ALL_CONNECTORS = [
   { id: 'europeana', label: 'Europeana', tier: 'open', requiresKey: null, search: lazySearch('./europeana.js') },
   { id: 'jstor', label: 'JSTOR', tier: 'open', requiresKey: null, search: lazySearch('./jstor.js') },
   { id: 'companies-house', label: 'UK Companies House', tier: 'open', requiresKey: null, search: lazySearch('./companieshouse.js') },
+  { id: 'google-maps', label: 'Google Maps', tier: 'open', requiresKey: null, search: lazySearch('./googleMaps.js') },
+  { id: 'google-books', label: 'Google Books', tier: 'open', requiresKey: null, search: lazySearch('./googleBooks.js') },
+  { id: 'bing-maps', label: 'Bing Maps', tier: 'open', requiresKey: null, search: lazySearch('./bingMaps.js') },
+  { id: 'yandex-maps', label: 'Yandex Maps', tier: 'open', requiresKey: null, search: lazySearch('./yandexMaps.js') },
+  { id: 'baidu-index', label: 'Baidu Index', tier: 'open', requiresKey: null, search: lazySearch('./baiduIndex.js') },
+  { id: 'weixin-sogou', label: 'Weixin Sogou', tier: 'open', requiresKey: null, search: lazySearch('./weixinSogou.js') },
+  { id: 'tusksearch', label: 'TuskSearch', tier: 'open', requiresKey: null, search: lazySearch('./tuskSearch.js') },
+  { id: 'excite', label: 'Excite', tier: 'open', requiresKey: null, search: lazySearch('./excite.js') },
+  { id: 'biznar', label: 'Biznar', tier: 'open', requiresKey: null, search: lazySearch('./biznar.js') },
+  { id: 'mednar', label: 'MedNar', tier: 'open', requiresKey: null, search: lazySearch('./mednar.js') },
+  { id: 'scienceresearch', label: 'ScienceResearch', tier: 'open', requiresKey: null, search: lazySearch('./scienceResearch.js') },
+  { id: 'kiddle', label: 'Kiddle', tier: 'open', requiresKey: null, search: lazySearch('./kiddle.js') },
+  { id: 'petalsearch', label: 'Petal Search', tier: 'open', requiresKey: null, search: lazySearch('./petalSearch.js') },
+  { id: 'grok', label: 'Grok', tier: 'open', requiresKey: null, search: lazySearch('./grok.js') },
+  { id: 'loc-gov', label: 'Library of Congress', tier: 'open', requiresKey: null, search: lazySearch('./locGov.js') },
+  { id: 'hathitrust', label: 'HathiTrust', tier: 'open', requiresKey: null, search: lazySearch('./hathiTrust.js') },
+  { id: 'british-museum', label: 'British Museum', tier: 'open', requiresKey: null, search: lazySearch('./britishMuseum.js') },
+  { id: 'royal-collection', label: 'Royal Collection Trust', tier: 'open', requiresKey: null, search: lazySearch('./royalCollectionTrust.js') },
+  { id: 'british-library', label: 'British Library', tier: 'open', requiresKey: null, search: lazySearch('./britishLibrary.js') },
 
   // ── OSINT ─────────────────────────────────────────────────────────────────
   { id: 'shodan', label: 'Shodan', tier: 'osint', requiresKey: 'shodan', search: lazySearch('./shodan.js') },
@@ -313,6 +332,27 @@ const ALL_CONNECTORS = [
 
   // ── REGIONAL – Birmingham ───────────────────────────────────────────────────
   { id: 'birmingham-planning', label: 'Birmingham Planning', tier: 'regional', requiresKey: null, search: lazySearch('./birminghamPlanning.js') },
+
+  // ── REGIONAL – New York State ──────────────────────────────────────────────
+  { id: 'dol-ny', label: 'NY DOL Contractor Registry', tier: 'regional', requiresKey: null, search: lazySearch('./dolNy.js') },
+  { id: 'nyscr-ny', label: 'NY State Contract Reporter', tier: 'regional', requiresKey: null, search: lazySearch('./nyscrNy.js') },
+  { id: 'dmv-ny', label: 'NY DMV', tier: 'regional', requiresKey: null, search: lazySearch('./dmvNy.js') },
+  { id: 'nysm-ny', label: 'NY State Museum', tier: 'regional', requiresKey: null, search: lazySearch('./nysmNy.js') },
+
+  // ── REGIONAL – France ──────────────────────────────────────────────────────
+  { id: 'pagesjaunes-fr', label: 'PagesJaunes', tier: 'regional', requiresKey: null, search: lazySearch('./pagesJaunesFr.js') },
+  { id: '118712-fr', label: '118712', tier: 'regional', requiresKey: null, search: lazySearch('./fr118712.js') },
+  { id: '118000-fr', label: '118000', tier: 'regional', requiresKey: null, search: lazySearch('./fr118000.js') },
+  { id: 'orange-annuaire-fr', label: 'Orange Annuaire', tier: 'regional', requiresKey: null, search: lazySearch('./orangeAnnuaireFr.js') },
+  { id: 'societe-fr', label: 'Societe.com', tier: 'regional', requiresKey: null, search: lazySearch('./societeFr.js') },
+  { id: 'verif-fr', label: 'Verif.com', tier: 'regional', requiresKey: null, search: lazySearch('./verifFr.js') },
+  { id: 'infobel-fr', label: 'Infobel France', tier: 'regional', requiresKey: null, search: lazySearch('./infobelFr.js') },
+  { id: 'europages-fr', label: 'Europages France', tier: 'regional', requiresKey: null, search: lazySearch('./europagesFr.js') },
+  { id: 'kompass-fr', label: 'Kompass France', tier: 'regional', requiresKey: null, search: lazySearch('./kompassFr.js') },
+  { id: 'service-public-fr', label: 'Service-Public.fr', tier: 'regional', requiresKey: null, search: lazySearch('./servicePublicFr.js') },
+  { id: 'jdn-fr', label: 'Journal du Net', tier: 'regional', requiresKey: null, search: lazySearch('./jdnFr.js') },
+  { id: 'recherche-fr', label: 'Recherche.fr', tier: 'regional', requiresKey: null, search: lazySearch('./rechercheFr.js') },
+  { id: 'voila-fr', label: 'Voila.fr', tier: 'regional', requiresKey: null, search: lazySearch('./voilaFr.js') },
 
   // ── REGIONAL – Poland ──────────────────────────────────────────────────────
   { id: 'onet-pl', label: 'Onet.pl', tier: 'regional', requiresKey: null, search: lazySearch('./onetPl.js') },
