@@ -715,8 +715,8 @@ async function searchDirect(query){
   // "best-effort" results for unknown queries from polluting the output.
   const tokens=query.toLowerCase().split(/\s+/).filter(Boolean);
   const relevant=results.filter(r=>{
-    const hay=((r.title||'')+'|'+(r.snippet||'')+'|'+(r.url||'')).toLowerCase();
-    return tokens.some(t=>hay.includes(t));
+    const text=((r.title||'')+'|'+(r.snippet||'')+'|'+(r.url||'')).toLowerCase();
+    return tokens.some(t=>text.includes(t));
   });
 
   return relevant.sort((a,b)=>(b.score||0)-(a.score||0));
