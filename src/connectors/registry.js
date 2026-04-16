@@ -157,6 +157,16 @@ const ALL_CONNECTORS = [
   { id: 'national-archives-uk', label: 'UK National Archives', tier: 'regional', requiresKey: null, search: lazySearch('./nationalArchivesUk.js') },
   { id: 'senedd', label: 'Senedd Wales', tier: 'regional', requiresKey: null, search: lazySearch('./senedd.js') },
 
+  // ── REGIONAL – London Historical ───────────────────────────────────────────
+  { id: 'old-bailey', label: 'Old Bailey Online', tier: 'regional', requiresKey: null, search: lazySearch('./oldBailey.js') },
+  { id: 'layers-of-london', label: 'Layers of London', tier: 'regional', requiresKey: null, search: lazySearch('./layersOfLondon.js') },
+  { id: 'booth-poverty-map', label: 'Booth Poverty Map', tier: 'regional', requiresKey: null, search: lazySearch('./boothPovertyMap.js') },
+  { id: 'locating-london', label: 'Locating London', tier: 'regional', requiresKey: null, search: lazySearch('./locatingLondon.js') },
+  { id: 'london-picture-archive', label: 'London Picture Archive', tier: 'regional', requiresKey: null, search: lazySearch('./londonPictureArchive.js') },
+  { id: 'british-history-online', label: 'British History Online', tier: 'regional', requiresKey: null, search: lazySearch('./britishHistoryOnline.js') },
+  { id: 'map-of-london', label: 'Map of Early Modern London', tier: 'regional', requiresKey: null, search: lazySearch('./mapOfLondon.js') },
+  { id: 'gm-lives', label: 'GM Lives', tier: 'regional', requiresKey: null, search: lazySearch('./gmLives.js') },
+
   // ── REGIONAL – Germany ─────────────────────────────────────────────────────
   { id: 'fireball', label: 'Fireball', tier: 'regional', requiresKey: null, search: lazySearch('./fireball.js') },
   { id: 'gelbeseiten', label: 'Gelbe Seiten', tier: 'regional', requiresKey: null, search: lazySearch('./gelbeseiten.js') },
