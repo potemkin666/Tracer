@@ -41,23 +41,45 @@ async function checkSite(site, username) {
   }
 }
 
+// ── Concurrency limiter (no external deps) ──────────────────────────────────
+const MAX_CONCURRENCY = 20;
+
+function pLimit(concurrency) {
+  let active = 0;
+  const queue = [];
+
+  function next() {
+    if (queue.length === 0 || active >= concurrency) return;
+    active++;
+    const { fn, resolve, reject } = queue.shift();
+    fn().then(resolve, reject).finally(() => { active--; next(); });
+  }
+
+  return function limit(fn) {
+    return new Promise((resolve, reject) => {
+      queue.push({ fn, resolve, reject });
+      next();
+    });
+  };
+}
+
 async function search(query, apiKeys = {}) {
   try {
     const data = await fetchData();
     const sites = (data && data.sites) || [];
 
     const username = query.trim().toLowerCase().split(/\s+/)[0];
-    const batch = sites.slice(0, 50);
+    const limit = pLimit(MAX_CONCURRENCY);
 
     const checks = await Promise.allSettled(
-      batch.map((site) => checkSite(site, username))
+      sites.map((site) => limit(() => checkSite(site, username)))
     );
 
     const results = [];
     for (let i = 0; i < checks.length; i++) {
       const outcome = checks[i];
       if (outcome.status === 'fulfilled' && outcome.value) {
-        const site = batch[i];
+        const site = sites[i];
         results.push(
           normalise('whats-my-name', query, {
             title: `[${site.name}] ${username}`,

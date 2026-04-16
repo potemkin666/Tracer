@@ -36,7 +36,7 @@ export async function run(input, config = {}) {
 
   const aggressive = mode === 'aggressive';
   const queries = generateQueries(input);
-  const limited = aggressive ? queries : queries.slice(0, 3);
+  const limited = aggressive ? queries : queries.slice(0, 6);
 
   const activeConnectors = getActive(apiKeys, mode);
 
