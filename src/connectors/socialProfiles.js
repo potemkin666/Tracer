@@ -1,68 +1,48 @@
 const axios = require('axios');
 const { normalise } = require('../normaliser');
+const { PLATFORMS } = require('./platforms');
 
-const PLATFORMS = [
-  { id: 'GitHub', url: u => `https://github.com/${u}` },
-  { id: 'Gist', url: u => `https://gist.github.com/${u}` },
-  { id: 'GitLab', url: u => `https://gitlab.com/${u}` },
-  { id: 'Bitbucket', url: u => `https://bitbucket.org/${u}` },
-  { id: 'SourceHut', url: u => `https://sr.ht/~${u}` },
-  { id: 'Reddit', url: u => `https://www.reddit.com/user/${u}` },
-  { id: 'Medium', url: u => `https://medium.com/@${u}` },
-  { id: 'Substack', url: u => `https://substack.com/@${u}` },
-  { id: 'Mastodon', url: u => `https://mastodon.social/@${u}` },
-  { id: 'Bluesky', url: u => `https://bsky.app/profile/${u}` },
-  { id: 'Twitter/X', url: u => `https://x.com/${u}` },
-  { id: 'Instagram', url: u => `https://www.instagram.com/${u}/` },
-  { id: 'TikTok', url: u => `https://www.tiktok.com/@${u}` },
-  { id: 'YouTube', url: u => `https://www.youtube.com/@${u}` },
-  { id: 'Twitch', url: u => `https://www.twitch.tv/${u}` },
-  { id: 'Vimeo', url: u => `https://vimeo.com/${u}` },
-  { id: 'SoundCloud', url: u => `https://soundcloud.com/${u}` },
-  { id: 'Bandcamp', url: u => `https://${u}.bandcamp.com` },
-  { id: 'Flickr', url: u => `https://www.flickr.com/photos/${u}/` },
-  { id: 'Imgur', url: u => `https://imgur.com/user/${u}` },
-  { id: 'Pinterest', url: u => `https://www.pinterest.com/${u}/` },
-  { id: 'Tumblr', url: u => `https://${u}.tumblr.com` },
-  { id: 'WordPress', url: u => `https://${u}.wordpress.com` },
-  { id: 'Blogger', url: u => `https://${u}.blogspot.com` },
-  { id: 'Pastebin', url: u => `https://pastebin.com/u/${u}` },
-  { id: 'SpeakerDeck', url: u => `https://speakerdeck.com/${u}` },
-  { id: 'SlideShare', url: u => `https://www.slideshare.net/${u}` },
-  { id: 'Issuu', url: u => `https://issuu.com/${u}` },
-  { id: 'Behance', url: u => `https://www.behance.net/${u}` },
-  { id: 'Dribbble', url: u => `https://dribbble.com/${u}` },
-  { id: 'DeviantArt', url: u => `https://www.deviantart.com/${u}` },
-  { id: 'About.me', url: u => `https://about.me/${u}` },
-  { id: 'Goodreads', url: u => `https://www.goodreads.com/${u}` },
-  { id: 'ResearchGate', url: u => `https://www.researchgate.net/profile/${u}` },
-  { id: 'Academia.edu', url: u => `https://${u}.academia.edu` },
-];
+// ── Concurrency limiter (no external deps) ──────────────────────────────────
+const MAX_CONCURRENCY = 10;
 
-async function checkUrl(url) {
+function pLimit(concurrency) {
+  let active = 0;
+  const queue = [];
+
+  function next() {
+    if (queue.length === 0 || active >= concurrency) return;
+    active++;
+    const { fn, resolve, reject } = queue.shift();
+    fn().then(resolve, reject).finally(() => { active--; next(); });
+  }
+
+  return function limit(fn) {
+    return new Promise((resolve, reject) => {
+      queue.push({ fn, resolve, reject });
+      next();
+    });
+  };
+}
+
+// ── Profile checking ────────────────────────────────────────────────────────
+
+async function checkUrl(url, username) {
   try {
-    const res = await axios.head(url, {
+    const res = await axios.get(url, {
       timeout: 5000,
       maxRedirects: 0,
       validateStatus: () => true,
+      headers: { 'User-Agent': 'Tracer/1.0' },
     });
-    return res.status === 200;
+    // Content-based validation: 200 + username present in body.
+    return (
+      res.status === 200 &&
+      typeof res.data === 'string' &&
+      res.data.toLowerCase().includes(username.toLowerCase())
+    );
   } catch (err) {
-    console.error('[connectors/socialProfiles] HEAD failed:', err.message);
-    try {
-      const res = await axios.get(url, {
-        timeout: 5000,
-        maxRedirects: 0,
-        validateStatus: () => true,
-        responseType: 'stream',
-      });
-      const found = res.status === 200;
-      res.data.destroy();
-      return found;
-    } catch (err2) {
-      console.error('[connectors/socialProfiles] GET failed:', err2.message);
-      return false;
-    }
+    console.error('[connectors/socialProfiles]', err.message);
+    return false;
   }
 }
 
@@ -102,6 +82,7 @@ async function search(query, apiKeys = {}) {
 
     const results = [];
     const seen = new Set();
+    const limit = pLimit(MAX_CONCURRENCY);
 
     const checks = [];
 
@@ -109,31 +90,31 @@ async function search(query, apiKeys = {}) {
       for (const platform of PLATFORMS) {
         const url = platform.url(u);
         checks.push(
-          checkUrl(url).then(found => {
+          limit(() => checkUrl(url, u).then(found => {
             if (found && !seen.has(platform.id + u)) {
               seen.add(platform.id + u);
               results.push({ platform: platform.id, url, u });
             }
-          })
+          }))
         );
       }
 
       checks.push(
-        checkHackerNews(u).then(r => {
+        limit(() => checkHackerNews(u).then(r => {
           if (r.found && !seen.has('HackerNews' + u)) {
             seen.add('HackerNews' + u);
             results.push({ platform: 'Hacker News', url: r.url, u });
           }
-        })
+        }))
       );
 
       checks.push(
-        checkStackOverflow(u).then(r => {
+        limit(() => checkStackOverflow(u).then(r => {
           if (r.found && !seen.has('StackOverflow' + u)) {
             seen.add('StackOverflow' + u);
             results.push({ platform: 'Stack Overflow', url: r.url, u });
           }
-        })
+        }))
       );
     }
 

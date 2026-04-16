@@ -18,14 +18,25 @@ npm install
 
 ## Usage
 
+API keys are loaded from environment variables or a JSON config file.
+**Never pass keys as CLI arguments** — they would be visible in `ps`,
+`/proc`, and shell history.
+
 ```bash
+# Set keys via environment
+export TRACER_BRAVE_KEY=your_key
+export TRACER_SERPAPI_KEY=your_key
+
 node src/index.js "john smith" \
   --mode normal \
-  --brave-key YOUR_KEY \
-  --serpapi-key YOUR_KEY \
-  --mojeek-key YOUR_KEY \
   --output results.json \
   --html report.html
+```
+
+Or use a config file:
+
+```bash
+node src/index.js "john smith" --config keys.json --output results.json
 ```
 
 ### Options
@@ -33,11 +44,43 @@ node src/index.js "john smith" \
 | Flag | Description |
 |------|-------------|
 | `--mode` | `normal` (3 queries) or `aggressive` (all queries) |
-| `--brave-key` | Brave Search API key |
-| `--serpapi-key` | SerpAPI key |
-| `--mojeek-key` | Mojeek API key |
+| `--config` | Path to JSON file with API keys |
 | `--output` | Path to save JSON results |
 | `--html` | Path to save HTML report |
+| `--fossils` | Enable fossil hunting |
+| `--avatars` | Enable avatar clustering |
+| `--time-slice` | Enable time-slice search |
+| `--documents` | Enable document search |
+
+### Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `TRACER_BRAVE_KEY` | Brave Search API key |
+| `TRACER_SERPAPI_KEY` | SerpAPI key |
+| `TRACER_MOJEEK_KEY` | Mojeek API key |
+| `TRACER_KAGI_KEY` | Kagi API key |
+| `TRACER_BING_KEY` | Bing Search API key |
+| `TRACER_GOOGLE_KEY` | Google Custom Search key |
+| `TRACER_GOOGLE_CX` | Google Custom Search CX |
+| `TRACER_METAGER_KEY` | MetaGer API key |
+| `TRACER_SWISSCOWS_KEY` | Swisscows API key |
+| `TRACER_SHODAN_KEY` | Shodan API key |
+| `TRACER_CENSYS_ID` | Censys API ID |
+| `TRACER_CENSYS_SECRET` | Censys API secret |
+| `TRACER_HUNTER_KEY` | Hunter.io API key |
+| `TRACER_INTELX_KEY` | IntelX API key |
+| `TRACER_PUBLICWWW_KEY` | PublicWWW API key |
+| `TRACER_LISTENNOTES_KEY` | ListenNotes API key |
+| `TRACER_YANDEX_KEY` | Yandex XML user:key |
+| `TRACER_NAVER_CLIENT_ID` | Naver client ID |
+| `TRACER_NAVER_CLIENT_SECRET` | Naver client secret |
+| `TRACER_SEARXNG_URL` | SearXNG instance URL |
+| `TRACER_WOLFRAMALPHA_KEY` | Wolfram Alpha API key |
+| `TRACER_NETLAS_KEY` | Netlas API key |
+| `TRACER_EXA_KEY` | Exa AI API key |
+| `TRACER_PERPLEXITY_KEY` | Perplexity AI API key |
+| `TRACER_TINEYE_KEY` | TinEye API key |
 
 ## Web UI
 

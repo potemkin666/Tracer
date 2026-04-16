@@ -2,9 +2,51 @@ const { run } = require('./orchestrator');
 const { exportJSON, exportHTML } = require('./exporter');
 const fs = require('fs');
 
+// Map of environment variable names to apiKeys property names.
+const ENV_KEY_MAP = {
+  TRACER_BRAVE_KEY: 'brave',
+  TRACER_SERPAPI_KEY: 'serpapi',
+  TRACER_MOJEEK_KEY: 'mojeek',
+  TRACER_KAGI_KEY: 'kagi',
+  TRACER_BING_KEY: 'bing',
+  TRACER_GOOGLE_KEY: 'google',
+  TRACER_GOOGLE_CX: 'googleCx',
+  TRACER_METAGER_KEY: 'metager',
+  TRACER_SWISSCOWS_KEY: 'swisscows',
+  TRACER_SHODAN_KEY: 'shodan',
+  TRACER_CENSYS_ID: 'censysId',
+  TRACER_CENSYS_SECRET: 'censysSecret',
+  TRACER_HUNTER_KEY: 'hunter',
+  TRACER_INTELX_KEY: 'intelx',
+  TRACER_PUBLICWWW_KEY: 'publicwww',
+  TRACER_LISTENNOTES_KEY: 'listennotes',
+  TRACER_YANDEX_KEY: 'yandex',
+  TRACER_NAVER_CLIENT_ID: 'naverClientId',
+  TRACER_NAVER_CLIENT_SECRET: 'naverClientSecret',
+  TRACER_SEARXNG_URL: 'searxngUrl',
+  TRACER_WOLFRAMALPHA_KEY: 'wolframalpha',
+  TRACER_NETLAS_KEY: 'netlas',
+  TRACER_EXA_KEY: 'exa',
+  TRACER_PERPLEXITY_KEY: 'perplexity',
+  TRACER_TINEYE_KEY: 'tineye',
+};
+
+function loadKeysFromEnv() {
+  const keys = {};
+  for (const [envVar, keyName] of Object.entries(ENV_KEY_MAP)) {
+    if (process.env[envVar]) {
+      keys[keyName] = process.env[envVar];
+    }
+  }
+  return keys;
+}
+
 function parseArgs(argv) {
   const args = argv.slice(2);
   const result = { apiKeys: {} };
+
+  // Load API keys from environment variables first (safe default).
+  Object.assign(result.apiKeys, loadKeysFromEnv());
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -20,72 +62,6 @@ function parseArgs(argv) {
       }
       case '--mode':
         result.mode = args[++i];
-        break;
-      case '--brave-key':
-        result.apiKeys.brave = args[++i];
-        break;
-      case '--serpapi-key':
-        result.apiKeys.serpapi = args[++i];
-        break;
-      case '--mojeek-key':
-        result.apiKeys.mojeek = args[++i];
-        break;
-      case '--kagi-key':
-        result.apiKeys.kagi = args[++i];
-        break;
-      case '--bing-key':
-        result.apiKeys.bing = args[++i];
-        break;
-      case '--google-key':
-        result.apiKeys.google = args[++i];
-        break;
-      case '--google-cx':
-        result.apiKeys.googleCx = args[++i];
-        break;
-      case '--metager-key':
-        result.apiKeys.metager = args[++i];
-        break;
-      case '--swisscows-key':
-        result.apiKeys.swisscows = args[++i];
-        break;
-      case '--shodan-key':
-        result.apiKeys.shodan = args[++i];
-        break;
-      case '--censys-id':
-        result.apiKeys.censysId = args[++i];
-        break;
-      case '--censys-secret':
-        result.apiKeys.censysSecret = args[++i];
-        break;
-      case '--hunter-key':
-        result.apiKeys.hunter = args[++i];
-        break;
-      case '--intelx-key':
-        result.apiKeys.intelx = args[++i];
-        break;
-      case '--publicwww-key':
-        result.apiKeys.publicwww = args[++i];
-        break;
-      case '--listennotes-key':
-        result.apiKeys.listennotes = args[++i];
-        break;
-      case '--yandex-key':
-        result.apiKeys.yandex = args[++i];
-        break;
-      case '--naver-client-id':
-        result.apiKeys.naverClientId = args[++i];
-        break;
-      case '--naver-client-secret':
-        result.apiKeys.naverClientSecret = args[++i];
-        break;
-      case '--searxng-url':
-        result.apiKeys.searxngUrl = args[++i];
-        break;
-      case '--wolframalpha-key':
-        result.apiKeys.wolframalpha = args[++i];
-        break;
-      case '--netlas-key':
-        result.apiKeys.netlas = args[++i];
         break;
       case '--output':
         result.output = args[++i];
@@ -121,34 +97,44 @@ async function main() {
     console.error(
       'Usage: node src/index.js <input> [--mode normal|aggressive]\n' +
         '  --config <path>          Load API keys from JSON file\n' +
-        '  --brave-key KEY          Brave Search API key\n' +
-        '  --serpapi-key KEY        SerpAPI key\n' +
-        '  --mojeek-key KEY         Mojeek API key\n' +
-        '  --kagi-key KEY           Kagi API key\n' +
-        '  --bing-key KEY           Bing Search API key\n' +
-        '  --google-key KEY         Google Custom Search key\n' +
-        '  --google-cx CX           Google Custom Search CX\n' +
-        '  --metager-key KEY        MetaGer API key\n' +
-        '  --swisscows-key KEY      Swisscows API key\n' +
-        '  --shodan-key KEY         Shodan API key\n' +
-        '  --censys-id ID           Censys API ID\n' +
-        '  --censys-secret SECRET   Censys API secret\n' +
-        '  --hunter-key KEY         Hunter.io API key\n' +
-        '  --intelx-key KEY         IntelX API key\n' +
-        '  --publicwww-key KEY      PublicWWW API key\n' +
-        '  --listennotes-key KEY    ListenNotes API key\n' +
-        '  --yandex-key USER:KEY    Yandex XML user:key\n' +
-        '  --naver-client-id ID     Naver client ID\n' +
-        '  --naver-client-secret S  Naver client secret\n' +
-        '  --searxng-url URL        SearXNG instance URL\n' +
-        '  --wolframalpha-key KEY   Wolfram Alpha API key\n' +
-        '  --netlas-key KEY         Netlas API key\n' +
         '  --output results.json    Save JSON output\n' +
         '  --html report.html       Save HTML report\n' +
         '  --fossils                Enable fossil hunting\n' +
         '  --avatars                Enable avatar clustering\n' +
         '  --time-slice             Enable time-slice search\n' +
-        '  --documents              Enable document search'
+        '  --documents              Enable document search\n' +
+        '\n' +
+        'API keys are loaded from environment variables (TRACER_BRAVE_KEY,\n' +
+        'TRACER_SERPAPI_KEY, etc.) or from a JSON config file via --config.\n' +
+        'Do NOT pass keys as command-line arguments — they are visible in\n' +
+        'process listings, shell history, and /proc.\n' +
+        '\n' +
+        'Supported env vars:\n' +
+        '  TRACER_BRAVE_KEY          Brave Search API key\n' +
+        '  TRACER_SERPAPI_KEY        SerpAPI key\n' +
+        '  TRACER_MOJEEK_KEY         Mojeek API key\n' +
+        '  TRACER_KAGI_KEY           Kagi API key\n' +
+        '  TRACER_BING_KEY           Bing Search API key\n' +
+        '  TRACER_GOOGLE_KEY         Google Custom Search key\n' +
+        '  TRACER_GOOGLE_CX          Google Custom Search CX\n' +
+        '  TRACER_METAGER_KEY        MetaGer API key\n' +
+        '  TRACER_SWISSCOWS_KEY      Swisscows API key\n' +
+        '  TRACER_SHODAN_KEY         Shodan API key\n' +
+        '  TRACER_CENSYS_ID          Censys API ID\n' +
+        '  TRACER_CENSYS_SECRET      Censys API secret\n' +
+        '  TRACER_HUNTER_KEY         Hunter.io API key\n' +
+        '  TRACER_INTELX_KEY         IntelX API key\n' +
+        '  TRACER_PUBLICWWW_KEY      PublicWWW API key\n' +
+        '  TRACER_LISTENNOTES_KEY    ListenNotes API key\n' +
+        '  TRACER_YANDEX_KEY         Yandex XML user:key\n' +
+        '  TRACER_NAVER_CLIENT_ID    Naver client ID\n' +
+        '  TRACER_NAVER_CLIENT_SECRET Naver client secret\n' +
+        '  TRACER_SEARXNG_URL        SearXNG instance URL\n' +
+        '  TRACER_WOLFRAMALPHA_KEY   Wolfram Alpha API key\n' +
+        '  TRACER_NETLAS_KEY         Netlas API key\n' +
+        '  TRACER_EXA_KEY            Exa AI API key\n' +
+        '  TRACER_PERPLEXITY_KEY     Perplexity AI API key\n' +
+        '  TRACER_TINEYE_KEY         TinEye API key'
     );
     process.exit(1);
   }
