@@ -1,6 +1,7 @@
 import { generateQueries } from './queryPlanner.js';
 import { dedupe } from './deduper.js';
 import { score } from './scorer.js';
+import { enrich } from './enricher.js';
 import { getActive } from './connectors/registry.js';
 import * as wayback from './connectors/wayback.js';
 import * as namechk from './connectors/namechk.js';
@@ -8,6 +9,59 @@ import * as timeSlice from './connectors/timeSlice.js';
 import * as docSearch from './connectors/docSearch.js';
 import * as fossilHunter from './fossilHunter.js';
 import * as avatarHunter from './avatarHunter.js';
+
+/**
+ * Per-connector timeout in milliseconds.
+ * Prevents a single slow connector from stalling the entire pipeline.
+ */
+const CONNECTOR_TIMEOUT_MS = 15_000;
+
+/**
+ * Maximum number of concurrent connector requests.
+ * Prevents flooding upstream APIs and triggering rate limits.
+ */
+const DEFAULT_CONCURRENCY = 12;
+
+/**
+ * Run a function with a timeout. Resolves to the result or rejects
+ * with a timeout error if the function takes longer than `ms`.
+ * Uses Promise.race to ensure the timer is always cleaned up.
+ */
+function withTimeout(fn, ms) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('connector timeout')), ms);
+  });
+  return Promise.race([fn(), timeout]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * Run an array of async task-factories with bounded concurrency.
+ * Each factory is () => Promise<T>. Returns Promise<T[]> in order.
+ *
+ * @param {Array<() => Promise>} tasks
+ * @param {number} concurrency
+ * @returns {Promise<Array>}
+ */
+function poolAll(tasks, concurrency) {
+  const results = new Array(tasks.length);
+  let next = 0;
+
+  function runNext() {
+    if (next >= tasks.length) return Promise.resolve();
+    const idx = next++;
+    return tasks[idx]().then(
+      (val) => { results[idx] = { status: 'fulfilled', value: val }; },
+      (err) => { results[idx] = { status: 'rejected', reason: err }; },
+    ).then(runNext);
+  }
+
+  const workers = Array.from(
+    { length: Math.min(concurrency, tasks.length) },
+    () => runNext(),
+  );
+  return Promise.all(workers).then(() => results);
+}
 
 /**
  * Run the Tracer pipeline.
@@ -27,6 +81,7 @@ export async function run(input, config = {}) {
     timeSliceMode = false,
     documents = false,
     onProgress,
+    concurrency = DEFAULT_CONCURRENCY,
   } = config;
 
   const notify =
@@ -40,20 +95,33 @@ export async function run(input, config = {}) {
 
   const activeConnectors = getActive(apiKeys, mode);
 
-  // Collect results via return values — no shared mutable array.
-  const connectorBatches = await Promise.all(
-    limited.map(async (query) => {
-      const batches = await Promise.all(
-        activeConnectors.map(async (c) => {
-          const batch = await c.search(query, apiKeys);
-          notify({ phase: 'connectors', connector: c.id, resultsSoFar: batch.length });
-          return batch;
-        })
-      );
-      return batches.flat();
-    })
-  );
-  let all = connectorBatches.flat();
+  // ── Connector stats (timing + errors) ──────────────────────────────────
+  const connectorStats = [];
+
+  // Build a flat list of tasks: one per (query, connector) pair.
+  const tasks = [];
+  for (const query of limited) {
+    for (const c of activeConnectors) {
+      tasks.push(() => {
+        const start = Date.now();
+        return withTimeout(() => c.search(query, apiKeys), CONNECTOR_TIMEOUT_MS)
+          .then((batch) => {
+            connectorStats.push({ id: c.id, ok: true, ms: Date.now() - start, count: batch.length });
+            notify({ phase: 'connectors', connector: c.id, resultsSoFar: batch.length });
+            return batch;
+          })
+          .catch((err) => {
+            connectorStats.push({ id: c.id, ok: false, ms: Date.now() - start, error: err.message });
+            notify({ phase: 'connectors', connector: c.id, error: err.message });
+            return [];
+          });
+      });
+    }
+  }
+
+  // Run with bounded concurrency
+  const settled = await poolAll(tasks, concurrency);
+  let all = settled.map(s => s.status === 'fulfilled' ? s.value : []).flat();
 
   notify({ phase: 'wayback', resultsSoFar: all.length });
 
@@ -82,19 +150,22 @@ export async function run(input, config = {}) {
   const unique = dedupe(all);
   notify({ phase: 'dedupe', resultsSoFar: unique.length });
 
+  // ── Enrichment: detect platforms, extract usernames, classify domains ──
+  const enriched = enrich(unique, input);
+
   // Fossil hunting: find old captures of profile URLs already discovered
   if (fossils || aggressive) {
-    const fossilResults = await fossilHunter.hunt(input, unique);
-    const withFossils = dedupe([...unique, ...fossilResults]);
+    const fossilResults = await fossilHunter.hunt(input, enriched);
+    const withFossils = dedupe([...enriched, ...fossilResults]);
     notify({ phase: 'fossils', resultsSoFar: withFossils.length });
     const scored = score(withFossils, input);
     const avatarClusters = avatars || aggressive ? await avatarHunter.hunt(scored) : [];
     notify({ phase: 'done', resultsSoFar: scored.length });
-    return { results: scored, avatarClusters };
+    return { results: scored, avatarClusters, connectorStats };
   }
 
-  const scored = score(unique, input);
+  const scored = score(enriched, input);
   const avatarClusters = avatars || aggressive ? await avatarHunter.hunt(scored) : [];
   notify({ phase: 'done', resultsSoFar: scored.length });
-  return { results: scored, avatarClusters };
+  return { results: scored, avatarClusters, connectorStats };
 }

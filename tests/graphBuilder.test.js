@@ -162,6 +162,48 @@ describe('buildGraph', () => {
     expect(crossEdges).toHaveLength(0);
   });
 
+  // ── Edge: sharedUsername ────────────────────────────────────────────────
+  test('sharedUsername edge when same username appears on different platforms', () => {
+    const results = [
+      result({ url: 'https://github.com/jsmith' }),
+      result({ url: 'https://twitter.com/jsmith' }),
+    ];
+    const { edges } = buildGraph(results);
+    const usernameEdges = edges.filter(e => e.type === 'sharedUsername');
+    expect(usernameEdges).toHaveLength(1);
+    expect(usernameEdges[0].detail).toBe('jsmith');
+  });
+
+  test('no sharedUsername edge when same domain (covered by sameDomain)', () => {
+    const results = [
+      result({ url: 'https://github.com/jsmith' }),
+      result({ url: 'https://github.com/jsmith2' }),
+    ];
+    const { edges } = buildGraph(results);
+    const usernameEdges = edges.filter(e => e.type === 'sharedUsername');
+    expect(usernameEdges).toHaveLength(0);
+  });
+
+  test('no sharedUsername edge when usernames differ', () => {
+    const results = [
+      result({ url: 'https://github.com/alice' }),
+      result({ url: 'https://twitter.com/bob' }),
+    ];
+    const { edges } = buildGraph(results);
+    const usernameEdges = edges.filter(e => e.type === 'sharedUsername');
+    expect(usernameEdges).toHaveLength(0);
+  });
+
+  test('sharedUsername from enricher meta.username fallback', () => {
+    const results = [
+      result({ url: 'https://github.com/jsmith', meta: { username: 'jsmith' } }),
+      result({ url: 'https://example.com/profile', meta: { username: 'jsmith' } }),
+    ];
+    const { edges } = buildGraph(results);
+    const usernameEdges = edges.filter(e => e.type === 'sharedUsername');
+    expect(usernameEdges).toHaveLength(1);
+  });
+
   // ── Dedup ──────────────────────────────────────────────────────────────
   test('does not create duplicate edges', () => {
     const results = [
@@ -192,5 +234,6 @@ describe('buildGraph', () => {
     expect(types).toContain('sameDomain');
     expect(types).toContain('sharedEmail');
     expect(types).toContain('crossLinked');
+    expect(types).toContain('sharedUsername');
   });
 });
