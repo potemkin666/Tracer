@@ -3,7 +3,16 @@ import { normalise } from '../normaliser.js';
 import { PLATFORMS } from './platforms.js';
 
 // Subset of platforms checked by namechk (quick-check tier).
-const NAMECHK_IDS = new Set(['GitHub', 'Twitter/X', 'Instagram', 'Reddit']);
+const NAMECHK_IDS = new Set([
+  'GitHub', 'Twitter/X', 'Instagram', 'Reddit',
+  'YouTube', 'TikTok', 'Medium', 'Pinterest',
+  'Twitch', 'SoundCloud', 'Flickr', 'Tumblr',
+  'Vimeo', 'Behance', 'Dribbble', 'DeviantArt',
+  'LinkedIn', 'Facebook', 'Snapchat', 'Threads',
+  'Steam', 'Spotify', 'Last.fm', 'Letterboxd',
+  'Mastodon', 'Bluesky', 'GitLab', 'Patreon',
+  'Ko-fi', 'Linktree',
+]);
 const NAMECHK_PLATFORMS = PLATFORMS.filter(p => NAMECHK_IDS.has(p.id));
 
 async function search(username) {

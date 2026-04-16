@@ -499,7 +499,7 @@ const ALL_CONNECTORS = [
 export function getActive(apiKeys, mode) {
   const tiers = mode === 'aggressive'
     ? ['core', 'open', 'osint', 'regional', 'meta', 'obscure']
-    : ['core', 'open'];
+    : ['core', 'open', 'meta'];
   return ALL_CONNECTORS.filter((c) => {
     if (!tiers.includes(c.tier)) return false;
     if (!c.requiresKey) return true;
