@@ -37,8 +37,27 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Tracer UI running at http://localhost:${PORT}`);
 });
+
+// Graceful shutdown: stop accepting new connections, let in-flight requests
+// finish (up to 10 s), then exit.
+function shutdown(signal) {
+  console.log(`\n${signal} received — shutting down gracefully…`);
+  server.close(() => {
+    console.log('All connections closed.');
+    process.exit(0);
+  });
+
+  // Force-exit if lingering connections don't drain in time.
+  setTimeout(() => {
+    console.error('Forcibly shutting down after timeout.');
+    process.exit(1);
+  }, 10000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 module.exports = app;
