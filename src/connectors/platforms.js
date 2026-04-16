@@ -44,11 +44,11 @@ const PLATFORMS = [
   // ── Social & Networking ─────────────────────────────────────────────
   { id: 'Reddit', url: u => `https://www.reddit.com/user/${u}` },
   { id: 'Medium', url: u => `https://medium.com/@${u}` },
-  { id: 'Substack', url: u => `https://${u}.substack.com` },
+  { id: 'Substack', url: u => `https://substack.com/@${u}` },
   { id: 'Mastodon', url: u => `https://mastodon.social/@${u}` },
   { id: 'Bluesky', url: u => `https://bsky.app/profile/${u}` },
   { id: 'Twitter/X', url: u => `https://x.com/${u}` },
-  { id: 'Instagram', url: u => `https://www.instagram.com/${u}` },
+  { id: 'Instagram', url: u => `https://www.instagram.com/${u}/` },
   { id: 'TikTok', url: u => `https://www.tiktok.com/@${u}` },
   { id: 'LinkedIn', url: u => `https://www.linkedin.com/in/${u}` },
   { id: 'Facebook', url: u => `https://www.facebook.com/${u}` },
@@ -131,9 +131,9 @@ const PLATFORMS = [
   { id: 'Podomatic', url: u => `https://www.podomatic.com/podcasts/${u}` },
 
   // ── Images / Design / Art ──────────────────────────────────────────
-  { id: 'Flickr', url: u => `https://www.flickr.com/photos/${u}` },
+  { id: 'Flickr', url: u => `https://www.flickr.com/photos/${u}/` },
   { id: 'Imgur', url: u => `https://imgur.com/user/${u}` },
-  { id: 'Pinterest', url: u => `https://www.pinterest.com/${u}` },
+  { id: 'Pinterest', url: u => `https://www.pinterest.com/${u}/` },
   { id: 'Behance', url: u => `https://www.behance.net/${u}` },
   { id: 'Dribbble', url: u => `https://dribbble.com/${u}` },
   { id: 'DeviantArt', url: u => `https://www.deviantart.com/${u}` },
