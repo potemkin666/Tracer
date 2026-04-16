@@ -1,0 +1,26 @@
+function score(results, originalInput) {
+  const lowerInput = originalInput.toLowerCase();
+  const urlMap = {};
+
+  results.forEach((r) => {
+    if (r.url) urlMap[r.url] = (urlMap[r.url] || 0) + 1;
+  });
+
+  const scored = results.map((r) => {
+    let s = 0;
+    const title = (r.title || '').toLowerCase();
+    const snippet = (r.snippet || '').toLowerCase();
+    const url = (r.url || '').toLowerCase();
+
+    if (title.includes(lowerInput) || snippet.includes(lowerInput)) s += 10;
+    if (url.includes(lowerInput.replace(/\s+/g, ''))) s += 5;
+    if ((urlMap[r.url] || 0) > 1) s += 3;
+    if (url.includes('archive.org') || r.source === 'wayback') s += 2;
+
+    return { ...r, score: s };
+  });
+
+  return scored.sort((a, b) => b.score - a.score);
+}
+
+module.exports = { score };
