@@ -1,5 +1,7 @@
 # Tracer
 
+**[🌊 Launch Tracer Web UI](https://potemkin666.github.io/Tracer/)** — search directly from your browser, no install needed.
+
 A Node.js-based identity search tool that automates multi-source discovery for names, usernames, and aliases. It replaces manual workflows (Google dorks, multiple engines, archive checks) with a single orchestrated pipeline.
 
 ## Features

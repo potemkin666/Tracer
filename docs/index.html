@@ -108,6 +108,7 @@
     #conn-wrap{display:flex;align-items:center;gap:.45rem;font-size:.5rem}
     .dot{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 1.5s ease-in-out infinite}
     .dot.on{background:var(--bright);animation:none}
+    .dot.standalone{background:var(--cyan);animation:none}
     @keyframes blink{50%{opacity:.15}}
 
     /* === SEARCH ROW === */
@@ -231,15 +232,6 @@
     .cluster{background:rgba(230,57,70,.05);border:1px solid rgba(230,57,70,.3);padding:.8rem 1rem;margin-bottom:.65rem}
     .cluster-hdr{font-family:'Press Start 2P',monospace;font-size:.48rem;color:#ff4d6d;margin-bottom:.4rem}
 
-    /* === SETUP GUIDE === */
-    #guide{
-      display:none;width:100%;max-width:800px;
-      background:rgba(0,10,30,.88);border:1px solid var(--glow);
-      padding:1.4rem 1.8rem;margin-bottom:1.2rem;font-size:.82rem;line-height:1.75;
-    }
-    #guide h3{font-family:'Press Start 2P',monospace;font-size:.58rem;color:var(--bright);margin-bottom:.9rem}
-    #guide code{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);padding:.1rem .35rem;color:var(--cyan)}
-    #guide pre{background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.7rem .9rem;margin:.7rem 0;color:var(--glow);overflow-x:auto;font-size:.8rem}
     .err{color:var(--red);font-size:.75rem;padding:.45rem .7rem;border:1px solid rgba(255,77,109,.3);background:rgba(255,77,109,.05);margin-top:.7rem;display:none}
 
     /* === FOOTER === */
@@ -280,7 +272,7 @@
       </span>
     </div>
 
-    <div id="eng-bar">ENGINES READY: <span id="eng-count">–</span></div>
+    <div id="eng-bar">ENGINES READY: <span id="eng-count">8 open APIs (standalone)</span></div>
 
     <!-- PRIMARY SEARCH ROW -->
     <div class="search-row">
@@ -302,14 +294,26 @@
       <label><input type="checkbox" id="opt-docs"> DOCUMENTS</label>
     </div>
 
-    <!-- API ENDPOINT -->
-    <div style="display:flex;gap:.6rem;margin-bottom:1rem;align-items:center">
-      <span style="font-family:'Press Start 2P',monospace;font-size:.46rem;color:var(--dim);white-space:nowrap">API ENDPOINT</span>
-      <input type="text" id="endpoint" value="http://localhost:3000"
-        style="flex:1;background:rgba(0,18,46,.85);border:1px solid var(--teal);color:var(--cyan);
-               font-family:'Share Tech Mono',monospace;font-size:.82rem;padding:.4rem .7rem;outline:none;">
-      <button class="btn btn-sm" onclick="checkConn()">PING</button>
-    </div>
+    <!-- LOCAL SERVER (collapsible, advanced) -->
+    <details>
+      <summary>LOCAL SERVER — connect for 192+ engines</summary>
+      <div>
+        <div style="display:flex;gap:.6rem;margin-bottom:.8rem;align-items:center">
+          <span style="font-family:'Press Start 2P',monospace;font-size:.46rem;color:var(--dim);white-space:nowrap">API ENDPOINT</span>
+          <input type="text" id="endpoint" value="http://localhost:3000"
+            style="flex:1;background:rgba(0,18,46,.85);border:1px solid var(--teal);color:var(--cyan);
+                   font-family:'Share Tech Mono',monospace;font-size:.82rem;padding:.4rem .7rem;outline:none;">
+          <button class="btn btn-sm" onclick="checkConn()">PING</button>
+        </div>
+        <div id="guide" style="font-size:.8rem;line-height:1.7;color:var(--silver)">
+          <p>Run a local Tracer server for full power (192 connectors):</p>
+          <pre style="background:rgba(0,8,22,.85);border:1px solid rgba(0,184,212,.2);padding:.6rem .8rem;margin:.5rem 0;color:var(--glow);overflow-x:auto;font-size:.78rem">git clone https://github.com/potemkin666/Tracer
+cd Tracer &amp;&amp; npm install
+npm run serve</pre>
+          <p style="color:var(--dim)">Then click <strong style="color:var(--bright)">PING</strong> to connect.</p>
+        </div>
+      </div>
+    </details>
 
     <!-- API KEYS (collapsible) -->
     <details>
@@ -326,18 +330,6 @@
     </details>
 
     <div class="err" id="err"></div>
-  </div>
-
-  <!-- SETUP GUIDE (shown when offline) -->
-  <div id="guide">
-    <h3>🌊 START YOUR LOCAL SERVER</h3>
-    <p>Tracer runs as a local Node.js server. GitHub Pages hosts this UI only.</p>
-    <pre>git clone https://github.com/potemkin666/Tracer
-cd Tracer
-npm install
-npm run serve</pre>
-    <p>Then set <strong>API ENDPOINT</strong> above to <code>http://localhost:3000</code> and click <strong>DIVE DEEP</strong>.</p>
-    <p style="margin-top:.8rem;color:var(--dim)">Tip: API keys are optional — many open engines run without them.</p>
   </div>
 
   <!-- LOADING -->
@@ -434,6 +426,8 @@ function collectKeys(){const o={};KEY_DEFS.forEach(k=>{const el=document.getElem
 
 // ── CONNECTION ────────────────────────────────────────────────────────────────
 let connected=false;
+const isGHPages=location.hostname.endsWith('.github.io');
+
 async function checkConn(){
   const base=document.getElementById('endpoint').value.replace(/\/$/,'');
   try{
@@ -442,16 +436,14 @@ async function checkConn(){
       connected=true;
       document.getElementById('dot').className='dot on';
       document.getElementById('conn-lbl').textContent='ONLINE';
-      document.getElementById('guide').style.display='none';
       updateEngCount(base);
       return true;
     }
   }catch{}
   connected=false;
-  document.getElementById('dot').className='dot';
-  document.getElementById('conn-lbl').textContent='OFFLINE';
-  document.getElementById('guide').style.display='block';
-  document.getElementById('eng-count').textContent='0 (server offline — showing open-API results)';
+  document.getElementById('dot').className='dot'+(isGHPages?' standalone':'');
+  document.getElementById('conn-lbl').textContent=isGHPages?'STANDALONE':'OFFLINE';
+  if(!isGHPages){document.getElementById('eng-count').textContent='0 (server offline — open-API fallback)';}
   return false;
 }
 document.getElementById('endpoint').addEventListener('change',checkConn);
@@ -676,8 +668,11 @@ function showErr(msg,isErr){const el=document.getElementById('err');el.textConte
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 loadKeys();
-checkConn();
-setInterval(checkConn,20000);
+if(!isGHPages){checkConn();setInterval(checkConn,20000);}
+else{
+  document.getElementById('dot').className='dot standalone';
+  document.getElementById('conn-lbl').textContent='STANDALONE';
+}
 </script>
 </body>
 </html>
