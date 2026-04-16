@@ -54,12 +54,19 @@ app.get('/', (req, res) => {
 });
 
 app.post('/search', async (req, res) => {
-  const { input, mode, apiKeys } = req.body || {};
+  const { input, mode, apiKeys, fossils, avatars, timeSliceMode, documents } = req.body || {};
   if (!input) return res.status(400).json({ error: 'input is required' });
 
   try {
-    const results = await run(input, { mode, apiKeys });
-    res.json(results);
+    const { results, avatarClusters } = await run(input, {
+      mode,
+      apiKeys,
+      fossils,
+      avatars,
+      timeSliceMode,
+      documents,
+    });
+    res.json({ results, avatarClusters });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

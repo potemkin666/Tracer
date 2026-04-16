@@ -18,4 +18,11 @@ function generateQueries(input) {
   ];
 }
 
-module.exports = { generateQueries };
+const DOC_FILETYPES = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'];
+
+function generateDocQueries(input) {
+  const quoted = `"${input}"`;
+  return DOC_FILETYPES.map((ft) => `${quoted} filetype:${ft}`);
+}
+
+module.exports = { generateQueries, generateDocQueries };

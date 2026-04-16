@@ -25,6 +25,18 @@ function parseArgs(argv) {
       case '--html':
         result.html = args[++i];
         break;
+      case '--fossils':
+        result.fossils = true;
+        break;
+      case '--avatars':
+        result.avatars = true;
+        break;
+      case '--time-slice':
+        result.timeSliceMode = true;
+        break;
+      case '--documents':
+        result.documents = true;
+        break;
       default:
         if (!args[i].startsWith('--')) result.input = args[i];
     }
@@ -34,25 +46,46 @@ function parseArgs(argv) {
 }
 
 async function main() {
-  const { input, mode, apiKeys, output, html } = parseArgs(process.argv);
+  const { input, mode, apiKeys, output, html, fossils, avatars, timeSliceMode, documents } =
+    parseArgs(process.argv);
 
   if (!input) {
-    console.error('Usage: node src/index.js <input> [--mode normal|aggressive] [--brave-key KEY] [--serpapi-key KEY] [--mojeek-key KEY] [--output results.json] [--html report.html]');
+    console.error(
+      'Usage: node src/index.js <input> [--mode normal|aggressive] ' +
+        '[--brave-key KEY] [--serpapi-key KEY] [--mojeek-key KEY] ' +
+        '[--output results.json] [--html report.html] ' +
+        '[--fossils] [--avatars] [--time-slice] [--documents]'
+    );
     process.exit(1);
   }
 
   console.log(`Searching for: "${input}" (mode: ${mode || 'normal'})`);
 
-  const results = await run(input, { mode, apiKeys });
+  const { results, avatarClusters } = await run(input, {
+    mode,
+    apiKeys,
+    fossils,
+    avatars,
+    timeSliceMode,
+    documents,
+  });
 
   console.log(`\nTotal results: ${results.length}`);
   console.log('\nTop 5 results:');
   results.slice(0, 5).forEach((r, i) => {
-    console.log(`  ${i + 1}. [${r.score}] ${r.title || r.url} (${r.source})`);
+    const tags = (r.meta && r.meta.tags && r.meta.tags.length) ? ` [${r.meta.tags.join(',')}]` : '';
+    console.log(`  ${i + 1}. [score:${r.score}${tags}] ${r.title || r.url} (${r.source})`);
   });
 
+  if (avatarClusters && avatarClusters.length > 0) {
+    console.log(`\nAvatar recurrences found: ${avatarClusters.length}`);
+    avatarClusters.forEach((c, i) => {
+      console.log(`  ${i + 1}. Hash ${c.avatarHash.slice(0, 8)}... reused across ${c.urls.length} results`);
+    });
+  }
+
   if (output) {
-    exportJSON(results, output);
+    exportJSON({ results, avatarClusters }, output);
     console.log(`\nJSON saved to: ${output}`);
   }
 
