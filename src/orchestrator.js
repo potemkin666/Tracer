@@ -154,17 +154,14 @@ export async function run(input, config = {}) {
   const enriched = enrich(unique, input);
 
   // Fossil hunting: find old captures of profile URLs already discovered
+  let finalResults = enriched;
   if (fossils || aggressive) {
     const fossilResults = await fossilHunter.hunt(input, enriched);
-    const withFossils = dedupe([...enriched, ...fossilResults]);
-    notify({ phase: 'fossils', resultsSoFar: withFossils.length });
-    const scored = score(withFossils, input);
-    const avatarClusters = avatars || aggressive ? await avatarHunter.hunt(scored) : [];
-    notify({ phase: 'done', resultsSoFar: scored.length });
-    return { results: scored, avatarClusters, connectorStats };
+    finalResults = dedupe([...enriched, ...fossilResults]);
+    notify({ phase: 'fossils', resultsSoFar: finalResults.length });
   }
 
-  const scored = score(enriched, input);
+  const scored = score(finalResults, input);
   const avatarClusters = avatars || aggressive ? await avatarHunter.hunt(scored) : [];
   notify({ phase: 'done', resultsSoFar: scored.length });
   return { results: scored, avatarClusters, connectorStats };

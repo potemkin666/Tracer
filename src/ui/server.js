@@ -42,18 +42,22 @@ app.use(express.static(publicDir));
 
 app.post('/search', async (req, res) => {
   const { input, mode, fossils, avatars, timeSliceMode, documents } = req.body || {};
-  if (!input) {
+  if (!input || typeof input !== 'string') {
     return res.status(400).json({ error: 'input is required' });
   }
+  if (input.length > 500) {
+    return res.status(400).json({ error: 'input too long (max 500 characters)' });
+  }
+  const validMode = mode === 'aggressive' ? 'aggressive' : 'normal';
 
   try {
     const { results, avatarClusters, connectorStats } = await run(input, {
-      mode,
+      mode: validMode,
       apiKeys: serverApiKeys,
-      fossils,
-      avatars,
-      timeSliceMode,
-      documents,
+      fossils: !!fossils,
+      avatars: !!avatars,
+      timeSliceMode: !!timeSliceMode,
+      documents: !!documents,
     });
     const graph = buildGraph(results, avatarClusters);
     res.json({ results, avatarClusters, graph, connectorStats });
@@ -71,8 +75,11 @@ app.post('/search', async (req, res) => {
 //         es.addEventListener('done', (e) => { es.close(); ... });
 app.get('/search/stream', async (req, res) => {
   const { input, mode, fossils, avatars, timeSliceMode, documents } = req.query;
-  if (!input) {
+  if (!input || typeof input !== 'string') {
     return res.status(400).json({ error: 'input query parameter is required' });
+  }
+  if (input.length > 500) {
+    return res.status(400).json({ error: 'input too long (max 500 characters)' });
   }
 
   // SSE headers
@@ -86,13 +93,19 @@ app.get('/search/stream', async (req, res) => {
   // Keep connection alive
   const keepAlive = setInterval(() => res.write(': keepalive\n\n'), 15000);
 
+  // Guard against writing after client disconnect
+  let closed = false;
+  res.on('close', () => { closed = true; });
+
   function sendEvent(event, data) {
+    if (closed) return;
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   }
 
   try {
+    const validMode = mode === 'aggressive' ? 'aggressive' : 'normal';
     const { results, avatarClusters, connectorStats } = await run(input, {
-      mode: mode || 'normal',
+      mode: validMode,
       apiKeys: serverApiKeys,
       fossils: fossils === 'true',
       avatars: avatars === 'true',

@@ -554,8 +554,9 @@ async function updateEngCount(base){
 
 // ── fetchWithRetry: single retry with exponential backoff + 429 handling ──
 const _rateLimitWarnings=[];
-async function fetchWithRetry(url,opts,retries=1){
+async function fetchWithRetry(url,opts,maxRetries=1){
   const timeout=10000;
+  let remaining=maxRetries;
   async function attempt(){
     const r=await fetch(url,Object.assign({signal:AbortSignal.timeout(timeout)},opts||{}));
     if(r.status===429){
@@ -569,9 +570,9 @@ async function fetchWithRetry(url,opts,retries=1){
         else{const d=Date.parse(raHeader);if(!isNaN(d))waitSec=Math.min(120,Math.max(1,Math.ceil((d-Date.now())/1000)))}
       }
       _rateLimitWarnings.push(`${src} rate-limited — retry in ${waitSec}s`);
-      if(retries>0){
+      if(remaining>0){
+        remaining--;
         await new Promise(ok=>setTimeout(ok,waitSec*1000));
-        retries--;
         return attempt();
       }
       const err=new Error(`429 rate-limited: ${src}`);err._rateLimited=true;throw err;
@@ -581,8 +582,8 @@ async function fetchWithRetry(url,opts,retries=1){
   }
   try{return await attempt()}
   catch(e){
-    if(retries>0&&!e._rateLimited){
-      retries--;
+    if(remaining>0&&!e._rateLimited){
+      remaining--;
       await new Promise(ok=>setTimeout(ok,2000));
       return attempt();
     }
@@ -1025,7 +1026,6 @@ async function doSearch(){
         body:JSON.stringify({
           input:query,
           mode:document.getElementById('mode').value,
-          apiKeys:collectKeys(),
           fossils:document.getElementById('opt-fossils').checked,
           avatars:document.getElementById('opt-avatars').checked,
           timeSliceMode:document.getElementById('opt-timeslice').checked,
@@ -1120,10 +1120,10 @@ function renderResults(results,clusters){
     const bc=bclass(r.source,tags);
     const seenHtml=seenOn.length>1?
       `<div class="card-seen">SEEN ON ${seenOn.length}:${seenOn.map(s=>`<span>${esc(s)}</span>`).join('')}</div>`:'';
-    const tagsHtml=tags.length?`<div class="tags">${tags.map(t=>`<span class="tag">${esc(t.toUpperCase())}</span>`).join('')}</div>`:'';
+    const tagsHtml=tags.length?tags.map(t=>`<span class="tag">${esc(t.toUpperCase())}</span>`).join(''):'';
     const eraTag=r.meta&&r.meta.era?`<span class="tag" style="border-color:var(--gold);color:var(--gold)">ERA ${r.meta.era}</span>`:'';
     const ftTag=r.meta&&r.meta.fileType?`<span class="tag" style="border-color:#b5838d;color:#b5838d">${esc(r.meta.fileType.toUpperCase())}</span>`:'';
-    const card=document.createElement('div');card.className='card';
+    const allTags=eraTag+ftTag+tagsHtml;    const card=document.createElement('div');card.className='card';
     card.style.animationDelay=(i*.035)+'s';
     card.innerHTML=
       `<div class="card-top">`+
@@ -1134,7 +1134,7 @@ function renderResults(results,clusters){
       (r.snippet?`<div class="card-snip">${esc(r.snippet)}</div>`:'')+
       (r.url?`<div class="card-url">${esc(r.url)}</div>`:'')+
       seenHtml+
-      ((eraTag||ftTag||tagsHtml)?`<div class="tags">${eraTag}${ftTag}${tagsHtml}</div>`:'');
+      (allTags?`<div class="tags">${allTags}</div>`:'');
     list.appendChild(card);
   });
 }

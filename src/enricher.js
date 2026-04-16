@@ -106,7 +106,7 @@ export function enrich(results, input) {
 
   for (const r of results) {
     if (!r.meta || typeof r.meta !== 'object') r.meta = {};
-    if (!Array.isArray(r.meta.tags)) r.meta.tags = [...(r.meta.tags || [])];
+    if (!Array.isArray(r.meta.tags)) r.meta.tags = [];
 
     const { category, username } = classifyUrl(r.url);
 
