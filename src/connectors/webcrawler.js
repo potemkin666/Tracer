@@ -1,6 +1,6 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import cheerio from 'cheerio';
+import { normalise } from '../normaliser.js';
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
@@ -24,4 +24,4 @@ async function search(query, apiKeys = {}) {
   } catch (err) { console.error('[connectors/webcrawler]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

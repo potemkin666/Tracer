@@ -1,6 +1,6 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import cheerio from 'cheerio';
+import { normalise } from '../normaliser.js';
 
 async function search(query) {
   try {
@@ -20,4 +20,4 @@ async function search(query) {
     return results;
   } catch (err) { console.error('[connectors/blogsearch]', err.message); return []; }
 }
-module.exports = { search };
+export { search };

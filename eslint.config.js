@@ -34,6 +34,24 @@ module.exports = [
     },
   },
   {
+    // ESM source files
+    files: ['src/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        URL: 'readonly',
+      },
+    },
+  },
+  {
     // Test-file overrides
     files: ['tests/**/*.js'],
     languageOptions: {

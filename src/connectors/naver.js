@@ -1,6 +1,6 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import cheerio from 'cheerio';
+import { normalise } from '../normaliser.js';
 
 function stripTags(html) {
   return cheerio.load(html).text();
@@ -28,4 +28,4 @@ async function search(query, apiKeys = {}) {
   } catch (err) { console.error('[connectors/naver]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import { normalise } from '../normaliser.js';
 
 async function search(query) {
   try {
@@ -34,4 +34,4 @@ async function search(query) {
   } catch (err) { console.error('[connectors/wayback]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

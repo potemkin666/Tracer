@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import { normalise } from '../normaliser.js';
 
 function looksLikeDomain(q) {
   return /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(q.replace(/^https?:\/\//, '').split('/')[0]);
@@ -41,4 +41,4 @@ async function search(query, apiKeys = {}) {
   } catch (err) { console.error('[connectors/hunter]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

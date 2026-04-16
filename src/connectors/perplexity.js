@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import { normalise } from '../normaliser.js';
 
 const URL_RE = /https?:\/\/[^\s"'<>)\]]+/g;
 
@@ -25,4 +25,4 @@ async function search(query, apiKeys = {}) {
     });
   } catch (err) { console.error('[connectors/perplexity]', err.message); return []; }
 }
-module.exports = { search };
+export { search };

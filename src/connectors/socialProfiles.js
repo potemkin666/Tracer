@@ -1,6 +1,6 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
-const { PLATFORMS } = require('./platforms');
+import axios from 'axios';
+import { normalise } from '../normaliser.js';
+import { PLATFORMS } from './platforms.js';
 
 // ── Concurrency limiter (no external deps) ──────────────────────────────────
 const MAX_CONCURRENCY = 10;
@@ -132,4 +132,4 @@ async function search(query, apiKeys = {}) {
   } catch (err) { console.error('[connectors/socialProfiles]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

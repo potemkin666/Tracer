@@ -51,4 +51,4 @@ const PLATFORMS = [
   { id: 'Academia.edu', url: u => `https://${u}.academia.edu` },
 ];
 
-module.exports = { PLATFORMS };
+export { PLATFORMS };

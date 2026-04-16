@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import { normalise } from '../normaliser.js';
 
 async function search(query, apiKeys = {}) {
   try {
@@ -15,4 +15,4 @@ async function search(query, apiKeys = {}) {
   } catch (err) { console.error('[connectors/swisscows]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

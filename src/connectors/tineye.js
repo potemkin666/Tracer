@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import { normalise } from '../normaliser.js';
 
 // TineEye is reverse image search — only useful when query is an image URL
 function isImageUrl(s) {
@@ -25,4 +25,4 @@ async function search(query, apiKeys = {}) {
     );
   } catch (err) { console.error('[connectors/tineye]', err.message); return []; }
 }
-module.exports = { search };
+export { search };

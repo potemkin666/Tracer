@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import { normalise } from '../normaliser.js';
 
 let cachedData = null;
 
@@ -77,4 +77,4 @@ async function search(query, apiKeys = {}) {
   }
 }
 
-module.exports = { search };
+export { search };

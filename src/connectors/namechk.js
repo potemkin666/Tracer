@@ -1,6 +1,6 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
-const { PLATFORMS } = require('./platforms');
+import axios from 'axios';
+import { normalise } from '../normaliser.js';
+import { PLATFORMS } from './platforms.js';
 
 // Subset of platforms checked by namechk (quick-check tier).
 const NAMECHK_IDS = new Set(['GitHub', 'Twitter/X', 'Instagram', 'Reddit']);
@@ -46,4 +46,4 @@ async function search(username) {
   return results;
 }
 
-module.exports = { search };
+export { search };

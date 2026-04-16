@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import { normalise } from '../normaliser.js';
 
 const DEFAULT_INSTANCES = [
   'https://searx.be',
@@ -28,4 +28,4 @@ async function search(query, apiKeys = {}) {
   return [];
 }
 
-module.exports = { search };
+export { search };

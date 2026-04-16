@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import { normalise } from '../normaliser.js';
 
 const GQL_QUERY = `
 query Search($q: String!) {
@@ -43,4 +43,4 @@ async function search(query, apiKeys = {}) {
   } catch (err) { console.error('[connectors/sourcegraph]', err.message); return []; }
 }
 
-module.exports = { search };
+export { search };

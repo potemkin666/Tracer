@@ -1,5 +1,5 @@
-const axios = require('axios');
-const { normalise } = require('../normaliser');
+import axios from 'axios';
+import { normalise } from '../normaliser.js';
 
 const ERAS = [
   { year: 2013, from: '20120101', to: '20141231' },
@@ -58,4 +58,4 @@ async function search(query, years) {
   return batches.flat();
 }
 
-module.exports = { search, ERAS };
+export { search, ERAS };
