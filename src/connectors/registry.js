@@ -206,6 +206,15 @@ const ALL_CONNECTORS = [
   // ── REGIONAL – Belgium ─────────────────────────────────────────────────────
   { id: 'whitepages-be', label: 'White Pages Belgium', tier: 'regional', requiresKey: null, search: lazySearch('./whitepagesBe.js') },
 
+  // ── REGIONAL – DRC (Congo) ──────────────────────────────────────────────
+  { id: 'acp-cd', label: 'ACP Congo', tier: 'regional', requiresKey: null, search: lazySearch('./acpCd.js') },
+  { id: 'rcst-cd', label: 'RCST Congo', tier: 'regional', requiresKey: null, search: lazySearch('./rcstCd.js') },
+  { id: 'odd-dashboard-cd', label: 'ODD Dashboard Congo', tier: 'regional', requiresKey: null, search: lazySearch('./oddDashboardCd.js') },
+  { id: 'inrb-cd', label: 'INRB Congo', tier: 'regional', requiresKey: null, search: lazySearch('./inrbCd.js') },
+  { id: 'drc-precop-cd', label: 'DRC PreCOP Environment', tier: 'regional', requiresKey: null, search: lazySearch('./drcPrecopCd.js') },
+  { id: 'julisha-cd', label: 'Julisha Congo', tier: 'regional', requiresKey: null, search: lazySearch('./julishaCd.js') },
+  { id: 'pnmls-cd', label: 'PNMLS Documentation', tier: 'regional', requiresKey: null, search: lazySearch('./pnmlsCd.js') },
+
   // ── META ──────────────────────────────────────────────────────────────────
   { id: 'startpage', label: 'Startpage', tier: 'meta', requiresKey: null, search: lazySearch('./startpage.js') },
   { id: 'dogpile', label: 'Dogpile', tier: 'meta', requiresKey: null, search: lazySearch('./dogpile.js') },
