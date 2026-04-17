@@ -1158,8 +1158,18 @@ function searchViaSSE(base,query){
     // Track connectors for the live progress grid
     const seenConnectors=new Set();
     let progressPhase='';
+    let settled=false;  // guard against double resolve/reject
+
+    function finish(fn,val){
+      if(settled)return;
+      settled=true;
+      clearTimeout(timer);
+      es.close();
+      fn(val);
+    }
 
     es.addEventListener('progress',function(e){
+      if(settled)return;
       try{
         const info=JSON.parse(e.data);
         // info = { phase, connector?, resultsSoFar?, error? }
@@ -1167,14 +1177,12 @@ function searchViaSSE(base,query){
           seenConnectors.add(info.connector);
           // Lazily init the progress grid the first time we see connectors
           if(seenConnectors.size===1){
-            // We don't know the total upfront from SSE, so init with a
-            // "streaming" counter instead of a fixed grid.
             const wrap=document.getElementById('live-progress');
             const grid=document.getElementById('progress-grid');
             const counter=document.getElementById('progress-counter');
             if(wrap){wrap.style.display='block'}
             if(counter){counter.textContent='0 connectors reporting…'}
-            if(grid){grid.innerHTML=''}
+            if(grid){grid.replaceChildren()}
           }
           // Add a chip for this connector
           const grid=document.getElementById('progress-grid');
@@ -1204,36 +1212,30 @@ function searchViaSSE(base,query){
     });
 
     es.addEventListener('done',function(e){
-      es.close();
       try{
         const data=JSON.parse(e.data);
-        resolve({results:data.results||[],avatarClusters:data.avatarClusters||[],graph:data.graph||null,connectorStats:data.connectorStats||[]});
+        finish(resolve,{results:data.results||[],avatarClusters:data.avatarClusters||[],graph:data.graph||null,connectorStats:data.connectorStats||[]});
       }catch(ex){
-        reject(new Error('Failed to parse server response'));
+        finish(reject,new Error('Failed to parse server response'));
       }
     });
 
     es.addEventListener('error',function(e){
-      // Check for a Tracer error event (with data) vs. EventSource connection error
       if(e.data){
-        es.close();
         try{
           const d=JSON.parse(e.data);
-          reject(new Error(d.error||'Server error'));
+          finish(reject,new Error(d.error||'Server error'));
         }catch{
-          reject(new Error('Server stream error'));
+          finish(reject,new Error('Server stream error'));
         }
       }else{
-        // Connection error — EventSource auto-reconnects, but we want to fail fast
-        es.close();
-        reject(new Error('SSE connection lost'));
+        finish(reject,new Error('SSE connection lost'));
       }
     });
 
     // Safety timeout: if no 'done' event within 3 minutes, abort
-    setTimeout(()=>{
-      es.close();
-      reject(new Error('Server search timed out (180s)'));
+    const timer=setTimeout(()=>{
+      finish(reject,new Error('Server search timed out (180s)'));
     },180000);
   });
 }
