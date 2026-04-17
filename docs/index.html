@@ -311,7 +311,7 @@
       </span>
     </div>
 
-    <div id="eng-bar">ENGINES READY: <span id="eng-count">19 open APIs (standalone)</span></div>
+    <div id="eng-bar">ENGINES READY: <span id="eng-count">34 open APIs (standalone)</span></div>
 
     <!-- PRIMARY SEARCH ROW -->
     <div class="search-row">
@@ -534,7 +534,7 @@ async function checkConn(){
   connected=false;
   document.getElementById('dot').className='dot'+(isGHPages?' standalone':'');
   document.getElementById('conn-lbl').textContent=isGHPages?'STANDALONE':'OFFLINE';
-  if(!isGHPages){document.getElementById('eng-count').textContent='0 (server offline — open-API fallback)';}
+  document.getElementById('eng-count').textContent=isGHPages?'34 open APIs (standalone — start local server for 550+)':'0 (server offline — open-API fallback)';
   return false;
 }
 document.getElementById('endpoint').addEventListener('change',checkConn);
@@ -542,9 +542,9 @@ document.getElementById('endpoint').addEventListener('change',checkConn);
 async function updateEngCount(base){
   try{
     const r=await fetch(base+'/engines',{signal:AbortSignal.timeout(3000)});
-    if(r.ok){const d=await r.json();document.getElementById('eng-count').textContent=d.total+' ('+d.active+' active)';return}
+    if(r.ok){const d=await r.json();document.getElementById('eng-count').textContent=d.total+' engines ('+d.active+' active) — SSE streaming';return}
   }catch{}
-  document.getElementById('eng-count').textContent='ready';
+  document.getElementById('eng-count').textContent='connected (SSE streaming)';
 }
 
 // ── DIRECT CLIENT-SIDE SEARCH (no local server needed) ───────────────────────
@@ -1139,6 +1139,105 @@ async function searchDirect(query){
   return scoreStandalone(deduped,query);
 }
 
+// ── SERVER SSE STREAMING SEARCH ───────────────────────────────────────────────
+// Uses EventSource to /search/stream for real-time progress from all 550+
+// server connectors.  Falls back to POST /search if SSE fails.
+function searchViaSSE(base,query){
+  return new Promise((resolve,reject)=>{
+    const params=new URLSearchParams({
+      input:query,
+      mode:document.getElementById('mode').value,
+      fossils:document.getElementById('opt-fossils').checked,
+      avatars:document.getElementById('opt-avatars').checked,
+      timeSliceMode:document.getElementById('opt-timeslice').checked,
+      documents:document.getElementById('opt-docs').checked,
+    });
+    const url=base+'/search/stream?'+params.toString();
+    const es=new EventSource(url);
+
+    // Track connectors for the live progress grid
+    const seenConnectors=new Set();
+    let progressPhase='';
+
+    es.addEventListener('progress',function(e){
+      try{
+        const info=JSON.parse(e.data);
+        // info = { phase, connector?, resultsSoFar?, error? }
+        if(info.connector&&!seenConnectors.has(info.connector)){
+          seenConnectors.add(info.connector);
+          // Lazily init the progress grid the first time we see connectors
+          if(seenConnectors.size===1){
+            // We don't know the total upfront from SSE, so init with a
+            // "streaming" counter instead of a fixed grid.
+            const wrap=document.getElementById('live-progress');
+            const grid=document.getElementById('progress-grid');
+            const counter=document.getElementById('progress-counter');
+            if(wrap){wrap.style.display='block'}
+            if(counter){counter.textContent='0 connectors reporting…'}
+            if(grid){grid.innerHTML=''}
+          }
+          // Add a chip for this connector
+          const grid=document.getElementById('progress-grid');
+          if(grid){
+            const span=document.createElement('span');
+            span.id='pg-'+info.connector;
+            span.className=info.error?'pg-fail':'pg-ok';
+            span.textContent=(info.error?'✗ ':'✓ ')+info.connector;
+            grid.appendChild(span);
+          }
+        }
+        // Update counter
+        const counter=document.getElementById('progress-counter');
+        if(counter){
+          counter.textContent=seenConnectors.size+' connectors reporting'+(info.resultsSoFar!=null?' · '+info.resultsSoFar+' results so far':'')+'…';
+        }
+        // Update engine bar with phase info
+        if(info.phase&&info.phase!==progressPhase){
+          progressPhase=info.phase;
+          const bar=document.getElementById('eng-bar');
+          if(bar){
+            const phases={connectors:'Scanning connectors',wayback:'Wayback Machine',namechk:'Username check',timeSlice:'Time slicing',docSearch:'Document search',dedupe:'Deduplicating',fossils:'Fossil hunting'};
+            bar.textContent='SERVER · '+(phases[info.phase]||info.phase)+'…';
+          }
+        }
+      }catch(ex){/* ignore parse errors */}
+    });
+
+    es.addEventListener('done',function(e){
+      es.close();
+      try{
+        const data=JSON.parse(e.data);
+        resolve({results:data.results||[],avatarClusters:data.avatarClusters||[],graph:data.graph||null,connectorStats:data.connectorStats||[]});
+      }catch(ex){
+        reject(new Error('Failed to parse server response'));
+      }
+    });
+
+    es.addEventListener('error',function(e){
+      // Check for a Tracer error event (with data) vs. EventSource connection error
+      if(e.data){
+        es.close();
+        try{
+          const d=JSON.parse(e.data);
+          reject(new Error(d.error||'Server error'));
+        }catch{
+          reject(new Error('Server stream error'));
+        }
+      }else{
+        // Connection error — EventSource auto-reconnects, but we want to fail fast
+        es.close();
+        reject(new Error('SSE connection lost'));
+      }
+    });
+
+    // Safety timeout: if no 'done' event within 3 minutes, abort
+    setTimeout(()=>{
+      es.close();
+      reject(new Error('Server search timed out (180s)'));
+    },180000);
+  });
+}
+
 // ── SEARCH ────────────────────────────────────────────────────────────────────
 async function doSearch(){
   const query=document.getElementById('query').value.trim();
@@ -1149,31 +1248,24 @@ async function doSearch(){
 
   // Always try the local server first (even on GitHub Pages — the user may have
   // launched `npm run serve` locally and the server now has CORS enabled).
+  // Use SSE streaming for real-time progress from all 550+ connectors.
   // Fall back to standalone client-side search if the server isn't reachable.
   const base=document.getElementById('endpoint').value.replace(/\/$/,'');
   const online=connected||await checkConn();
   if(online){
     try{
-      const resp=await fetch(base+'/search',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          input:query,
-          mode:document.getElementById('mode').value,
-          apiKeys:collectKeys(),
-          fossils:document.getElementById('opt-fossils').checked,
-          avatars:document.getElementById('opt-avatars').checked,
-          timeSliceMode:document.getElementById('opt-timeslice').checked,
-          documents:document.getElementById('opt-docs').checked,
-        }),
-        signal:AbortSignal.timeout(120000),
-      });
-      if(!resp.ok)throw new Error('Server returned '+resp.status);
-      const data=await resp.json();
+      const data=await searchViaSSE(base,query);
       results=data.results||[];
       avatarClusters=data.avatarClusters||[];
+      // Update engine bar with final stats
+      const bar=document.getElementById('eng-bar');
+      if(bar){
+        const stats=data.connectorStats||[];
+        const ok=stats.filter(s=>s.ok).length;
+        bar.textContent=`SERVER · ${results.length} results from ${ok}/${stats.length} connectors`;
+      }
     }catch(e){
-      showErr('Local server error: '+e.message+'. Falling back to open APIs…',true);
+      showErr('Server error: '+e.message+'. Falling back to open APIs…',true);
       results=await searchDirect(query);
     }
   }else{
