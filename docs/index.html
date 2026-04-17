@@ -856,7 +856,7 @@ async function searchDirect(query){
     {name:'gitlab-users',fn:async()=>{
       const d=await fetchWithRetry(`https://gitlab.com/api/v4/users?search=${q}&per_page=5`);
       return(d||[]).map((u,i)=>({source:'gitlab',
-        title:u.username||u.name||'',url:u.web_url||`https://gitlab.com/${u.username}`,
+        title:u.username||u.name||'',url:u.web_url||`https://gitlab.com/${encodeURIComponent(u.username||u.name||'')}`,
         snippet:[u.name||'',u.bio?u.bio.slice(0,120):'',u.location||''].filter(Boolean).join(' · '),
         score:7-i,seenOn:['gitlab']}));
     }},
@@ -864,10 +864,10 @@ async function searchDirect(query){
     // ── Codeberg Users (Gitea-based, open-source alternative) ──
     {name:'codeberg-users',fn:async()=>{
       const d=await fetchWithRetry(`https://codeberg.org/api/v1/users/search?q=${q}&limit=5`);
-      return((d.data||d)||[]).map((u,i)=>({source:'codeberg',
-        title:u.login||u.username||'',url:u.html_url||`https://codeberg.org/${u.login||u.username}`,
+      return((d.data||d)||[]).map((u,i)=>{const uname=u.login||u.username||'';return{source:'codeberg',
+        title:uname,url:u.html_url||`https://codeberg.org/${encodeURIComponent(uname)}`,
         snippet:[u.full_name||'',u.description?u.description.slice(0,120):'',u.location||''].filter(Boolean).join(' · '),
-        score:5-i,seenOn:['codeberg']}));
+        score:5-i,seenOn:['codeberg']};});
     }},
 
     // ── Mastodon / Fediverse account search ──
@@ -904,11 +904,11 @@ async function searchDirect(query){
     // ── Reddit user search ──
     {name:'reddit-users',fn:async()=>{
       const d=await fetchWithRetry(`https://www.reddit.com/users/search.json?q=${q}&limit=5`,{headers:{'User-Agent':'Tracer/1.0'}});
-      return((d.data&&d.data.children)||[]).map((c,i)=>{const u=c.data||{};return{source:'reddit',
+      return((d.data&&d.data.children)||[]).map((c,i)=>{const u=c.data||{};return{source:'reddit-users',
         title:`u/${u.name||''}`,url:`https://www.reddit.com/user/${u.name}`,
         snippet:[u.subreddit?.public_description?u.subreddit.public_description.slice(0,100):'',
           u.link_karma?`${u.link_karma} link karma`:'',u.comment_karma?`${u.comment_karma} comment karma`:''].filter(Boolean).join(' · '),
-        score:7-i,seenOn:['reddit']};});
+        score:7-i,seenOn:['reddit-users']};});
     }},
 
     // ── Lichess player search ──
