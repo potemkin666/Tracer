@@ -311,7 +311,7 @@
       </span>
     </div>
 
-    <div id="eng-bar">ENGINES READY: <span id="eng-count">19 open APIs (standalone)</span></div>
+    <div id="eng-bar">ENGINES READY: <span id="eng-count">34 open APIs (standalone)</span></div>
 
     <!-- PRIMARY SEARCH ROW -->
     <div class="search-row">
@@ -534,7 +534,7 @@ async function checkConn(){
   connected=false;
   document.getElementById('dot').className='dot'+(isGHPages?' standalone':'');
   document.getElementById('conn-lbl').textContent=isGHPages?'STANDALONE':'OFFLINE';
-  if(!isGHPages){document.getElementById('eng-count').textContent='0 (server offline — open-API fallback)';}
+  document.getElementById('eng-count').textContent=isGHPages?'34 open APIs (standalone — start local server for 550+)':'0 (server offline — open-API fallback)';
   return false;
 }
 document.getElementById('endpoint').addEventListener('change',checkConn);
@@ -542,9 +542,9 @@ document.getElementById('endpoint').addEventListener('change',checkConn);
 async function updateEngCount(base){
   try{
     const r=await fetch(base+'/engines',{signal:AbortSignal.timeout(3000)});
-    if(r.ok){const d=await r.json();document.getElementById('eng-count').textContent=d.total+' ('+d.active+' active)';return}
+    if(r.ok){const d=await r.json();document.getElementById('eng-count').textContent=d.total+' engines ('+d.active+' active) — SSE streaming';return}
   }catch{}
-  document.getElementById('eng-count').textContent='ready';
+  document.getElementById('eng-count').textContent='connected (SSE streaming)';
 }
 
 // ── DIRECT CLIENT-SIDE SEARCH (no local server needed) ───────────────────────
@@ -759,39 +759,318 @@ async function searchDirect(query){
       });
     }},
 
-    // ── crt.sh (no CORS — will only work if browser allows it) ──
-    {name:'crt.sh',fn:async()=>{
-      const arr=await fetchWithRetry(`https://crt.sh/?q=${q}&output=json`);
-      const seen=new Set();const out=[];
-      arr.slice(0,20).forEach(item=>{
-        if(!seen.has(item.common_name)){seen.add(item.common_name);
-          out.push({source:'crt.sh',title:`[SSL] ${item.common_name}`,
-            url:`https://crt.sh/?q=${encodeURIComponent(item.common_name)}`,
-            snippet:`Issuer: ${item.issuer_name}`,score:2,seenOn:['crt.sh']});}
-      });
-      return out;
+    // ── arXiv ──
+    {name:'arxiv',fn:async()=>{
+      const r=await fetch(`https://export.arxiv.org/api/query?search_query=all:${q}&start=0&max_results=6`,{signal:AbortSignal.timeout(10000)});
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const xml=await r.text();
+      const parser=new DOMParser();const doc=parser.parseFromString(xml,'application/xml');
+      const entries=doc.querySelectorAll('entry');
+      return Array.from(entries).map((e,i)=>({source:'arxiv',
+        title:(e.querySelector('title')?.textContent||'').replace(/\s+/g,' ').trim(),
+        url:e.querySelector('id')?.textContent||'',
+        snippet:((e.querySelector('summary')?.textContent||'').replace(/\s+/g,' ').trim()).slice(0,180),
+        score:5-i,seenOn:['arxiv']}));
     }},
 
-    // ── UK Companies House (no CORS — will only work if browser allows it) ──
-    {name:'companies-house',fn:async()=>{
-      const d=await fetchWithRetry(`https://api.company-information.service.gov.uk/search/companies?q=${q}&items_per_page=5`);
-      return((d&&d.items)||[]).map((item,i)=>({source:'companies-house',
-        title:item.title||'',
-        url:`https://find-and-update.company-information.service.gov.uk/company/${item.company_number}`,
-        snippet:[item.company_type,item.company_status,item.address_snippet].filter(Boolean).join(' | '),
-        score:3-i,seenOn:['companies-house']}));
+    // ── CORE (academic papers) ──
+    {name:'core',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.core.ac.uk/v3/search/works?q=${q}&limit=6`);
+      return(d.results||[]).map((item,i)=>({source:'core',
+        title:item.title||'',url:item.downloadUrl||item.sourceFulltextUrls?.[0]||`https://core.ac.uk/works/${item.id}`,
+        snippet:(item.abstract||'').slice(0,180),
+        score:4-i,seenOn:['core']}));
     }},
 
-    // ── OpenCorporates (limited CORS) ──
-    {name:'opencorporates',fn:async()=>{
-      const d=await fetchWithRetry(`https://api.opencorporates.com/v0.4/companies/search?q=${q}&per_page=5`);
-      const companies=((d.results&&d.results.companies)||[]);
-      return companies.map((c,i)=>{const co=c.company||c;return{source:'opencorporates',
-        title:co.name||'',url:co.opencorporates_url||'',
-        snippet:[co.jurisdiction_code,co.company_type,co.company_status].filter(Boolean).join(' | '),
-        score:3-i,seenOn:['opencorporates']};});
+    // ── Europeana (cultural heritage) ──
+    {name:'europeana',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.europeana.eu/record/v2/search.json?query=${q}&rows=6&wskey=api2demo`);
+      return(d.items||[]).map((item,i)=>({source:'europeana',
+        title:(item.title||[])[0]||'',url:item.guid||item.edmIsShownAt?.[0]||'',
+        snippet:[(item.dataProvider||[])[0]||'',(item.dcCreator||[])[0]||'',item.year?.[0]||''].filter(Boolean).join(' · '),
+        score:3-i,seenOn:['europeana']}));
+    }},
+
+    // ── Nominatim / OpenStreetMap (geo lookup) ──
+    {name:'nominatim',fn:async()=>{
+      const d=await fetchWithRetry(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5&addressdetails=1`,{headers:{'User-Agent':'Tracer/1.0'}});
+      return(d||[]).map((item,i)=>({source:'nominatim',
+        title:item.display_name||'',url:`https://www.openstreetmap.org/${item.osm_type}/${item.osm_id}`,
+        snippet:[item.type,item.class,item.addresstype].filter(Boolean).join(' · '),
+        score:2-i,seenOn:['nominatim']}));
+    }},
+
+    // ── DOAJ (Directory of Open Access Journals) ──
+    {name:'doaj',fn:async()=>{
+      const d=await fetchWithRetry(`https://doaj.org/api/search/articles/${q}?page=1&pageSize=6`);
+      return(d.results||[]).map((item,i)=>{const b=item.bibjson||{};return{source:'doaj',
+        title:b.title||'',url:(b.link||[]).find(l=>l.type==='fulltext')?.url||`https://doaj.org/article/${item.id}`,
+        snippet:[(b.author||[]).slice(0,2).map(a=>a.name).join(', '),b.journal?.title||'',b.year||''].filter(Boolean).join(' · '),
+        score:3-i,seenOn:['doaj']};});
+    }},
+
+    // ── Wikibooks ──
+    {name:'wikibooks',fn:async()=>{
+      const d=await fetchWithRetry(`https://en.wikibooks.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&format=json&origin=*`);
+      return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikibooks',
+        title:item.title||'',url:`https://en.wikibooks.org/wiki/${encodeURIComponent(item.title)}`,
+        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
+        score:3-i,seenOn:['wikibooks']}));
+    }},
+
+    // ── Wikimedia Commons ──
+    {name:'commons',fn:async()=>{
+      const d=await fetchWithRetry(`https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&srnamespace=6&format=json&origin=*`);
+      return(d.query&&d.query.search||[]).map((item,i)=>({source:'commons',
+        title:item.title||'',url:`https://commons.wikimedia.org/wiki/${encodeURIComponent(item.title)}`,
+        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
+        score:2-i,seenOn:['commons']}));
+    }},
+
+    // ── Google Books (FREE — no API key needed) ──
+    {name:'google-books',fn:async()=>{
+      const d=await fetchWithRetry(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=8`);
+      return(d.items||[]).map((item,i)=>{const v=item.volumeInfo||{};return{source:'google-books',
+        title:v.title||'',url:v.infoLink||v.canonicalVolumeLink||'',
+        snippet:[(v.authors||[]).slice(0,2).join(', '),v.publishedDate||'',v.publisher||'',
+          (v.description||'').slice(0,120)].filter(Boolean).join(' · '),
+        score:6-i,seenOn:['google-books']};});
+    }},
+
+    // ── Google Scholar profiles (FREE — no API key needed) ──
+    // Uses the Semantic Scholar API which indexes Google Scholar papers
+    // and provides CORS-friendly JSON responses
+    {name:'google-scholar',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.semanticscholar.org/graph/v1/author/search?query=${q}&limit=5&fields=name,url,paperCount,citationCount,hIndex`);
+      return(d.data||[]).map((a,i)=>({source:'google-scholar',
+        title:a.name||'',url:a.url||`https://www.semanticscholar.org/author/${a.authorId}`,
+        snippet:[a.paperCount?`${a.paperCount} papers`:'',a.citationCount?`${a.citationCount} citations`:'',a.hIndex?`h-index ${a.hIndex}`:''].filter(Boolean).join(' · '),
+        score:6-i,seenOn:['google-scholar']}));
+    }},
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── PEOPLE / USERNAME SEARCH (FREE — no API keys needed) ─────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // ── GitLab Users (complements GitHub) ──
+    {name:'gitlab-users',fn:async()=>{
+      const d=await fetchWithRetry(`https://gitlab.com/api/v4/users?search=${q}&per_page=5`);
+      return(d||[]).map((u,i)=>({source:'gitlab',
+        title:u.username||u.name||'',url:u.web_url||`https://gitlab.com/${encodeURIComponent(u.username||u.name||'')}`,
+        snippet:[u.name||'',u.bio?u.bio.slice(0,120):'',u.location||''].filter(Boolean).join(' · '),
+        score:7-i,seenOn:['gitlab']}));
+    }},
+
+    // ── Codeberg Users (Gitea-based, open-source alternative) ──
+    {name:'codeberg-users',fn:async()=>{
+      const d=await fetchWithRetry(`https://codeberg.org/api/v1/users/search?q=${q}&limit=5`);
+      return((d.data||d)||[]).map((u,i)=>{const uname=u.login||u.username||'';return{source:'codeberg',
+        title:uname,url:u.html_url||`https://codeberg.org/${encodeURIComponent(uname)}`,
+        snippet:[u.full_name||'',u.description?u.description.slice(0,120):'',u.location||''].filter(Boolean).join(' · '),
+        score:5-i,seenOn:['codeberg']};});
+    }},
+
+    // ── Mastodon / Fediverse account search ──
+    {name:'mastodon',fn:async()=>{
+      const d=await fetchWithRetry(`https://mastodon.social/api/v2/search?q=${q}&type=accounts&limit=5`);
+      return(d.accounts||[]).map((a,i)=>({source:'mastodon',
+        title:`@${a.acct||a.username||''}`,url:a.url||'',
+        snippet:[a.display_name||'',a.note?(a.note.replace(/<\/?[^>]+(>|$)/g,'').slice(0,120)):'',a.followers_count?`${a.followers_count} followers`:''].filter(Boolean).join(' · '),
+        score:7-i,seenOn:['mastodon']}));
+    }},
+
+    // ── Keybase identity search ──
+    {name:'keybase',fn:async()=>{
+      const d=await fetchWithRetry(`https://keybase.io/_/api/1.0/user/autocomplete.json?q=${q}`);
+      return((d.completions)||[]).slice(0,5).map((c,i)=>{const comp=c.components||{};return{source:'keybase',
+        title:comp.username?.val||'',url:`https://keybase.io/${comp.username?.val||''}`,
+        snippet:[comp.full_name?.val||'',comp.websites?.val?`Web: ${comp.websites.val}`:'',
+          comp.key_fingerprint?.val?'PGP verified':''].filter(Boolean).join(' · '),
+        score:7-i,seenOn:['keybase']};});
+    }},
+
+    // ── Gravatar profile lookup (email queries) ──
+    {name:'gravatar',fn:async()=>{
+      if(!query.includes('@'))return[];
+      const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(query.trim().toLowerCase())).then(b=>Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''));
+      const d=await fetchWithRetry(`https://api.gravatar.com/v3/profiles/${hash}`);
+      if(!d||d.error)return[];
+      return[{source:'gravatar',title:d.display_name||d.preferred_username||query,
+        url:d.profile_url||`https://gravatar.com/${hash}`,
+        snippet:[d.job_title||'',d.company||'',d.location||'',d.verified_accounts?`${d.verified_accounts.length} linked accounts`:''].filter(Boolean).join(' · '),
+        score:8,seenOn:['gravatar']}];
+    }},
+
+    // ── Reddit user search ──
+    {name:'reddit-users',fn:async()=>{
+      const d=await fetchWithRetry(`https://www.reddit.com/users/search.json?q=${q}&limit=5`,{headers:{'User-Agent':'Tracer/1.0'}});
+      return((d.data&&d.data.children)||[]).map((c,i)=>{const u=c.data||{};return{source:'reddit-users',
+        title:`u/${u.name||''}`,url:`https://www.reddit.com/user/${u.name}`,
+        snippet:[u.subreddit?.public_description?u.subreddit.public_description.slice(0,100):'',
+          u.link_karma?`${u.link_karma} link karma`:'',u.comment_karma?`${u.comment_karma} comment karma`:''].filter(Boolean).join(' · '),
+        score:7-i,seenOn:['reddit-users']};});
+    }},
+
+    // ── Lichess player search ──
+    {name:'lichess',fn:async()=>{
+      const d=await fetchWithRetry(`https://lichess.org/api/player/autocomplete?term=${q}&object=true&friend=false`,{headers:{Accept:'application/json'}});
+      return((d.result||d)||[]).slice(0,5).map((u,i)=>({source:'lichess',
+        title:u.name||u.id||'',url:`https://lichess.org/@/${u.name||u.id}`,
+        snippet:[u.title?`Title: ${u.title}`:'',u.patron?'Patron':'',u.online?'Online now':''].filter(Boolean).join(' · ')||'Lichess player',
+        score:4-i,seenOn:['lichess']}));
+    }},
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── FREE WEB SEARCH ENGINES (no API key needed) ──────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // ── Marginalia Search (indie/small web) ──
+    {name:'marginalia',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.marginalia.nu/public/search/${q}?count=8&index=0`);
+      return((d.results)||[]).map((item,i)=>({source:'marginalia',
+        title:item.title||item.url||'',url:item.url||'',
+        snippet:(item.description||'').slice(0,180),
+        score:5-i,seenOn:['marginalia']}));
+    }},
+
+    // ── Wiby Search (retro/small web) ──
+    {name:'wiby',fn:async()=>{
+      const r=await fetch(`https://wiby.me/json/?q=${q}`,{signal:AbortSignal.timeout(10000)});
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const d=await r.json();
+      return(d||[]).slice(0,8).map((item,i)=>({source:'wiby',
+        title:item.Title||item.URL||'',url:item.URL||'',
+        snippet:(item.Snippet||'').slice(0,180),
+        score:4-i,seenOn:['wiby']}));
     }},
   ];
+
+  // ── KEY-BACKED FETCHERS — only added when user supplies API keys ────────
+  const keys=collectKeys();
+
+  if(keys.brave){
+    namedFetchers.push({name:'brave',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.search.brave.com/res/v1/web/search?q=${q}&count=10`,{headers:{'X-Subscription-Token':keys.brave,'Accept':'application/json'}});
+      return((d.web&&d.web.results)||[]).map((item,i)=>({source:'brave',
+        title:item.title||'',url:item.url||'',
+        snippet:(item.description||'').slice(0,180),
+        score:9-i,seenOn:['brave']}));
+    }});
+  }
+
+  if(keys.google&&keys.googleCx){
+    namedFetchers.push({name:'google',fn:async()=>{
+      const d=await fetchWithRetry(`https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(keys.google)}&cx=${encodeURIComponent(keys.googleCx)}&q=${q}&num=10`);
+      return(d.items||[]).map((item,i)=>({source:'google',
+        title:item.title||'',url:item.link||'',
+        snippet:(item.snippet||'').slice(0,180),
+        score:9-i,seenOn:['google']}));
+    }});
+  }
+
+  if(keys.serpapi){
+    namedFetchers.push({name:'serpapi',fn:async()=>{
+      const d=await fetchWithRetry(`https://serpapi.com/search.json?q=${q}&api_key=${encodeURIComponent(keys.serpapi)}&num=10`);
+      return(d.organic_results||[]).map((item,i)=>({source:'serpapi',
+        title:item.title||'',url:item.link||'',
+        snippet:(item.snippet||'').slice(0,180),
+        score:8-i,seenOn:['serpapi']}));
+    }});
+  }
+
+  if(keys.shodan){
+    namedFetchers.push({name:'shodan',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.shodan.io/shodan/host/search?key=${encodeURIComponent(keys.shodan)}&query=${q}&minify=true`);
+      return(d.matches||[]).slice(0,8).map((m,i)=>({source:'shodan',
+        title:`${m.ip_str||''}:${m.port||''}`,url:`https://www.shodan.io/host/${m.ip_str}`,
+        snippet:[m.org||'',m.product||'',m.os||'',m.location?.country_name||''].filter(Boolean).join(' · '),
+        score:6-i,seenOn:['shodan']}));
+    }});
+  }
+
+  if(keys.hunter){
+    namedFetchers.push({name:'hunter',fn:async()=>{
+      const isEmail=query.includes('@');
+      if(isEmail){
+        const d=await fetchWithRetry(`https://api.hunter.io/v2/email-verifier?email=${q}&api_key=${encodeURIComponent(keys.hunter)}`);
+        const e=d.data||{};
+        return e.email?[{source:'hunter',title:e.email,url:`https://hunter.io/verify/${e.email}`,
+          snippet:[e.status,e.result,e.score!=null?`score ${e.score}`:''].filter(Boolean).join(' · '),
+          score:7,seenOn:['hunter']}]:[];
+      }
+      const d=await fetchWithRetry(`https://api.hunter.io/v2/domain-search?domain=${q}&api_key=${encodeURIComponent(keys.hunter)}&limit=8`);
+      return((d.data&&d.data.emails)||[]).map((e,i)=>({source:'hunter',
+        title:e.value||'',url:`https://hunter.io/verify/${e.value}`,
+        snippet:[e.first_name,e.last_name,e.type,e.department].filter(Boolean).join(' · '),
+        score:6-i,seenOn:['hunter']}));
+    }});
+  }
+
+  if(keys.intelx){
+    namedFetchers.push({name:'intelx',fn:async()=>{
+      const searchResp=await fetchWithRetry(`https://2.intelx.io/intelligent/search`,{method:'POST',headers:{'x-key':keys.intelx,'Content-Type':'application/json'},body:JSON.stringify({term:query,maxresults:8,media:0,timeout:5})});
+      const sid=searchResp.id;if(!sid)return[];
+      await new Promise(ok=>setTimeout(ok,2000));
+      const d=await fetchWithRetry(`https://2.intelx.io/intelligent/search/result?id=${sid}&limit=8`,{headers:{'x-key':keys.intelx}});
+      return(d.records||[]).map((r,i)=>({source:'intelx',
+        title:r.name||r.systemid||'',url:`https://intelx.io/?s=${encodeURIComponent(query)}`,
+        snippet:[r.mediah||'',r.bucketh||'',r.date||''].filter(Boolean).join(' · '),
+        score:7-i,seenOn:['intelx']}));
+    }});
+  }
+
+  if(keys.exa){
+    namedFetchers.push({name:'exa',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.exa.ai/search`,{method:'POST',headers:{'x-api-key':keys.exa,'Content-Type':'application/json'},body:JSON.stringify({query:query,numResults:8,useAutoprompt:true})});
+      return(d.results||[]).map((item,i)=>({source:'exa',
+        title:item.title||'',url:item.url||'',
+        snippet:(item.text||item.highlights?.[0]||'').slice(0,180),
+        score:8-i,seenOn:['exa']}));
+    }});
+  }
+
+  if(keys.mojeek){
+    namedFetchers.push({name:'mojeek',fn:async()=>{
+      const d=await fetchWithRetry(`https://www.mojeek.com/search?q=${q}&fmt=json&api_key=${encodeURIComponent(keys.mojeek)}`);
+      return((d.response&&d.response.results)||[]).slice(0,8).map((item,i)=>({source:'mojeek',
+        title:item.title||'',url:item.url||'',
+        snippet:(item.desc||'').slice(0,180),
+        score:7-i,seenOn:['mojeek']}));
+    }});
+  }
+
+  if(keys.hibp){
+    namedFetchers.push({name:'hibp',fn:async()=>{
+      const isEmail=query.includes('@');
+      if(!isEmail)return[];
+      const d=await fetchWithRetry(`https://haveibeenpwned.com/api/v3/breachedaccount/${q}?truncateResponse=false`,{headers:{'hibp-api-key':keys.hibp,'user-agent':'Tracer'}});
+      return(d||[]).map((b,i)=>({source:'hibp',
+        title:`Breach: ${b.Name||''}`,url:`https://haveibeenpwned.com/`,
+        snippet:[b.Domain||'',b.BreachDate||'',`${(b.DataClasses||[]).slice(0,3).join(', ')}`].filter(Boolean).join(' · '),
+        score:8-i,seenOn:['hibp']}));
+    }});
+  }
+
+  if(keys.greynoise){
+    namedFetchers.push({name:'greynoise',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.greynoise.io/v3/community/${q}`,{headers:{key:keys.greynoise}});
+      if(!d||!d.ip)return[];
+      return[{source:'greynoise',title:`IP: ${d.ip}`,url:`https://viz.greynoise.io/ip/${d.ip}`,
+        snippet:[d.noise?'Noise':'Clean',d.riot?'RIOT':'',d.classification||'',d.name||''].filter(Boolean).join(' · '),
+        score:6,seenOn:['greynoise']}];
+    }});
+  }
+
+  if(keys.searxngUrl){
+    const sxUrl=keys.searxngUrl.replace(/\/$/,'');
+    namedFetchers.push({name:'searxng',fn:async()=>{
+      const d=await fetchWithRetry(`${sxUrl}/search?q=${q}&format=json&categories=general&pageno=1`);
+      return(d.results||[]).slice(0,10).map((item,i)=>({source:'searxng',
+        title:item.title||'',url:item.url||'',
+        snippet:(item.content||'').slice(0,180),
+        score:7-i,seenOn:['searxng']}));
+    }});
+  }
 
   const attempted=namedFetchers.length;
   const sourceStatus=[];   // {name, status:'ok'|'fail'|'empty', reason?}
@@ -860,6 +1139,107 @@ async function searchDirect(query){
   return scoreStandalone(deduped,query);
 }
 
+// ── SERVER SSE STREAMING SEARCH ───────────────────────────────────────────────
+// Uses EventSource to /search/stream for real-time progress from all 550+
+// server connectors.  Falls back to POST /search if SSE fails.
+function searchViaSSE(base,query){
+  return new Promise((resolve,reject)=>{
+    const params=new URLSearchParams({
+      input:query,
+      mode:document.getElementById('mode').value,
+      fossils:document.getElementById('opt-fossils').checked,
+      avatars:document.getElementById('opt-avatars').checked,
+      timeSliceMode:document.getElementById('opt-timeslice').checked,
+      documents:document.getElementById('opt-docs').checked,
+    });
+    const url=base+'/search/stream?'+params.toString();
+    const es=new EventSource(url);
+
+    // Track connectors for the live progress grid
+    const seenConnectors=new Set();
+    let progressPhase='';
+    let settled=false;  // guard against double resolve/reject
+
+    function finish(fn,val){
+      if(settled)return;
+      settled=true;
+      clearTimeout(timer);
+      es.close();
+      fn(val);
+    }
+
+    es.addEventListener('progress',function(e){
+      if(settled)return;
+      try{
+        const info=JSON.parse(e.data);
+        // info = { phase, connector?, resultsSoFar?, error? }
+        if(info.connector&&!seenConnectors.has(info.connector)){
+          seenConnectors.add(info.connector);
+          // Lazily init the progress grid the first time we see connectors
+          if(seenConnectors.size===1){
+            const wrap=document.getElementById('live-progress');
+            const grid=document.getElementById('progress-grid');
+            const counter=document.getElementById('progress-counter');
+            if(wrap){wrap.style.display='block'}
+            if(counter){counter.textContent='0 connectors reporting…'}
+            if(grid){grid.replaceChildren()}
+          }
+          // Add a chip for this connector
+          const grid=document.getElementById('progress-grid');
+          if(grid){
+            const span=document.createElement('span');
+            span.id='pg-'+info.connector;
+            span.className=info.error?'pg-fail':'pg-ok';
+            span.textContent=(info.error?'✗ ':'✓ ')+info.connector;
+            grid.appendChild(span);
+          }
+        }
+        // Update counter
+        const counter=document.getElementById('progress-counter');
+        if(counter){
+          counter.textContent=seenConnectors.size+' connectors reporting'+(info.resultsSoFar!=null?' · '+info.resultsSoFar+' results so far':'')+'…';
+        }
+        // Update engine bar with phase info
+        if(info.phase&&info.phase!==progressPhase){
+          progressPhase=info.phase;
+          const bar=document.getElementById('eng-bar');
+          if(bar){
+            const phases={connectors:'Scanning connectors',wayback:'Wayback Machine',namechk:'Username check',timeSlice:'Time slicing',docSearch:'Document search',dedupe:'Deduplicating',fossils:'Fossil hunting'};
+            bar.textContent='SERVER · '+(phases[info.phase]||info.phase)+'…';
+          }
+        }
+      }catch(ex){/* ignore parse errors */}
+    });
+
+    es.addEventListener('done',function(e){
+      try{
+        const data=JSON.parse(e.data);
+        finish(resolve,{results:data.results||[],avatarClusters:data.avatarClusters||[],graph:data.graph||null,connectorStats:data.connectorStats||[]});
+      }catch(ex){
+        finish(reject,new Error('Failed to parse server response'));
+      }
+    });
+
+    es.addEventListener('error',function(e){
+      if(e.data){
+        try{
+          const d=JSON.parse(e.data);
+          finish(reject,new Error(d.error||'Server error'));
+        }catch{
+          finish(reject,new Error('Server stream error'));
+        }
+      }else{
+        finish(reject,new Error('SSE connection lost'));
+      }
+    });
+
+    // Safety timeout: if no 'done' event within 3 minutes, abort
+    const timer=setTimeout(()=>{
+      finish(reject,new Error('Server search timed out (180s)'));
+    },180000);
+  });
+}
+
 // ── SEARCH ────────────────────────────────────────────────────────────────────
 async function doSearch(){
   const query=document.getElementById('query').value.trim();
@@ -870,31 +1250,24 @@ async function doSearch(){
 
   // Always try the local server first (even on GitHub Pages — the user may have
   // launched `npm run serve` locally and the server now has CORS enabled).
+  // Use SSE streaming for real-time progress from all 550+ connectors.
   // Fall back to standalone client-side search if the server isn't reachable.
   const base=document.getElementById('endpoint').value.replace(/\/$/,'');
   const online=connected||await checkConn();
   if(online){
     try{
-      const resp=await fetch(base+'/search',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({
-          input:query,
-          mode:document.getElementById('mode').value,
-          apiKeys:collectKeys(),
-          fossils:document.getElementById('opt-fossils').checked,
-          avatars:document.getElementById('opt-avatars').checked,
-          timeSliceMode:document.getElementById('opt-timeslice').checked,
-          documents:document.getElementById('opt-docs').checked,
-        }),
-        signal:AbortSignal.timeout(120000),
-      });
-      if(!resp.ok)throw new Error('Server returned '+resp.status);
-      const data=await resp.json();
+      const data=await searchViaSSE(base,query);
       results=data.results||[];
       avatarClusters=data.avatarClusters||[];
+      // Update engine bar with final stats
+      const bar=document.getElementById('eng-bar');
+      if(bar){
+        const stats=data.connectorStats||[];
+        const ok=stats.filter(s=>s.ok).length;
+        bar.textContent=`SERVER · ${results.length} results from ${ok}/${stats.length} connectors`;
+      }
     }catch(e){
-      showErr('Local server error: '+e.message+'. Falling back to open APIs…',true);
+      showErr('Server error: '+e.message+'. Falling back to open APIs…',true);
       results=await searchDirect(query);
     }
   }else{
@@ -922,6 +1295,12 @@ const TIER_MAP={
   'companies-house':'open','social-profiles':'social',
   wikipedia:'open',wikidata:'open',github:'open',hackernews:'open',stackoverflow:'open',
   'archive.org':'open',openlibrary:'open',pubmed:'open',npm:'open',
+  arxiv:'open',core:'open',europeana:'open',nominatim:'open',doaj:'open',
+  wikibooks:'open',commons:'open',
+  'google-books':'open','google-scholar':'open',
+  gitlab:'social',codeberg:'social',mastodon:'social',keybase:'social',
+  gravatar:'social','reddit-users':'social',reddit:'social',lichess:'social',
+  marginalia:'open',wiby:'open',
   shodan:'osint',censys:'osint',hunter:'osint',intelx:'osint',publicwww:'osint',tineye:'osint',
   yandex:'regional',baidu:'regional',naver:'regional',sogou:'regional',so360:'regional',seznam:'regional','mail.ru':'regional',rambler:'regional',
   startpage:'meta',dogpile:'meta',metacrawler:'meta',etools:'meta',ecosia:'meta',

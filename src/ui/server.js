@@ -71,9 +71,13 @@ app.post('/search', async (req, res) => {
 //         es.addEventListener('done', (e) => { es.close(); ... });
 app.get('/search/stream', async (req, res) => {
   const { input, mode, fossils, avatars, timeSliceMode, documents } = req.query;
-  if (!input) {
+  if (!input || typeof input !== 'string') {
     return res.status(400).json({ error: 'input query parameter is required' });
   }
+  if (input.length > 500) {
+    return res.status(400).json({ error: 'input too long (max 500 chars)' });
+  }
+  const safeMode = mode === 'aggressive' ? 'aggressive' : 'normal';
 
   // SSE headers
   res.writeHead(200, {
@@ -83,16 +87,22 @@ app.get('/search/stream', async (req, res) => {
     'Access-Control-Allow-Origin': '*',
   });
 
+  // Guard against writing to a closed connection (client navigates away, etc.)
+  let closed = false;
+  res.on('close', () => { closed = true; });
+
   // Keep connection alive
-  const keepAlive = setInterval(() => res.write(': keepalive\n\n'), 15000);
+  const keepAlive = setInterval(() => {
+    if (!closed) res.write(': keepalive\n\n');
+  }, 15000);
 
   function sendEvent(event, data) {
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    if (!closed) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   }
 
   try {
     const { results, avatarClusters, connectorStats } = await run(input, {
-      mode: mode || 'normal',
+      mode: safeMode,
       apiKeys: serverApiKeys,
       fossils: fossils === 'true',
       avatars: avatars === 'true',
