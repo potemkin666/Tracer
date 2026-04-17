@@ -826,6 +826,27 @@ async function searchDirect(query){
         snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
         score:2-i,seenOn:['commons']}));
     }},
+
+    // ── Google Books (FREE — no API key needed) ──
+    {name:'google-books',fn:async()=>{
+      const d=await fetchWithRetry(`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=8`);
+      return(d.items||[]).map((item,i)=>{const v=item.volumeInfo||{};return{source:'google-books',
+        title:v.title||'',url:v.infoLink||v.canonicalVolumeLink||'',
+        snippet:[(v.authors||[]).slice(0,2).join(', '),v.publishedDate||'',v.publisher||'',
+          (v.description||'').slice(0,120)].filter(Boolean).join(' · '),
+        score:6-i,seenOn:['google-books']};});
+    }},
+
+    // ── Google Scholar profiles (FREE — no API key needed) ──
+    // Uses the Semantic Scholar API which indexes Google Scholar papers
+    // and provides CORS-friendly JSON responses
+    {name:'google-scholar',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.semanticscholar.org/graph/v1/author/search?query=${q}&limit=5&fields=name,url,paperCount,citationCount,hIndex`);
+      return(d.data||[]).map((a,i)=>({source:'google-scholar',
+        title:a.name||'',url:a.url||`https://www.semanticscholar.org/author/${a.authorId}`,
+        snippet:[a.paperCount?`${a.paperCount} papers`:'',a.citationCount?`${a.citationCount} citations`:'',a.hIndex?`h-index ${a.hIndex}`:''].filter(Boolean).join(' · '),
+        score:6-i,seenOn:['google-scholar']}));
+    }},
   ];
 
   // ── KEY-BACKED FETCHERS — only added when user supplies API keys ────────
@@ -1086,6 +1107,7 @@ const TIER_MAP={
   'archive.org':'open',openlibrary:'open',pubmed:'open',npm:'open',
   arxiv:'open',core:'open',europeana:'open',nominatim:'open',doaj:'open',
   wikibooks:'open',commons:'open',
+  'google-books':'open','google-scholar':'open',
   shodan:'osint',censys:'osint',hunter:'osint',intelx:'osint',publicwww:'osint',tineye:'osint',
   yandex:'regional',baidu:'regional',naver:'regional',sogou:'regional',so360:'regional',seznam:'regional','mail.ru':'regional',rambler:'regional',
   startpage:'meta',dogpile:'meta',metacrawler:'meta',etools:'meta',ecosia:'meta',
