@@ -759,39 +759,201 @@ async function searchDirect(query){
       });
     }},
 
-    // ── crt.sh (no CORS — will only work if browser allows it) ──
-    {name:'crt.sh',fn:async()=>{
-      const arr=await fetchWithRetry(`https://crt.sh/?q=${q}&output=json`);
-      const seen=new Set();const out=[];
-      arr.slice(0,20).forEach(item=>{
-        if(!seen.has(item.common_name)){seen.add(item.common_name);
-          out.push({source:'crt.sh',title:`[SSL] ${item.common_name}`,
-            url:`https://crt.sh/?q=${encodeURIComponent(item.common_name)}`,
-            snippet:`Issuer: ${item.issuer_name}`,score:2,seenOn:['crt.sh']});}
-      });
-      return out;
+    // ── arXiv ──
+    {name:'arxiv',fn:async()=>{
+      const r=await fetch(`https://export.arxiv.org/api/query?search_query=all:${q}&start=0&max_results=6`,{signal:AbortSignal.timeout(10000)});
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const xml=await r.text();
+      const parser=new DOMParser();const doc=parser.parseFromString(xml,'application/xml');
+      const entries=doc.querySelectorAll('entry');
+      return Array.from(entries).map((e,i)=>({source:'arxiv',
+        title:(e.querySelector('title')?.textContent||'').replace(/\s+/g,' ').trim(),
+        url:e.querySelector('id')?.textContent||'',
+        snippet:((e.querySelector('summary')?.textContent||'').replace(/\s+/g,' ').trim()).slice(0,180),
+        score:5-i,seenOn:['arxiv']}));
     }},
 
-    // ── UK Companies House (no CORS — will only work if browser allows it) ──
-    {name:'companies-house',fn:async()=>{
-      const d=await fetchWithRetry(`https://api.company-information.service.gov.uk/search/companies?q=${q}&items_per_page=5`);
-      return((d&&d.items)||[]).map((item,i)=>({source:'companies-house',
-        title:item.title||'',
-        url:`https://find-and-update.company-information.service.gov.uk/company/${item.company_number}`,
-        snippet:[item.company_type,item.company_status,item.address_snippet].filter(Boolean).join(' | '),
-        score:3-i,seenOn:['companies-house']}));
+    // ── CORE (academic papers) ──
+    {name:'core',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.core.ac.uk/v3/search/works?q=${q}&limit=6`);
+      return(d.results||[]).map((item,i)=>({source:'core',
+        title:item.title||'',url:item.downloadUrl||item.sourceFulltextUrls?.[0]||`https://core.ac.uk/works/${item.id}`,
+        snippet:(item.abstract||'').slice(0,180),
+        score:4-i,seenOn:['core']}));
     }},
 
-    // ── OpenCorporates (limited CORS) ──
-    {name:'opencorporates',fn:async()=>{
-      const d=await fetchWithRetry(`https://api.opencorporates.com/v0.4/companies/search?q=${q}&per_page=5`);
-      const companies=((d.results&&d.results.companies)||[]);
-      return companies.map((c,i)=>{const co=c.company||c;return{source:'opencorporates',
-        title:co.name||'',url:co.opencorporates_url||'',
-        snippet:[co.jurisdiction_code,co.company_type,co.company_status].filter(Boolean).join(' | '),
-        score:3-i,seenOn:['opencorporates']};});
+    // ── Europeana (cultural heritage) ──
+    {name:'europeana',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.europeana.eu/record/v2/search.json?query=${q}&rows=6&wskey=api2demo`);
+      return(d.items||[]).map((item,i)=>({source:'europeana',
+        title:(item.title||[])[0]||'',url:item.guid||item.edmIsShownAt?.[0]||'',
+        snippet:[(item.dataProvider||[])[0]||'',(item.dcCreator||[])[0]||'',item.year?.[0]||''].filter(Boolean).join(' · '),
+        score:3-i,seenOn:['europeana']}));
+    }},
+
+    // ── Nominatim / OpenStreetMap (geo lookup) ──
+    {name:'nominatim',fn:async()=>{
+      const d=await fetchWithRetry(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=5&addressdetails=1`,{headers:{'User-Agent':'Tracer/1.0'}});
+      return(d||[]).map((item,i)=>({source:'nominatim',
+        title:item.display_name||'',url:`https://www.openstreetmap.org/${item.osm_type}/${item.osm_id}`,
+        snippet:[item.type,item.class,item.addresstype].filter(Boolean).join(' · '),
+        score:2-i,seenOn:['nominatim']}));
+    }},
+
+    // ── DOAJ (Directory of Open Access Journals) ──
+    {name:'doaj',fn:async()=>{
+      const d=await fetchWithRetry(`https://doaj.org/api/search/articles/${q}?page=1&pageSize=6`);
+      return(d.results||[]).map((item,i)=>{const b=item.bibjson||{};return{source:'doaj',
+        title:b.title||'',url:(b.link||[]).find(l=>l.type==='fulltext')?.url||`https://doaj.org/article/${item.id}`,
+        snippet:[(b.author||[]).slice(0,2).map(a=>a.name).join(', '),b.journal?.title||'',b.year||''].filter(Boolean).join(' · '),
+        score:3-i,seenOn:['doaj']};});
+    }},
+
+    // ── Wikibooks ──
+    {name:'wikibooks',fn:async()=>{
+      const d=await fetchWithRetry(`https://en.wikibooks.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&format=json&origin=*`);
+      return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikibooks',
+        title:item.title||'',url:`https://en.wikibooks.org/wiki/${encodeURIComponent(item.title)}`,
+        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
+        score:3-i,seenOn:['wikibooks']}));
+    }},
+
+    // ── Wikimedia Commons ──
+    {name:'commons',fn:async()=>{
+      const d=await fetchWithRetry(`https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&srnamespace=6&format=json&origin=*`);
+      return(d.query&&d.query.search||[]).map((item,i)=>({source:'commons',
+        title:item.title||'',url:`https://commons.wikimedia.org/wiki/${encodeURIComponent(item.title)}`,
+        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
+        score:2-i,seenOn:['commons']}));
     }},
   ];
+
+  // ── KEY-BACKED FETCHERS — only added when user supplies API keys ────────
+  const keys=collectKeys();
+
+  if(keys.brave){
+    namedFetchers.push({name:'brave',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.search.brave.com/res/v1/web/search?q=${q}&count=10`,{headers:{'X-Subscription-Token':keys.brave,'Accept':'application/json'}});
+      return((d.web&&d.web.results)||[]).map((item,i)=>({source:'brave',
+        title:item.title||'',url:item.url||'',
+        snippet:(item.description||'').slice(0,180),
+        score:9-i,seenOn:['brave']}));
+    }});
+  }
+
+  if(keys.google&&keys.googleCx){
+    namedFetchers.push({name:'google',fn:async()=>{
+      const d=await fetchWithRetry(`https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(keys.google)}&cx=${encodeURIComponent(keys.googleCx)}&q=${q}&num=10`);
+      return(d.items||[]).map((item,i)=>({source:'google',
+        title:item.title||'',url:item.link||'',
+        snippet:(item.snippet||'').slice(0,180),
+        score:9-i,seenOn:['google']}));
+    }});
+  }
+
+  if(keys.serpapi){
+    namedFetchers.push({name:'serpapi',fn:async()=>{
+      const d=await fetchWithRetry(`https://serpapi.com/search.json?q=${q}&api_key=${encodeURIComponent(keys.serpapi)}&num=10`);
+      return(d.organic_results||[]).map((item,i)=>({source:'serpapi',
+        title:item.title||'',url:item.link||'',
+        snippet:(item.snippet||'').slice(0,180),
+        score:8-i,seenOn:['serpapi']}));
+    }});
+  }
+
+  if(keys.shodan){
+    namedFetchers.push({name:'shodan',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.shodan.io/shodan/host/search?key=${encodeURIComponent(keys.shodan)}&query=${q}&minify=true`);
+      return(d.matches||[]).slice(0,8).map((m,i)=>({source:'shodan',
+        title:`${m.ip_str||''}:${m.port||''}`,url:`https://www.shodan.io/host/${m.ip_str}`,
+        snippet:[m.org||'',m.product||'',m.os||'',m.location?.country_name||''].filter(Boolean).join(' · '),
+        score:6-i,seenOn:['shodan']}));
+    }});
+  }
+
+  if(keys.hunter){
+    namedFetchers.push({name:'hunter',fn:async()=>{
+      const isEmail=query.includes('@');
+      if(isEmail){
+        const d=await fetchWithRetry(`https://api.hunter.io/v2/email-verifier?email=${q}&api_key=${encodeURIComponent(keys.hunter)}`);
+        const e=d.data||{};
+        return e.email?[{source:'hunter',title:e.email,url:`https://hunter.io/verify/${e.email}`,
+          snippet:[e.status,e.result,e.score!=null?`score ${e.score}`:''].filter(Boolean).join(' · '),
+          score:7,seenOn:['hunter']}]:[];
+      }
+      const d=await fetchWithRetry(`https://api.hunter.io/v2/domain-search?domain=${q}&api_key=${encodeURIComponent(keys.hunter)}&limit=8`);
+      return((d.data&&d.data.emails)||[]).map((e,i)=>({source:'hunter',
+        title:e.value||'',url:`https://hunter.io/verify/${e.value}`,
+        snippet:[e.first_name,e.last_name,e.type,e.department].filter(Boolean).join(' · '),
+        score:6-i,seenOn:['hunter']}));
+    }});
+  }
+
+  if(keys.intelx){
+    namedFetchers.push({name:'intelx',fn:async()=>{
+      const searchResp=await fetchWithRetry(`https://2.intelx.io/intelligent/search`,{method:'POST',headers:{'x-key':keys.intelx,'Content-Type':'application/json'},body:JSON.stringify({term:query,maxresults:8,media:0,timeout:5})});
+      const sid=searchResp.id;if(!sid)return[];
+      await new Promise(ok=>setTimeout(ok,2000));
+      const d=await fetchWithRetry(`https://2.intelx.io/intelligent/search/result?id=${sid}&limit=8`,{headers:{'x-key':keys.intelx}});
+      return(d.records||[]).map((r,i)=>({source:'intelx',
+        title:r.name||r.systemid||'',url:`https://intelx.io/?s=${encodeURIComponent(query)}`,
+        snippet:[r.mediah||'',r.bucketh||'',r.date||''].filter(Boolean).join(' · '),
+        score:7-i,seenOn:['intelx']}));
+    }});
+  }
+
+  if(keys.exa){
+    namedFetchers.push({name:'exa',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.exa.ai/search`,{method:'POST',headers:{'x-api-key':keys.exa,'Content-Type':'application/json'},body:JSON.stringify({query:query,numResults:8,useAutoprompt:true})});
+      return(d.results||[]).map((item,i)=>({source:'exa',
+        title:item.title||'',url:item.url||'',
+        snippet:(item.text||item.highlights?.[0]||'').slice(0,180),
+        score:8-i,seenOn:['exa']}));
+    }});
+  }
+
+  if(keys.mojeek){
+    namedFetchers.push({name:'mojeek',fn:async()=>{
+      const d=await fetchWithRetry(`https://www.mojeek.com/search?q=${q}&fmt=json&api_key=${encodeURIComponent(keys.mojeek)}`);
+      return((d.response&&d.response.results)||[]).slice(0,8).map((item,i)=>({source:'mojeek',
+        title:item.title||'',url:item.url||'',
+        snippet:(item.desc||'').slice(0,180),
+        score:7-i,seenOn:['mojeek']}));
+    }});
+  }
+
+  if(keys.hibp){
+    namedFetchers.push({name:'hibp',fn:async()=>{
+      const isEmail=query.includes('@');
+      if(!isEmail)return[];
+      const d=await fetchWithRetry(`https://haveibeenpwned.com/api/v3/breachedaccount/${q}?truncateResponse=false`,{headers:{'hibp-api-key':keys.hibp,'user-agent':'Tracer'}});
+      return(d||[]).map((b,i)=>({source:'hibp',
+        title:`Breach: ${b.Name||''}`,url:`https://haveibeenpwned.com/`,
+        snippet:[b.Domain||'',b.BreachDate||'',`${(b.DataClasses||[]).slice(0,3).join(', ')}`].filter(Boolean).join(' · '),
+        score:8-i,seenOn:['hibp']}));
+    }});
+  }
+
+  if(keys.greynoise){
+    namedFetchers.push({name:'greynoise',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.greynoise.io/v3/community/${q}`,{headers:{key:keys.greynoise}});
+      if(!d||!d.ip)return[];
+      return[{source:'greynoise',title:`IP: ${d.ip}`,url:`https://viz.greynoise.io/ip/${d.ip}`,
+        snippet:[d.noise?'Noise':'Clean',d.riot?'RIOT':'',d.classification||'',d.name||''].filter(Boolean).join(' · '),
+        score:6,seenOn:['greynoise']}];
+    }});
+  }
+
+  if(keys.searxngUrl){
+    const sxUrl=keys.searxngUrl.replace(/\/$/,'');
+    namedFetchers.push({name:'searxng',fn:async()=>{
+      const d=await fetchWithRetry(`${sxUrl}/search?q=${q}&format=json&categories=general&pageno=1`);
+      return(d.results||[]).slice(0,10).map((item,i)=>({source:'searxng',
+        title:item.title||'',url:item.url||'',
+        snippet:(item.content||'').slice(0,180),
+        score:7-i,seenOn:['searxng']}));
+    }});
+  }
 
   const attempted=namedFetchers.length;
   const sourceStatus=[];   // {name, status:'ok'|'fail'|'empty', reason?}
@@ -922,6 +1084,8 @@ const TIER_MAP={
   'companies-house':'open','social-profiles':'social',
   wikipedia:'open',wikidata:'open',github:'open',hackernews:'open',stackoverflow:'open',
   'archive.org':'open',openlibrary:'open',pubmed:'open',npm:'open',
+  arxiv:'open',core:'open',europeana:'open',nominatim:'open',doaj:'open',
+  wikibooks:'open',commons:'open',
   shodan:'osint',censys:'osint',hunter:'osint',intelx:'osint',publicwww:'osint',tineye:'osint',
   yandex:'regional',baidu:'regional',naver:'regional',sogou:'regional',so360:'regional',seznam:'regional','mail.ru':'regional',rambler:'regional',
   startpage:'meta',dogpile:'meta',metacrawler:'meta',etools:'meta',ecosia:'meta',
