@@ -847,6 +847,102 @@ async function searchDirect(query){
         snippet:[a.paperCount?`${a.paperCount} papers`:'',a.citationCount?`${a.citationCount} citations`:'',a.hIndex?`h-index ${a.hIndex}`:''].filter(Boolean).join(' · '),
         score:6-i,seenOn:['google-scholar']}));
     }},
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── PEOPLE / USERNAME SEARCH (FREE — no API keys needed) ─────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // ── GitLab Users (complements GitHub) ──
+    {name:'gitlab-users',fn:async()=>{
+      const d=await fetchWithRetry(`https://gitlab.com/api/v4/users?search=${q}&per_page=5`);
+      return(d||[]).map((u,i)=>({source:'gitlab',
+        title:u.username||u.name||'',url:u.web_url||`https://gitlab.com/${u.username}`,
+        snippet:[u.name||'',u.bio?u.bio.slice(0,120):'',u.location||''].filter(Boolean).join(' · '),
+        score:7-i,seenOn:['gitlab']}));
+    }},
+
+    // ── Codeberg Users (Gitea-based, open-source alternative) ──
+    {name:'codeberg-users',fn:async()=>{
+      const d=await fetchWithRetry(`https://codeberg.org/api/v1/users/search?q=${q}&limit=5`);
+      return((d.data||d)||[]).map((u,i)=>({source:'codeberg',
+        title:u.login||u.username||'',url:u.html_url||`https://codeberg.org/${u.login||u.username}`,
+        snippet:[u.full_name||'',u.description?u.description.slice(0,120):'',u.location||''].filter(Boolean).join(' · '),
+        score:5-i,seenOn:['codeberg']}));
+    }},
+
+    // ── Mastodon / Fediverse account search ──
+    {name:'mastodon',fn:async()=>{
+      const d=await fetchWithRetry(`https://mastodon.social/api/v2/search?q=${q}&type=accounts&limit=5`);
+      return(d.accounts||[]).map((a,i)=>({source:'mastodon',
+        title:`@${a.acct||a.username||''}`,url:a.url||'',
+        snippet:[a.display_name||'',a.note?(a.note.replace(/<\/?[^>]+(>|$)/g,'').slice(0,120)):'',a.followers_count?`${a.followers_count} followers`:''].filter(Boolean).join(' · '),
+        score:7-i,seenOn:['mastodon']}));
+    }},
+
+    // ── Keybase identity search ──
+    {name:'keybase',fn:async()=>{
+      const d=await fetchWithRetry(`https://keybase.io/_/api/1.0/user/autocomplete.json?q=${q}`);
+      return((d.completions)||[]).slice(0,5).map((c,i)=>{const comp=c.components||{};return{source:'keybase',
+        title:comp.username?.val||'',url:`https://keybase.io/${comp.username?.val||''}`,
+        snippet:[comp.full_name?.val||'',comp.websites?.val?`Web: ${comp.websites.val}`:'',
+          comp.key_fingerprint?.val?'PGP verified':''].filter(Boolean).join(' · '),
+        score:7-i,seenOn:['keybase']};});
+    }},
+
+    // ── Gravatar profile lookup (email queries) ──
+    {name:'gravatar',fn:async()=>{
+      if(!query.includes('@'))return[];
+      const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(query.trim().toLowerCase())).then(b=>Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join(''));
+      const d=await fetchWithRetry(`https://api.gravatar.com/v3/profiles/${hash}`);
+      if(!d||d.error)return[];
+      return[{source:'gravatar',title:d.display_name||d.preferred_username||query,
+        url:d.profile_url||`https://gravatar.com/${hash}`,
+        snippet:[d.job_title||'',d.company||'',d.location||'',d.verified_accounts?`${d.verified_accounts.length} linked accounts`:''].filter(Boolean).join(' · '),
+        score:8,seenOn:['gravatar']}];
+    }},
+
+    // ── Reddit user search ──
+    {name:'reddit-users',fn:async()=>{
+      const d=await fetchWithRetry(`https://www.reddit.com/users/search.json?q=${q}&limit=5`,{headers:{'User-Agent':'Tracer/1.0'}});
+      return((d.data&&d.data.children)||[]).map((c,i)=>{const u=c.data||{};return{source:'reddit',
+        title:`u/${u.name||''}`,url:`https://www.reddit.com/user/${u.name}`,
+        snippet:[u.subreddit?.public_description?u.subreddit.public_description.slice(0,100):'',
+          u.link_karma?`${u.link_karma} link karma`:'',u.comment_karma?`${u.comment_karma} comment karma`:''].filter(Boolean).join(' · '),
+        score:7-i,seenOn:['reddit']};});
+    }},
+
+    // ── Lichess player search ──
+    {name:'lichess',fn:async()=>{
+      const d=await fetchWithRetry(`https://lichess.org/api/player/autocomplete?term=${q}&object=true&friend=false`,{headers:{Accept:'application/json'}});
+      return((d.result||d)||[]).slice(0,5).map((u,i)=>({source:'lichess',
+        title:u.name||u.id||'',url:`https://lichess.org/@/${u.name||u.id}`,
+        snippet:[u.title?`Title: ${u.title}`:'',u.patron?'Patron':'',u.online?'Online now':''].filter(Boolean).join(' · ')||'Lichess player',
+        score:4-i,seenOn:['lichess']}));
+    }},
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // ── FREE WEB SEARCH ENGINES (no API key needed) ──────────────────────────
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // ── Marginalia Search (indie/small web) ──
+    {name:'marginalia',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.marginalia.nu/public/search/${q}?count=8&index=0`);
+      return((d.results)||[]).map((item,i)=>({source:'marginalia',
+        title:item.title||item.url||'',url:item.url||'',
+        snippet:(item.description||'').slice(0,180),
+        score:5-i,seenOn:['marginalia']}));
+    }},
+
+    // ── Wiby Search (retro/small web) ──
+    {name:'wiby',fn:async()=>{
+      const r=await fetch(`https://wiby.me/json/?q=${q}`,{signal:AbortSignal.timeout(10000)});
+      if(!r.ok)throw new Error(`HTTP ${r.status}`);
+      const d=await r.json();
+      return(d||[]).slice(0,8).map((item,i)=>({source:'wiby',
+        title:item.Title||item.URL||'',url:item.URL||'',
+        snippet:(item.Snippet||'').slice(0,180),
+        score:4-i,seenOn:['wiby']}));
+    }},
   ];
 
   // ── KEY-BACKED FETCHERS — only added when user supplies API keys ────────
@@ -1108,6 +1204,9 @@ const TIER_MAP={
   arxiv:'open',core:'open',europeana:'open',nominatim:'open',doaj:'open',
   wikibooks:'open',commons:'open',
   'google-books':'open','google-scholar':'open',
+  gitlab:'social',codeberg:'social',mastodon:'social',keybase:'social',
+  gravatar:'social','reddit-users':'social',reddit:'social',lichess:'social',
+  marginalia:'open',wiby:'open',
   shodan:'osint',censys:'osint',hunter:'osint',intelx:'osint',publicwww:'osint',tineye:'osint',
   yandex:'regional',baidu:'regional',naver:'regional',sogou:'regional',so360:'regional',seznam:'regional','mail.ru':'regional',rambler:'regional',
   startpage:'meta',dogpile:'meta',metacrawler:'meta',etools:'meta',ecosia:'meta',
