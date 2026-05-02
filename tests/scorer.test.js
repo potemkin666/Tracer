@@ -60,6 +60,19 @@ describe('extractFeatures', () => {
     expect(features.fossilTag).toBe(1);
     expect(features.timesliceTag).toBe(1);
   });
+
+  test('detects username-style url variants and full token coverage', () => {
+    const r = {
+      title: 'Brian profile',
+      url: 'https://example.com/users/brian-kalbacher',
+      snippet: 'Official profile for Brian Kalbacher',
+      source: 'brave',
+      meta: {},
+    };
+    const features = extractFeatures(r, 'brian kalbacher', ['brian', 'kalbacher'], {});
+    expect(features.urlUsername).toBe(1);
+    expect(features.allTokensPresent).toBe(1);
+  });
 });
 
 describe('computeConfidence', () => {
@@ -77,5 +90,43 @@ describe('computeConfidence', () => {
     }
     const conf = computeConfidence(zeroFeatures);
     expect(conf).toBeLessThan(0.5);
+  });
+
+  test('full token coverage boosts confidence over a one-token partial match', () => {
+    const partial = computeConfidence({
+      titleExact: 0,
+      snippetExact: 0,
+      urlUsername: 0,
+      multiSource: 0,
+      archiveSource: 0,
+      fossilTag: 0,
+      timesliceTag: 0,
+      documentTag: 0,
+      socialTag: 0,
+      profileTag: 0,
+      lowRank: 0,
+      allTokensPresent: 0,
+      titlePartial: 1,
+      snippetPartial: 0,
+      bias: 1,
+    });
+    const strong = computeConfidence({
+      titleExact: 0,
+      snippetExact: 0,
+      urlUsername: 1,
+      multiSource: 0,
+      archiveSource: 0,
+      fossilTag: 0,
+      timesliceTag: 0,
+      documentTag: 0,
+      socialTag: 0,
+      profileTag: 0,
+      lowRank: 0,
+      allTokensPresent: 1,
+      titlePartial: 1,
+      snippetPartial: 1,
+      bias: 1,
+    });
+    expect(strong).toBeGreaterThan(partial);
   });
 });

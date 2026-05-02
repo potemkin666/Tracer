@@ -646,9 +646,89 @@ function fetchWithTimeout(url,opts){return fetchWithRetry(url,opts,1)}
 // Safely decode HTML entities (StackExchange API returns encoded titles).
 function decodeEntities(s){const el=document.createElement('textarea');el.innerHTML=s;return el.value;}
 
+function buildStandaloneQueryPlan(query){
+  const raw=query.trim();
+  const lower=raw.toLowerCase();
+  const tokens=lower.split(/\s+/).filter(Boolean);
+  return{
+    raw,lower,tokens,
+    exact:tokens.length>1?`"${raw}"`:raw,
+    slug:tokens.join(''),
+    underscored:tokens.join('_'),
+    hyphenated:tokens.join('-')
+  };
+}
+
+function queryVariants(plan,opts={}){
+  const variants=[plan.raw];
+  if(opts.includeExact&&plan.exact&&plan.exact!==plan.raw)variants.push(plan.exact);
+  if(opts.includeSlug&&plan.slug&&plan.slug!==plan.lower)variants.push(plan.slug);
+  if(opts.includeUnderscored&&plan.underscored&&plan.underscored!==plan.lower)variants.push(plan.underscored);
+  if(opts.includeHyphenated&&plan.hyphenated&&plan.hyphenated!==plan.lower)variants.push(plan.hyphenated);
+  const seen=new Set();
+  return variants.filter(term=>{
+    const key=term.toLowerCase();
+    if(!term||seen.has(key))return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function mergeVariantResults(results){
+  const map=new Map();
+  for(const r of results){
+    const key=(r.url&&r.url.toLowerCase())||`${r.source||''}|${(r.title||'').toLowerCase()}`;
+    if(!map.has(key)){
+      map.set(key,{...r,seenOn:[...(r.seenOn||[r.source].filter(Boolean))]});
+      continue;
+    }
+    const existing=map.get(key);
+    const sources=r.seenOn||[r.source].filter(Boolean);
+    sources.forEach(s=>{if(s&&!existing.seenOn.includes(s))existing.seenOn.push(s)});
+    if(!existing.title&&r.title)existing.title=r.title;
+    if((r.snippet||'').length>(existing.snippet||'').length)existing.snippet=r.snippet;
+    if((r.score||0)>(existing.score||0))existing.score=r.score;
+  }
+  return Array.from(map.values());
+}
+
+async function searchVariants(terms,run){
+  const settled=await Promise.allSettled(terms.map(term=>run(term,encodeURIComponent(term))));
+  const merged=[];
+  const errors=[];
+  settled.forEach(s=>{
+    if(s.status==='fulfilled'&&Array.isArray(s.value))merged.push(...s.value);
+    else if(s.status==='rejected')errors.push(s.reason);
+  });
+  if(!merged.length&&errors.length)throw errors[0];
+  return mergeVariantResults(merged);
+}
+
+function getStandaloneMatchSignals(r,plan){
+  const title=(r.title||'').toLowerCase();
+  const snippet=(r.snippet||'').toLowerCase();
+  const url=(r.url||'').toLowerCase();
+  const combined=`${title}|${snippet}|${url}`;
+  const tokenHits=plan.tokens.filter(t=>combined.includes(t)).length;
+  return{
+    title,snippet,url,combined,tokenHits,
+    exact:plan.lower&&combined.includes(plan.lower),
+    slug:plan.slug&&combined.includes(plan.slug),
+    underscored:plan.underscored&&combined.includes(plan.underscored),
+    hyphenated:plan.hyphenated&&combined.includes(plan.hyphenated)
+  };
+}
+
+function isRelevantStandaloneResult(r,plan){
+  if(!plan.tokens.length)return false;
+  const signals=getStandaloneMatchSignals(r,plan);
+  if(plan.tokens.length===1)return signals.tokenHits>0||signals.slug;
+  return signals.exact||signals.slug||signals.underscored||signals.hyphenated||signals.tokenHits===plan.tokens.length;
+}
+
 async function searchDirect(query){
-  const q=encodeURIComponent(query);
-  const slug=query.replace(/\s+/g,'');
+  const plan=buildStandaloneQueryPlan(query);
+  const q=encodeURIComponent(plan.raw);
   _rateLimitWarnings.length=0;
 
   // Each fetcher has a name and function returning an array of results
@@ -674,11 +754,13 @@ async function searchDirect(query){
 
     // ── GitHub Users ──
     {name:'github-users',fn:async()=>{
-      const d=await fetchWithRetry(`https://api.github.com/search/users?q=${q}&per_page=5`);
-      return(d.items||[]).map((u,i)=>({source:'github',
-        title:u.login||'',url:u.html_url||'',
-        snippet:`GitHub user · Score ${u.score||0}`,
-        score:7-i,seenOn:['github']}));
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+        const d=await fetchWithRetry(`https://api.github.com/search/users?q=${encoded}&per_page=5`);
+        return(d.items||[]).map((u,i)=>({source:'github',
+          title:u.login||'',url:u.html_url||'',
+          snippet:`GitHub user · Score ${u.score||0}`,
+          score:7-i,seenOn:['github']}));
+      });
     }},
 
     // ── GitHub Repos ──
@@ -741,13 +823,15 @@ async function searchDirect(query){
 
     // ── DuckDuckGo Instant Answer ──
     {name:'duckduckgo',fn:async()=>{
-      const d=await fetchWithRetry(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=0`);
-      const out=[];
-      if(d.AbstractText)out.push({source:'duckduckgo',title:d.Heading||query,url:d.AbstractURL||'',snippet:d.AbstractText.slice(0,200),score:9,seenOn:['duckduckgo']});
-      (d.RelatedTopics||[]).slice(0,5).forEach((t,i)=>{
-        if(t.Text&&t.FirstURL)out.push({source:'duckduckgo',title:t.Text.slice(0,100),url:t.FirstURL,snippet:t.Text.slice(0,180),score:6-i,seenOn:['duckduckgo']});
+      return searchVariants(queryVariants(plan,{includeExact:true}),async(_term,encoded)=>{
+        const d=await fetchWithRetry(`https://api.duckduckgo.com/?q=${encoded}&format=json&no_html=1&skip_disambig=0`);
+        const out=[];
+        if(d.AbstractText)out.push({source:'duckduckgo',title:d.Heading||query,url:d.AbstractURL||'',snippet:d.AbstractText.slice(0,200),score:9,seenOn:['duckduckgo']});
+        (d.RelatedTopics||[]).slice(0,5).forEach((t,i)=>{
+          if(t.Text&&t.FirstURL)out.push({source:'duckduckgo',title:t.Text.slice(0,100),url:t.FirstURL,snippet:t.Text.slice(0,180),score:6-i,seenOn:['duckduckgo']});
+        });
+        return out;
       });
-      return out;
     }},
 
     // ── npm registry ──
@@ -798,7 +882,7 @@ async function searchDirect(query){
 
     // ── Wayback CDX ──
     {name:'wayback',fn:async()=>{
-      const rows=await fetchWithRetry(`https://web.archive.org/cdx/search/cdx?url=*${encodeURIComponent(slug)}*&output=json&fl=original,timestamp,statuscode&filter=statuscode:200&limit=8&collapse=urlkey`);
+      const rows=await fetchWithRetry(`https://web.archive.org/cdx/search/cdx?url=*${encodeURIComponent(plan.slug||plan.raw)}*&output=json&fl=original,timestamp,statuscode&filter=statuscode:200&limit=8&collapse=urlkey`);
       if(!Array.isArray(rows)||rows.length<=1)return[];
       const hi=rows[0].indexOf('original'),ti=rows[0].indexOf('timestamp');
       return rows.slice(1).map((row,i)=>{
@@ -905,39 +989,47 @@ async function searchDirect(query){
 
     // ── GitLab Users (complements GitHub) ──
     {name:'gitlab-users',fn:async()=>{
-      const d=await fetchWithRetry(`https://gitlab.com/api/v4/users?search=${q}&per_page=5`);
-      return(d||[]).map((u,i)=>({source:'gitlab',
-        title:u.username||u.name||'',url:u.web_url||`https://gitlab.com/${encodeURIComponent(u.username||u.name||'')}`,
-        snippet:[u.name||'',u.bio?u.bio.slice(0,120):'',u.location||''].filter(Boolean).join(' · '),
-        score:7-i,seenOn:['gitlab']}));
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+        const d=await fetchWithRetry(`https://gitlab.com/api/v4/users?search=${encoded}&per_page=5`);
+        return(d||[]).map((u,i)=>({source:'gitlab',
+          title:u.username||u.name||'',url:u.web_url||`https://gitlab.com/${encodeURIComponent(u.username||u.name||'')}`,
+          snippet:[u.name||'',u.bio?u.bio.slice(0,120):'',u.location||''].filter(Boolean).join(' · '),
+          score:7-i,seenOn:['gitlab']}));
+      });
     }},
 
     // ── Codeberg Users (Gitea-based, open-source alternative) ──
     {name:'codeberg-users',fn:async()=>{
-      const d=await fetchWithRetry(`https://codeberg.org/api/v1/users/search?q=${q}&limit=5`);
-      return((d.data||d)||[]).map((u,i)=>{const uname=u.login||u.username||'';return{source:'codeberg',
-        title:uname,url:u.html_url||`https://codeberg.org/${encodeURIComponent(uname)}`,
-        snippet:[u.full_name||'',u.description?u.description.slice(0,120):'',u.location||''].filter(Boolean).join(' · '),
-        score:5-i,seenOn:['codeberg']};});
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+        const d=await fetchWithRetry(`https://codeberg.org/api/v1/users/search?q=${encoded}&limit=5`);
+        return((d.data||d)||[]).map((u,i)=>{const uname=u.login||u.username||'';return{source:'codeberg',
+          title:uname,url:u.html_url||`https://codeberg.org/${encodeURIComponent(uname)}`,
+          snippet:[u.full_name||'',u.description?u.description.slice(0,120):'',u.location||''].filter(Boolean).join(' · '),
+          score:5-i,seenOn:['codeberg']};});
+      });
     }},
 
     // ── Mastodon / Fediverse account search ──
     {name:'mastodon',fn:async()=>{
-      const d=await fetchWithRetry(`https://mastodon.social/api/v2/search?q=${q}&type=accounts&limit=5`);
-      return(d.accounts||[]).map((a,i)=>({source:'mastodon',
-        title:`@${a.acct||a.username||''}`,url:a.url||'',
-        snippet:[a.display_name||'',a.note?(a.note.replace(/<\/?[^>]+(>|$)/g,'').slice(0,120)):'',a.followers_count?`${a.followers_count} followers`:''].filter(Boolean).join(' · '),
-        score:7-i,seenOn:['mastodon']}));
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+        const d=await fetchWithRetry(`https://mastodon.social/api/v2/search?q=${encoded}&type=accounts&limit=5`);
+        return(d.accounts||[]).map((a,i)=>({source:'mastodon',
+          title:`@${a.acct||a.username||''}`,url:a.url||'',
+          snippet:[a.display_name||'',a.note?(a.note.replace(/<\/?[^>]+(>|$)/g,'').slice(0,120)):'',a.followers_count?`${a.followers_count} followers`:''].filter(Boolean).join(' · '),
+          score:7-i,seenOn:['mastodon']}));
+      });
     }},
 
     // ── Keybase identity search ──
     {name:'keybase',fn:async()=>{
-      const d=await fetchWithRetry(`https://keybase.io/_/api/1.0/user/autocomplete.json?q=${q}`);
-      return((d.completions)||[]).slice(0,5).map((c,i)=>{const comp=c.components||{};return{source:'keybase',
-        title:comp.username?.val||'',url:`https://keybase.io/${comp.username?.val||''}`,
-        snippet:[comp.full_name?.val||'',comp.websites?.val?`Web: ${comp.websites.val}`:'',
-          comp.key_fingerprint?.val?'PGP verified':''].filter(Boolean).join(' · '),
-        score:7-i,seenOn:['keybase']};});
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+        const d=await fetchWithRetry(`https://keybase.io/_/api/1.0/user/autocomplete.json?q=${encoded}`);
+        return((d.completions)||[]).slice(0,5).map((c,i)=>{const comp=c.components||{};return{source:'keybase',
+          title:comp.username?.val||'',url:`https://keybase.io/${comp.username?.val||''}`,
+          snippet:[comp.full_name?.val||'',comp.websites?.val?`Web: ${comp.websites.val}`:'',
+            comp.key_fingerprint?.val?'PGP verified':''].filter(Boolean).join(' · '),
+          score:7-i,seenOn:['keybase']};});
+      });
     }},
 
     // ── Gravatar profile lookup (email queries) ──
@@ -954,21 +1046,25 @@ async function searchDirect(query){
 
     // ── Reddit user search ──
     {name:'reddit-users',fn:async()=>{
-      const d=await fetchWithRetry(`https://www.reddit.com/users/search.json?q=${q}&limit=5`,{headers:{'User-Agent':'Tracer/1.0'}});
-      return((d.data&&d.data.children)||[]).map((c,i)=>{const u=c.data||{};return{source:'reddit-users',
-        title:`u/${u.name||''}`,url:`https://www.reddit.com/user/${u.name}`,
-        snippet:[u.subreddit?.public_description?u.subreddit.public_description.slice(0,100):'',
-          u.link_karma?`${u.link_karma} link karma`:'',u.comment_karma?`${u.comment_karma} comment karma`:''].filter(Boolean).join(' · '),
-        score:7-i,seenOn:['reddit-users']};});
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+        const d=await fetchWithRetry(`https://www.reddit.com/users/search.json?q=${encoded}&limit=5`,{headers:{'User-Agent':'Tracer/1.0'}});
+        return((d.data&&d.data.children)||[]).map((c,i)=>{const u=c.data||{};return{source:'reddit-users',
+          title:`u/${u.name||''}`,url:`https://www.reddit.com/user/${u.name}`,
+          snippet:[u.subreddit?.public_description?u.subreddit.public_description.slice(0,100):'',
+            u.link_karma?`${u.link_karma} link karma`:'',u.comment_karma?`${u.comment_karma} comment karma`:''].filter(Boolean).join(' · '),
+          score:7-i,seenOn:['reddit-users']};});
+      });
     }},
 
     // ── Lichess player search ──
     {name:'lichess',fn:async()=>{
-      const d=await fetchWithRetry(`https://lichess.org/api/player/autocomplete?term=${q}&object=true&friend=false`,{headers:{Accept:'application/json'}});
-      return((d.result||d)||[]).slice(0,5).map((u,i)=>({source:'lichess',
-        title:u.name||u.id||'',url:`https://lichess.org/@/${u.name||u.id}`,
-        snippet:[u.title?`Title: ${u.title}`:'',u.patron?'Patron':'',u.online?'Online now':''].filter(Boolean).join(' · ')||'Lichess player',
-        score:4-i,seenOn:['lichess']}));
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+        const d=await fetchWithRetry(`https://lichess.org/api/player/autocomplete?term=${encoded}&object=true&friend=false`,{headers:{Accept:'application/json'}});
+        return((d.result||d)||[]).slice(0,5).map((u,i)=>({source:'lichess',
+          title:u.name||u.id||'',url:`https://lichess.org/@/${u.name||u.id}`,
+          snippet:[u.title?`Title: ${u.title}`:'',u.patron?'Patron':'',u.online?'Online now':''].filter(Boolean).join(' · ')||'Lichess player',
+          score:4-i,seenOn:['lichess']}));
+      });
     }},
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -977,22 +1073,26 @@ async function searchDirect(query){
 
     // ── Marginalia Search (indie/small web) ──
     {name:'marginalia',fn:async()=>{
-      const d=await fetchWithRetry(`https://api.marginalia.nu/public/search/${q}?count=8&index=0`);
-      return((d.results)||[]).map((item,i)=>({source:'marginalia',
-        title:item.title||item.url||'',url:item.url||'',
-        snippet:(item.description||'').slice(0,180),
-        score:5-i,seenOn:['marginalia']}));
+      return searchVariants(queryVariants(plan,{includeExact:true}),async(_term,encoded)=>{
+        const d=await fetchWithRetry(`https://api.marginalia.nu/public/search/${encoded}?count=8&index=0`);
+        return((d.results)||[]).map((item,i)=>({source:'marginalia',
+          title:item.title||item.url||'',url:item.url||'',
+          snippet:(item.description||'').slice(0,180),
+          score:5-i,seenOn:['marginalia']}));
+      });
     }},
 
     // ── Wiby Search (retro/small web) ──
     {name:'wiby',fn:async()=>{
-      const r=await fetch(`https://wiby.me/json/?q=${q}`,{signal:AbortSignal.timeout(10000)});
-      if(!r.ok)throw new Error(`HTTP ${r.status}`);
-      const d=await r.json();
-      return(d||[]).slice(0,8).map((item,i)=>({source:'wiby',
-        title:item.Title||item.URL||'',url:item.URL||'',
-        snippet:(item.Snippet||'').slice(0,180),
-        score:4-i,seenOn:['wiby']}));
+      return searchVariants(queryVariants(plan,{includeExact:true}),async(_term,encoded)=>{
+        const r=await fetch(`https://wiby.me/json/?q=${encoded}`,{signal:AbortSignal.timeout(10000)});
+        if(!r.ok)throw new Error(`HTTP ${r.status}`);
+        const d=await r.json();
+        return(d||[]).slice(0,8).map((item,i)=>({source:'wiby',
+          title:item.Title||item.URL||'',url:item.URL||'',
+          snippet:(item.Snippet||'').slice(0,180),
+          score:4-i,seenOn:['wiby']}));
+      });
     }},
   ];
 
@@ -1177,11 +1277,7 @@ async function searchDirect(query){
 
   // ── Relevance filter ──
   // Drop results where neither title, snippet, nor URL contains any query token.
-  const tokens=query.toLowerCase().split(/\s+/).filter(Boolean);
-  const relevant=results.filter(r=>{
-    const text=((r.title||'')+'|'+(r.snippet||'')+'|'+(r.url||'')).toLowerCase();
-    return tokens.some(t=>text.includes(t));
-  });
+  const relevant=results.filter(r=>isRelevantStandaloneResult(r,plan));
 
   // ── Client-side deduplication (mirrors backend deduper.js) ──
   const deduped=dedupeStandalone(relevant);
@@ -1425,30 +1521,27 @@ function renderSourceStatus(statusArr){
 
 // ── CLIENT-SIDE CONFIDENCE SCORER (mirrors backend scorer.js) ────────────────
 const _WEIGHTS={
-  titleExact:3.2,snippetExact:2.1,urlUsername:1.8,multiSource:1.4,
-  archiveSource:0.9,titlePartial:0.5,snippetPartial:0.4,bias:-2.0
+  titleExact:3.2,snippetExact:2.1,urlUsername:2.0,multiSource:1.4,
+  archiveSource:0.9,allTokensPresent:1.6,titlePartial:0.5,snippetPartial:0.4,bias:-2.0
 };
 function _sigmoid(z){return 1/(1+Math.exp(-z))}
 function scoreStandalone(results,originalInput){
-  const lower=originalInput.toLowerCase();
-  const tokens=lower.split(/\s+/).filter(Boolean);
-  const slug=lower.replace(/\s+/g,'');
+  const plan=buildStandaloneQueryPlan(originalInput);
   // Build URL frequency map for multiSource
   const urlMap={};
   results.forEach(r=>{if(r.url)urlMap[r.url]=(urlMap[r.url]||0)+1});
 
   const scored=results.map(r=>{
-    const title=(r.title||'').toLowerCase();
-    const snippet=(r.snippet||'').toLowerCase();
-    const url=(r.url||'').toLowerCase();
+    const signals=getStandaloneMatchSignals(r,plan);
     const feats={
-      titleExact:   title.includes(lower)?1:0,
-      snippetExact: snippet.includes(lower)?1:0,
-      urlUsername:   url.includes(slug)?1:0,
+      titleExact:   signals.title.includes(plan.lower)?1:0,
+      snippetExact: signals.snippet.includes(plan.lower)?1:0,
+      urlUsername:  signals.slug||signals.underscored||signals.hyphenated?1:0,
       multiSource:  (urlMap[r.url]||0)>1?1:0,
-      archiveSource:r.source==='wayback'||/archive\.org/.test(url)?1:0,
-      titlePartial: tokens.some(t=>title.includes(t))?1:0,
-      snippetPartial:tokens.some(t=>snippet.includes(t))?1:0,
+      archiveSource:r.source==='wayback'||/archive\.org/.test(signals.url)?1:0,
+      allTokensPresent:plan.tokens.length>1&&signals.tokenHits===plan.tokens.length?1:0,
+      titlePartial: plan.tokens.some(t=>signals.title.includes(t))?1:0,
+      snippetPartial:plan.tokens.some(t=>signals.snippet.includes(t))?1:0,
       bias:1
     };
     let z=0;

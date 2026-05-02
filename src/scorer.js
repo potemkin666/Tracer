@@ -8,7 +8,7 @@
 export const WEIGHTS = {
   titleExact:       3.2,   // full input appears in title
   snippetExact:     2.1,   // full input appears in snippet
-  urlUsername:       1.8,   // no-spaces input appears in URL
+  urlUsername:      2.0,   // username-style input variant appears in URL
   multiSource:       1.4,   // same URL found via multiple connectors
   archiveSource:     0.9,   // result from Wayback / archive.org
   fossilTag:         1.5,   // tagged as a fossil (old capture)
@@ -17,6 +17,7 @@ export const WEIGHTS = {
   socialTag:         1.0,   // tagged as a social profile
   profileTag:        0.9,   // tagged as a profile result
   lowRank:           0.6,   // ranked in top-3 by the upstream engine
+  allTokensPresent:  1.6,   // every input token appears across title/snippet/url
   titlePartial:      0.5,   // at least one input token appears in title
   snippetPartial:    0.4,   // at least one input token appears in snippet
   bias:             -2.0,   // intercept — keeps scores conservative
@@ -38,23 +39,30 @@ export function extractFeatures(r, lowerInput, tokens, urlMap) {
   const title   = (r.title   || '').toLowerCase();
   const snippet = (r.snippet || '').toLowerCase();
   const url     = (r.url     || '').toLowerCase();
+  const combined = `${title}|${snippet}|${url}`;
   const tags    = (r.meta && r.meta.tags) || [];
+  const usernameVariants = [
+    lowerInput.replace(/\s+/g, ''),
+    tokens.join('_'),
+    tokens.join('-'),
+  ].filter(Boolean);
 
   return {
-    titleExact:    title.includes(lowerInput) ? 1 : 0,
-    snippetExact:  snippet.includes(lowerInput) ? 1 : 0,
-    urlUsername:    url.includes(lowerInput.replace(/\s+/g, '')) ? 1 : 0,
-    multiSource:   (urlMap[r.url] || 0) > 1 ? 1 : 0,
-    archiveSource: r.source === 'wayback' || /archive\.org/.test(url) ? 1 : 0,
-    fossilTag:     tags.includes('fossil') ? 1 : 0,
-    timesliceTag:  tags.includes('timeslice') ? 1 : 0,
-    documentTag:   tags.includes('document') ? 1 : 0,
-    socialTag:     tags.includes('social') ? 1 : 0,
-    profileTag:    tags.includes('profile') ? 1 : 0,
-    lowRank:       typeof r.rank === 'number' && r.rank >= 1 && r.rank <= 3 ? 1 : 0,
-    titlePartial:  tokens.some(t => title.includes(t)) ? 1 : 0,
-    snippetPartial:tokens.some(t => snippet.includes(t)) ? 1 : 0,
-    bias:          1,
+     titleExact:    title.includes(lowerInput) ? 1 : 0,
+     snippetExact:  snippet.includes(lowerInput) ? 1 : 0,
+     urlUsername:   usernameVariants.some((variant) => url.includes(variant)) ? 1 : 0,
+     multiSource:   (urlMap[r.url] || 0) > 1 ? 1 : 0,
+     archiveSource: r.source === 'wayback' || /archive\.org/.test(url) ? 1 : 0,
+     fossilTag:     tags.includes('fossil') ? 1 : 0,
+     timesliceTag:  tags.includes('timeslice') ? 1 : 0,
+     documentTag:   tags.includes('document') ? 1 : 0,
+     socialTag:     tags.includes('social') ? 1 : 0,
+     profileTag:    tags.includes('profile') ? 1 : 0,
+     lowRank:       typeof r.rank === 'number' && r.rank >= 1 && r.rank <= 3 ? 1 : 0,
+     allTokensPresent: tokens.length > 1 && tokens.every((t) => combined.includes(t)) ? 1 : 0,
+     titlePartial:  tokens.some(t => title.includes(t)) ? 1 : 0,
+     snippetPartial:tokens.some(t => snippet.includes(t)) ? 1 : 0,
+     bias:          1,
   };
 }
 
@@ -99,4 +107,3 @@ export function score(results, originalInput) {
 
   return scored.sort((a, b) => b.confidence - a.confidence);
 }
-
