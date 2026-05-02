@@ -77,7 +77,7 @@ function createProgressTracker(notify, connectorStats, signal) {
 }
 
 async function runConnectorSearch(connector, query, apiKeys, requestSignal) {
-  const timeoutController = new AbortController();
+  const timeoutController = new globalThis.AbortController();
   const timeoutError = createAbortError('connector timeout');
   const timer = setTimeout(() => timeoutController.abort(timeoutError), CONNECTOR_TIMEOUT_MS);
   const signal = combineSignals(requestSignal, timeoutController.signal);

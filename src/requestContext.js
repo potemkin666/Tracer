@@ -46,11 +46,11 @@ export function combineSignals(...signals) {
   const activeSignals = signals.filter(Boolean);
   if (activeSignals.length === 0) return undefined;
   if (activeSignals.length === 1) return activeSignals[0];
-  if (typeof AbortSignal.any === 'function') {
-    return AbortSignal.any(activeSignals);
+  if (typeof globalThis.AbortSignal?.any === 'function') {
+    return globalThis.AbortSignal.any(activeSignals);
   }
 
-  const controller = new AbortController();
+  const controller = new globalThis.AbortController();
   const abort = (signal) => {
     if (!controller.signal.aborted) {
       controller.abort(signal.reason);

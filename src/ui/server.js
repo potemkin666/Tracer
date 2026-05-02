@@ -43,7 +43,7 @@ app.use(express.static(docsDir));
 app.use(express.static(publicDir));
 
 app.post('/search', async (req, res) => {
-  const controller = new AbortController();
+  const controller = new globalThis.AbortController();
   let closed = false;
   res.on('close', () => {
     closed = true;
@@ -101,7 +101,7 @@ app.get('/search/stream', async (req, res) => {
 
   // Guard against writing to a closed connection (client navigates away, etc.)
   let closed = false;
-  const controller = new AbortController();
+  const controller = new globalThis.AbortController();
   res.on('close', () => {
     closed = true;
     controller.abort(createAbortError('client disconnected'));
