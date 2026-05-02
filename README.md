@@ -91,6 +91,20 @@ npm run serve
 # Open http://localhost:3000
 ```
 
+## Portable / external-drive use
+
+- **Fastest no-install option:** double-click `/home/runner/work/Tracer/Tracer/index.html` after copying the repo to the drive. Tracer will open in **portable standalone mode** and run directly from the browser with the built-in open APIs.
+- **Easiest full local-server option:** use the launcher in the repo root:
+  - Windows: `Start Tracer.bat`
+  - macOS/Linux: `Start Tracer.command`
+- The launchers try to:
+  1. use your local Node.js install if it exists,
+  2. run `npm install` automatically the first time,
+  3. start the local server,
+  4. open `http://localhost:3000` in your browser,
+  5. fall back to standalone browser mode if Node.js is missing.
+- For the full local-server experience on a new machine, install **Node.js 18+** once. After that, people can just double-click the launcher from the external drive.
+
 ## Tests
 
 ```bash

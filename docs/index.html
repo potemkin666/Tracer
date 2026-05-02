@@ -345,7 +345,7 @@
           <button class="btn btn-sm" onclick="checkConn()">PING</button>
         </div>
         <div id="guide" style="font-size:.8rem;line-height:1.7;color:var(--silver)">
-          <p style="margin-bottom:.6rem">Want the <strong style="color:var(--bright)">full 550+ engine power</strong>? Follow these steps. <em style="color:var(--dim)">(Yes, every single one.)</em></p>
+          <p style="margin-bottom:.6rem">If you opened this page straight from your hard drive, you're already in <strong style="color:var(--bright)">portable standalone mode</strong> and can search right now with the built-in open APIs. Want the <strong style="color:var(--bright)">full 550+ engine power</strong>? Follow these steps.</p>
 
           <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 0 — Do you have Node.js?</strong></p>
           <p style="margin-bottom:.2rem">Open a terminal (Command Prompt on Windows, Terminal on Mac/Linux) and type:</p>
@@ -517,7 +517,8 @@ function collectKeys(){const o={};KEY_DEFS.forEach(k=>{const el=document.getElem
 
 // ── CONNECTION ────────────────────────────────────────────────────────────────
 let connected=false;
-const isGHPages=location.hostname.endsWith('.github.io');
+const isPortableFile=location.protocol==='file:';
+const isStandaloneClient=isPortableFile||location.hostname.endsWith('.github.io');
 
 async function checkConn(){
   const base=document.getElementById('endpoint').value.replace(/\/$/,'');
@@ -532,9 +533,11 @@ async function checkConn(){
     }
   }catch{}
   connected=false;
-  document.getElementById('dot').className='dot'+(isGHPages?' standalone':'');
-  document.getElementById('conn-lbl').textContent=isGHPages?'STANDALONE':'OFFLINE';
-  document.getElementById('eng-count').textContent=isGHPages?'34 open APIs (standalone — start local server for 550+)':'0 (server offline — open-API fallback)';
+  document.getElementById('dot').className='dot'+(isStandaloneClient?' standalone':'');
+  document.getElementById('conn-lbl').textContent=isStandaloneClient?'STANDALONE':'OFFLINE';
+  document.getElementById('eng-count').textContent=isStandaloneClient
+    ? (isPortableFile?'34 open APIs (portable standalone — start local server for 550+)':'34 open APIs (standalone — start local server for 550+)')
+    : '0 (server offline — open-API fallback)';
   return false;
 }
 document.getElementById('endpoint').addEventListener('change',checkConn);
@@ -1597,10 +1600,11 @@ function showErr(msg,isErr){const el=document.getElementById('err');el.textConte
 // ── INIT ─────────────────────────────────────────────────────────────────────
 loadKeys();
 renderHistory();
-// Always try the local server first. On GitHub Pages we start in STANDALONE
-// mode but immediately attempt a connection — if the user has `npm run serve`
-// running, the dot goes green and searches use the full engine set.
-if(isGHPages){
+// Always try the local server first. On GitHub Pages or file:// launches we
+// start in STANDALONE mode but immediately attempt a connection — if the user
+// has `npm run serve` running, the dot goes green and searches use the full
+// engine set.
+if(isStandaloneClient){
   document.getElementById('dot').className='dot standalone';
   document.getElementById('conn-lbl').textContent='STANDALONE';
   // Silently try to reach the server; if it's there, the dot turns green.
