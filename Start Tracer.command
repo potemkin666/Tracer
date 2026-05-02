@@ -3,6 +3,7 @@ set -u
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 PORT=3000
+MAX_ATTEMPTS=20
 cd "$ROOT" || exit 1
 
 open_target() {
@@ -40,7 +41,7 @@ fi
 
 ( if command -v curl >/dev/null 2>&1; then
     attempt=0
-    while [ "$attempt" -lt 20 ]; do
+    while [ "$attempt" -lt "$MAX_ATTEMPTS" ]; do
       if curl -fsS "http://localhost:${PORT}/health" >/dev/null 2>&1; then
         break
       fi
