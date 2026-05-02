@@ -91,6 +91,24 @@ npm run serve
 # Open http://localhost:3000
 ```
 
+## Portable / external-drive use
+
+- **One true double-click entrypoint:** open the repo root `index.html`. It redirects into the full UI and works as the easiest **portable standalone mode** entrypoint from a copied folder or external drive.
+- **Easiest full local-server option:** use the launcher in the repo root:
+  - Windows: `Start Tracer.bat`
+  - macOS: `Start Tracer.command`
+  - Linux: `Start Tracer.sh`
+- The launchers try to:
+  1. use your local Node.js install if it exists,
+  2. run `npm install` automatically the first time,
+  3. start the local server,
+  4. open `http://localhost:3000` in your browser,
+  5. fall back to the repo root `index.html` if Node.js is missing or the server does not come up.
+- **Quick start choices:**
+  - **Use now with built-in APIs:** double-click `index.html`.
+  - **Use the full 550+ engine mode:** double-click the launcher for your OS.
+- For the full local-server experience on a new machine, install **Node.js 18+** once. After that, people can just double-click the launcher from the external drive.
+
 ## Tests
 
 ```bash

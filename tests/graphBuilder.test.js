@@ -204,6 +204,17 @@ describe('buildGraph', () => {
     expect(usernameEdges).toHaveLength(1);
   });
 
+  test('sharedUsername uses shared identity patterns for keybase profiles', () => {
+    const results = [
+      result({ url: 'https://github.com/jsmith' }),
+      result({ url: 'https://keybase.io/jsmith' }),
+    ];
+    const { edges } = buildGraph(results);
+    const usernameEdges = edges.filter(e => e.type === 'sharedUsername');
+    expect(usernameEdges).toHaveLength(1);
+    expect(usernameEdges[0].detail).toBe('jsmith');
+  });
+
   // ── Dedup ──────────────────────────────────────────────────────────────
   test('does not create duplicate edges', () => {
     const results = [

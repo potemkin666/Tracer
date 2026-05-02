@@ -12,16 +12,7 @@
  * @module graphBuilder
  */
 
-/**
- * Extract the hostname from a URL string, or return null.
- */
-function extractDomain(url) {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '');
-  } catch {
-    return null;
-  }
-}
+import { extractDomain, extractUsernameFromUrl } from './identity.js';
 
 /**
  * Pull email-like patterns out of a text string.
@@ -42,49 +33,11 @@ function emailDomain(email) {
 }
 
 /**
- * Well-known URL patterns from which a username can be extracted.
- * The first capture group is the username.
- */
-const USERNAME_PATTERNS = [
-  /(?:twitter|x)\.com\/([A-Za-z0-9_]{1,40})\/?$/i,
-  /github\.com\/([A-Za-z0-9_-]{1,40})\/?$/i,
-  /gitlab\.com\/([A-Za-z0-9_.-]{1,40})\/?$/i,
-  /instagram\.com\/([A-Za-z0-9_.]{1,40})\/?$/i,
-  /linkedin\.com\/in\/([A-Za-z0-9_-]{1,80})\/?$/i,
-  /reddit\.com\/user\/([A-Za-z0-9_-]{1,40})\/?$/i,
-  /facebook\.com\/([A-Za-z0-9.]{1,80})\/?$/i,
-  /tiktok\.com\/@([A-Za-z0-9_.]{1,40})/i,
-  /medium\.com\/@([A-Za-z0-9_-]{1,60})/i,
-  /bitbucket\.org\/([A-Za-z0-9_-]{1,40})\/?$/i,
-  /codepen\.io\/([A-Za-z0-9_-]{1,40})\/?$/i,
-  /dev\.to\/([A-Za-z0-9_-]{1,40})\/?$/i,
-  /keybase\.io\/([A-Za-z0-9_]{1,40})\/?$/i,
-  /pinterest\.com\/([A-Za-z0-9_]{1,40})\/?$/i,
-  /tumblr\.com\/([A-Za-z0-9_-]{1,40})\/?$/i,
-];
-
-/**
  * Maximum number of nodes sharing a username before we skip edge creation.
  * Very common usernames (e.g. 'admin', 'test') would create too many
  * false-positive edges, so we cap the group size.
  */
 const MAX_USERNAME_GROUP = 30;
-
-/**
- * Attempt to extract a cross-platform username from a URL.
- * Returns { username, domain } or null.
- */
-function extractUsername(url) {
-  if (!url) return null;
-  const domain = extractDomain(url);
-  if (!domain) return null;
-  for (const re of USERNAME_PATTERNS) {
-    const m = url.match(re);
-    if (m) return { username: m[1].toLowerCase(), domain };
-  }
-  // Also check enricher-injected meta.username (via the result node)
-  return null;
-}
 
 /**
  * Build the identity graph.
@@ -106,7 +59,7 @@ export function buildGraph(results, avatarClusters = []) {
       ...extractEmails(r.title),
       ...extractEmails(r.snippet),
     ];
-    const usernameInfo = extractUsername(r.url);
+    const usernameInfo = extractUsernameFromUrl(r.url);
     // Also fall back to enricher-injected username from meta
     const metaUsername = (r.meta && r.meta.username) ? r.meta.username.toLowerCase() : null;
 

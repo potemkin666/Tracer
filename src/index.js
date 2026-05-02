@@ -1,6 +1,7 @@
 import { run } from './orchestrator.js';
 import { exportJSON, exportHTML } from './exporter.js';
 import { loadKeysFromEnv } from './config.js';
+import { normaliseSearchRequest } from './searchOptions.js';
 import fs from 'fs';
 
 function parseArgs(argv) {
@@ -58,8 +59,20 @@ function parseArgs(argv) {
 }
 
 async function main() {
-  const { input, mode, apiKeys, output, html, fossils, avatars, timeSliceMode, documents, proxy, torRotate } =
-    parseArgs(process.argv);
+  const parsed = parseArgs(process.argv);
+  const {
+    input,
+    mode,
+    apiKeys,
+    output,
+    html,
+    fossils,
+    avatars,
+    timeSliceMode,
+    documents,
+    proxy,
+    torRotate,
+  } = parsed;
 
   if (!input) {
     console.error(
@@ -115,6 +128,21 @@ async function main() {
     process.exit(1);
   }
 
+  let searchRequest;
+  try {
+    searchRequest = normaliseSearchRequest({
+      input,
+      mode,
+      fossils,
+      avatars,
+      timeSliceMode,
+      documents,
+    });
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
+
   // If --proxy was provided, set the env var so httpClient picks it up.
   if (proxy) {
     process.env.TRACER_PROXY_URL = proxy;
@@ -134,15 +162,15 @@ async function main() {
   const proxyLabel = process.env.TRACER_PROXY_URL
     ? ` via ${process.env.TRACER_PROXY_URL}`
     : '';
-  console.log(`Searching for: "${input}" (mode: ${mode || 'normal'})${proxyLabel}`);
+  console.log(`Searching for: "${searchRequest.input}" (mode: ${searchRequest.mode})${proxyLabel}`);
 
-  const { results, avatarClusters } = await run(input, {
-    mode,
+  const { results, avatarClusters } = await run(searchRequest.input, {
+    mode: searchRequest.mode,
     apiKeys,
-    fossils,
-    avatars,
-    timeSliceMode,
-    documents,
+    fossils: searchRequest.fossils,
+    avatars: searchRequest.avatars,
+    timeSliceMode: searchRequest.timeSliceMode,
+    documents: searchRequest.documents,
   });
 
   console.log(`\nTotal results: ${results.length}`);

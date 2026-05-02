@@ -187,6 +187,42 @@
       font-family:'Press Start 2P',monospace;font-size:.52rem;
       color:var(--bright);margin-bottom:1rem;letter-spacing:.06em;
     }
+    .quickstart-card{
+      border:1px solid rgba(100,255,218,.28);
+      background:linear-gradient(180deg,rgba(0,26,58,.7),rgba(0,12,30,.82));
+      padding:.9rem 1rem;
+      margin-bottom:1rem;
+    }
+    .quickstart-hdr{
+      font-family:'Press Start 2P',monospace;
+      font-size:.5rem;
+      color:var(--bright);
+      letter-spacing:.08em;
+      margin-bottom:.7rem;
+    }
+    .quickstart-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+      gap:.8rem;
+    }
+    .quickstart-item{
+      border:1px solid rgba(0,184,212,.18);
+      background:rgba(0,8,22,.55);
+      padding:.8rem;
+    }
+    .quickstart-item strong{
+      display:block;
+      color:var(--cyan);
+      margin-bottom:.35rem;
+      font-size:.88rem;
+    }
+    .quickstart-item p{
+      color:var(--silver);
+      font-size:.78rem;
+      line-height:1.55;
+      margin-bottom:.6rem;
+    }
+    .quickstart-actions{display:flex;gap:.45rem;flex-wrap:wrap}
 
     /* === RESULTS === */
     #results-section{width:100%;max-width:800px}
@@ -313,6 +349,26 @@
 
     <div id="eng-bar">ENGINES READY: <span id="eng-count">34 open APIs (standalone)</span></div>
 
+    <div class="quickstart-card">
+      <div class="quickstart-hdr">PORTABLE USE — QUICK START</div>
+      <div class="quickstart-grid">
+        <div class="quickstart-item">
+          <strong>Use now with built-in APIs</strong>
+          <p>You're in portable standalone mode right now, so you can search immediately with the built-in open APIs.</p>
+          <div class="quickstart-actions">
+            <button class="btn btn-sm" type="button" onclick="document.getElementById('query').focus()">SEARCH NOW</button>
+          </div>
+        </div>
+        <div class="quickstart-item">
+          <strong>Use the full 550+ engine mode</strong>
+          <p>Double-click the repo root launcher for your OS: <code style="color:var(--bright)">Start Tracer.bat</code>, <code style="color:var(--bright)">Start Tracer.command</code>, or <code style="color:var(--bright)">Start Tracer.sh</code>.</p>
+          <div class="quickstart-actions">
+            <button class="btn btn-sm" type="button" onclick="openLocalServerGuide()">OPEN SETUP GUIDE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- PRIMARY SEARCH ROW -->
     <div class="search-row">
       <input type="text" id="query" placeholder="name, username, alias, email…" autocomplete="off" spellcheck="false">
@@ -334,7 +390,7 @@
     </div>
 
     <!-- LOCAL SERVER (collapsible, advanced) -->
-    <details>
+    <details id="local-server-guide">
       <summary>LOCAL SERVER — connect for 550+ engines</summary>
       <div>
         <div style="display:flex;gap:.6rem;margin-bottom:.8rem;align-items:center">
@@ -345,7 +401,8 @@
           <button class="btn btn-sm" onclick="checkConn()">PING</button>
         </div>
         <div id="guide" style="font-size:.8rem;line-height:1.7;color:var(--silver)">
-          <p style="margin-bottom:.6rem">Want the <strong style="color:var(--bright)">full 550+ engine power</strong>? Follow these steps. <em style="color:var(--dim)">(Yes, every single one.)</em></p>
+          <p style="margin-bottom:.6rem">If you opened the repo root <code style="color:var(--bright)">index.html</code> from your hard drive, you're already in <strong style="color:var(--bright)">portable standalone mode</strong> and can search right now with the built-in open APIs.</p>
+          <p style="margin-bottom:.6rem">Want the <strong style="color:var(--bright)">full 550+ engine power</strong>? The easiest path is to double-click the repo root launcher for your OS: <code style="color:var(--bright)">Start Tracer.bat</code>, <code style="color:var(--bright)">Start Tracer.command</code>, or <code style="color:var(--bright)">Start Tracer.sh</code>. You can also follow the manual steps below.</p>
 
           <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 0 — Do you have Node.js?</strong></p>
           <p style="margin-bottom:.2rem">Open a terminal (Command Prompt on Windows, Terminal on Mac/Linux) and type:</p>
@@ -442,6 +499,7 @@
   <span><a href="https://github.com/potemkin666/Tracer" target="_blank" rel="noopener">github.com/potemkin666/Tracer</a></span>
 </footer>
 
+<script src="engine-metadata.js"></script>
 <script>
 // ── BUBBLES ──────────────────────────────────────────────────────────────────
 (function(){
@@ -468,35 +526,13 @@
   }
 })();
 
-// ── KEY DEFINITIONS ───────────────────────────────────────────────────────────
-const KEY_DEFS=[
-  {id:'brave',    label:'BRAVE KEY'},
-  {id:'kagi',     label:'KAGI KEY'},
-  {id:'bing',     label:'BING KEY'},
-  {id:'google',   label:'GOOGLE KEY'},
-  {id:'googleCx', label:'GOOGLE CX'},
-  {id:'serpapi',  label:'SERPAPI KEY'},
-  {id:'mojeek',   label:'MOJEEK KEY'},
-  {id:'exa',      label:'EXA KEY'},
-  {id:'perplexity',label:'PERPLEXITY KEY'},
-  {id:'shodan',   label:'SHODAN KEY'},
-  {id:'censysId', label:'CENSYS ID'},
-  {id:'censysSecret',label:'CENSYS SECRET'},
-  {id:'hunter',   label:'HUNTER KEY'},
-  {id:'intelx',   label:'INTELX KEY'},
-  {id:'publicwww',label:'PUBLICWWW KEY'},
-  {id:'tineye',   label:'TINEYE KEY'},
-  {id:'dehashed', label:'DEHASHED email:key'},
-  {id:'hibp',     label:'HIBP API KEY'},
-  {id:'greynoise',label:'GREYNOISE KEY'},
-  {id:'yandex',   label:'YANDEX user:key'},
-  {id:'naverClientId',     label:'NAVER CLIENT ID'},
-  {id:'naverClientSecret', label:'NAVER SECRET'},
-  {id:'metager',  label:'METAGER KEY'},
-  {id:'swisscows',label:'SWISSCOWS KEY'},
-  {id:'listennotes',label:'LISTENNOTES KEY'},
-  {id:'searxngUrl',label:'SEARXNG INSTANCE URL'},
-];
+// ── SHARED ENGINE METADATA ────────────────────────────────────────────────────
+const ENGINE_METADATA=globalThis.TRACER_ENGINE_METADATA||{
+  keyDefs:[],
+  standalone:{openFetchers:[],sourceTierMap:{}},
+  sourceTierMap:{},
+};
+const KEY_DEFS=ENGINE_METADATA.keyDefs||[];
 
 // Build key grid
 (function(){
@@ -517,7 +553,22 @@ function collectKeys(){const o={};KEY_DEFS.forEach(k=>{const el=document.getElem
 
 // ── CONNECTION ────────────────────────────────────────────────────────────────
 let connected=false;
-const isGHPages=location.hostname.endsWith('.github.io');
+const isFileProtocol=location.protocol==='file:';
+const isStandaloneClient=isFileProtocol||location.hostname.endsWith('.github.io');
+function getStandaloneEngineLabel(){
+  const openCount=(ENGINE_METADATA.standalone&&ENGINE_METADATA.standalone.openFetchers
+    ?ENGINE_METADATA.standalone.openFetchers.length
+    :0);
+  if(!isStandaloneClient)return '0 (server offline - open-API fallback)';
+  if(isFileProtocol)return `${openCount} open APIs (portable mode works now - start local server for 550+)`;
+  return `${openCount} open APIs (standalone - start local server for 550+)`;
+}
+
+function openLocalServerGuide(){
+  const guide=document.getElementById('local-server-guide');
+  guide.open=true;
+  guide.scrollIntoView({behavior:'smooth',block:'start'});
+}
 
 async function checkConn(){
   const base=document.getElementById('endpoint').value.replace(/\/$/,'');
@@ -532,9 +583,9 @@ async function checkConn(){
     }
   }catch{}
   connected=false;
-  document.getElementById('dot').className='dot'+(isGHPages?' standalone':'');
-  document.getElementById('conn-lbl').textContent=isGHPages?'STANDALONE':'OFFLINE';
-  document.getElementById('eng-count').textContent=isGHPages?'34 open APIs (standalone — start local server for 550+)':'0 (server offline — open-API fallback)';
+  document.getElementById('dot').className='dot'+(isStandaloneClient?' standalone':'');
+  document.getElementById('conn-lbl').textContent=isStandaloneClient?'STANDALONE':'OFFLINE';
+  document.getElementById('eng-count').textContent=getStandaloneEngineLabel();
   return false;
 }
 document.getElementById('endpoint').addEventListener('change',checkConn);
@@ -1283,30 +1334,7 @@ async function doSearch(){
 document.getElementById('query').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch()});
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
-const TIER_MAP={
-  brave:'core',serpapi:'core',mojeek:'core',kagi:'core',bing:'core',google:'core',
-  metager:'core',swisscows:'core',listennotes:'core',exa:'core',perplexity:'core',
-  duckduckgo:'open',searxng:'open',marginalia:'open',wiby:'open',qwant:'open',yep:'open',
-  searchcode:'open','grep.app':'open',openverse:'open',base:'open','crt.sh':'open',
-  urlscan:'open',opencorporates:'open',opensanctions:'open','semantic-scholar':'open',
-  crossref:'open',openalex:'open',worldcat:'open',ahmia:'open',carrot2:'open',
-  'whats-my-name':'open','social-searcher':'open',orcid:'open',arxiv:'open',
-  lens:'open',stract:'open',crowdview:'open',yacy:'open',europeana:'open',jstor:'open',
-  'companies-house':'open','social-profiles':'social',
-  wikipedia:'open',wikidata:'open',github:'open',hackernews:'open',stackoverflow:'open',
-  'archive.org':'open',openlibrary:'open',pubmed:'open',npm:'open',
-  arxiv:'open',core:'open',europeana:'open',nominatim:'open',doaj:'open',
-  wikibooks:'open',commons:'open',
-  'google-books':'open','google-scholar':'open',
-  gitlab:'social',codeberg:'social',mastodon:'social',keybase:'social',
-  gravatar:'social','reddit-users':'social',reddit:'social',lichess:'social',
-  marginalia:'open',wiby:'open',
-  shodan:'osint',censys:'osint',hunter:'osint',intelx:'osint',publicwww:'osint',tineye:'osint',
-  yandex:'regional',baidu:'regional',naver:'regional',sogou:'regional',so360:'regional',seznam:'regional','mail.ru':'regional',rambler:'regional',
-  startpage:'meta',dogpile:'meta',metacrawler:'meta',etools:'meta',ecosia:'meta',
-  presearch:'meta',webcrawler:'meta',faganfinder:'meta',yahoo:'meta',gibiru:'meta',freespoke:'meta',mamma:'meta','you.com':'meta',
-  wayback:'wayback',
-};
+const TIER_MAP=ENGINE_METADATA.sourceTierMap||{};
 function bclass(src,tags){
   if(tags&&tags.includes('fossil'))return'b-wayback';
   if(tags&&tags.includes('document'))return'b-obscure';
@@ -1343,7 +1371,7 @@ function renderResults(results,clusters){
           '<li>Try a real name, known username, or email address</li>'+
           '<li>Use fewer words — single-token queries work best in standalone mode</li>'+
           '<li>Some APIs may be rate-limited — wait a minute and try again</li>'+
-          '<li>Connect a <strong style="color:var(--bright)">local server</strong> for 550+ engines (expand "LOCAL SERVER" above)</li>'+
+          '<li>Use the repo root <strong style="color:var(--bright)">Start Tracer</strong> launcher or expand "LOCAL SERVER" above for 550+ engines</li>'+
         '</ul>'+
       '</div>';
     return;
@@ -1597,10 +1625,11 @@ function showErr(msg,isErr){const el=document.getElementById('err');el.textConte
 // ── INIT ─────────────────────────────────────────────────────────────────────
 loadKeys();
 renderHistory();
-// Always try the local server first. On GitHub Pages we start in STANDALONE
-// mode but immediately attempt a connection — if the user has `npm run serve`
-// running, the dot goes green and searches use the full engine set.
-if(isGHPages){
+// Always try the local server first. On GitHub Pages or file:// launches we
+// start in STANDALONE mode but immediately attempt a connection — if the user
+// has `npm run serve` running, the dot goes green and searches use the full
+// engine set.
+if(isStandaloneClient){
   document.getElementById('dot').className='dot standalone';
   document.getElementById('conn-lbl').textContent='STANDALONE';
   // Silently try to reach the server; if it's there, the dot turns green.
