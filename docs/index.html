@@ -520,7 +520,7 @@ function collectKeys(){const o={};KEY_DEFS.forEach(k=>{const el=document.getElem
 let connected=false;
 const isPortableFile=location.protocol==='file:';
 const isStandaloneClient=isPortableFile||location.hostname.endsWith('.github.io');
-function standaloneEngineLabel(){
+function getStandaloneEngineLabel(){
   if(!isStandaloneClient)return '0 (server offline — open-API fallback)';
   if(isPortableFile)return '34 open APIs (portable standalone — start local server for 550+)';
   return '34 open APIs (standalone — start local server for 550+)';
@@ -541,7 +541,7 @@ async function checkConn(){
   connected=false;
   document.getElementById('dot').className='dot'+(isStandaloneClient?' standalone':'');
   document.getElementById('conn-lbl').textContent=isStandaloneClient?'STANDALONE':'OFFLINE';
-  document.getElementById('eng-count').textContent=standaloneEngineLabel();
+  document.getElementById('eng-count').textContent=getStandaloneEngineLabel();
   return false;
 }
 document.getElementById('endpoint').addEventListener('change',checkConn);
