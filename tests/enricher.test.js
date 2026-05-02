@@ -62,6 +62,12 @@ describe('classifyUrl', () => {
     expect(result.category).toBe('social');
     expect(result.username).toBe('john.smith');
   });
+
+  test('detects Keybase with username', () => {
+    const result = classifyUrl('https://keybase.io/testuser');
+    expect(result.category).toBe('tech');
+    expect(result.username).toBe('testuser');
+  });
 });
 
 describe('enrich', () => {

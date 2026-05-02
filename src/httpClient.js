@@ -12,6 +12,7 @@
 
 import axios from 'axios';
 import { createAgent, proxyUrlFromEnv } from './proxyAgent.js';
+import { getRequestSignal } from './requestContext.js';
 
 let _agent = null;
 let _initialised = false;
@@ -36,16 +37,18 @@ function getAgent() {
  */
 function withProxy(config = {}) {
   const agent = getAgent();
+  const signal = config.signal || getRequestSignal();
+  const withSignal = signal ? { ...config, signal } : config;
   if (agent) {
     return {
-      ...config,
+      ...withSignal,
       httpAgent: agent,
       httpsAgent: agent,
       // Disable axios's own proxy handling — we use the agent instead
       proxy: false,
     };
   }
-  return config;
+  return withSignal;
 }
 
 /**

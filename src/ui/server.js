@@ -5,6 +5,8 @@ import { run } from '../orchestrator.js';
 import { loadKeysFromEnv } from '../config.js';
 import { buildGraph } from '../graphBuilder.js';
 import { ALL_CONNECTORS, getActive } from '../connectors/registry.js';
+import { createAbortError, isAbortError } from '../requestContext.js';
+import { SearchValidationError, normaliseSearchRequest } from '../searchOptions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,23 +43,32 @@ app.use(express.static(docsDir));
 app.use(express.static(publicDir));
 
 app.post('/search', async (req, res) => {
-  const { input, mode, fossils, avatars, timeSliceMode, documents } = req.body || {};
-  if (!input) {
-    return res.status(400).json({ error: 'input is required' });
-  }
+  const controller = new AbortController();
+  let closed = false;
+  res.on('close', () => {
+    closed = true;
+    controller.abort(createAbortError('client disconnected'));
+  });
 
   try {
-    const { results, avatarClusters, connectorStats } = await run(input, {
-      mode,
+    const searchRequest = normaliseSearchRequest(req.body || {});
+    const { results, avatarClusters, connectorStats } = await run(searchRequest.input, {
+      mode: searchRequest.mode,
       apiKeys: serverApiKeys,
-      fossils,
-      avatars,
-      timeSliceMode,
-      documents,
+      fossils: searchRequest.fossils,
+      avatars: searchRequest.avatars,
+      timeSliceMode: searchRequest.timeSliceMode,
+      documents: searchRequest.documents,
+      signal: controller.signal,
     });
+    if (closed) return;
     const graph = buildGraph(results, avatarClusters);
     res.json({ results, avatarClusters, graph, connectorStats });
   } catch (err) {
+    if (closed || isAbortError(err)) return;
+    if (err instanceof SearchValidationError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -70,14 +81,15 @@ app.post('/search', async (req, res) => {
 //         es.addEventListener('progress', (e) => { ... });
 //         es.addEventListener('done', (e) => { es.close(); ... });
 app.get('/search/stream', async (req, res) => {
-  const { input, mode, fossils, avatars, timeSliceMode, documents } = req.query;
-  if (!input || typeof input !== 'string') {
-    return res.status(400).json({ error: 'input query parameter is required' });
+  let searchRequest;
+  try {
+    searchRequest = normaliseSearchRequest(req.query || {});
+  } catch (err) {
+    if (err instanceof SearchValidationError) {
+      return res.status(err.statusCode).json({ error: err.message });
+    }
+    return res.status(400).json({ error: err.message });
   }
-  if (input.length > 500) {
-    return res.status(400).json({ error: 'input too long (max 500 chars)' });
-  }
-  const safeMode = mode === 'aggressive' ? 'aggressive' : 'normal';
 
   // SSE headers
   res.writeHead(200, {
@@ -89,7 +101,11 @@ app.get('/search/stream', async (req, res) => {
 
   // Guard against writing to a closed connection (client navigates away, etc.)
   let closed = false;
-  res.on('close', () => { closed = true; });
+  const controller = new AbortController();
+  res.on('close', () => {
+    closed = true;
+    controller.abort(createAbortError('client disconnected'));
+  });
 
   // Keep connection alive
   const keepAlive = setInterval(() => {
@@ -101,13 +117,14 @@ app.get('/search/stream', async (req, res) => {
   }
 
   try {
-    const { results, avatarClusters, connectorStats } = await run(input, {
-      mode: safeMode,
+    const { results, avatarClusters, connectorStats } = await run(searchRequest.input, {
+      mode: searchRequest.mode,
       apiKeys: serverApiKeys,
-      fossils: fossils === 'true',
-      avatars: avatars === 'true',
-      timeSliceMode: timeSliceMode === 'true',
-      documents: documents === 'true',
+      fossils: searchRequest.fossils,
+      avatars: searchRequest.avatars,
+      timeSliceMode: searchRequest.timeSliceMode,
+      documents: searchRequest.documents,
+      signal: controller.signal,
       onProgress: (info) => {
         sendEvent('progress', info);
       },
@@ -115,6 +132,7 @@ app.get('/search/stream', async (req, res) => {
     const graph = buildGraph(results, avatarClusters);
     sendEvent('done', { results, avatarClusters, graph, connectorStats });
   } catch (err) {
+    if (isAbortError(err)) return;
     sendEvent('error', { error: err.message });
   } finally {
     clearInterval(keepAlive);

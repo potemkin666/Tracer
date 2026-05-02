@@ -499,6 +499,7 @@
   <span><a href="https://github.com/potemkin666/Tracer" target="_blank" rel="noopener">github.com/potemkin666/Tracer</a></span>
 </footer>
 
+<script src="engine-metadata.js"></script>
 <script>
 // ── BUBBLES ──────────────────────────────────────────────────────────────────
 (function(){
@@ -525,35 +526,13 @@
   }
 })();
 
-// ── KEY DEFINITIONS ───────────────────────────────────────────────────────────
-const KEY_DEFS=[
-  {id:'brave',    label:'BRAVE KEY'},
-  {id:'kagi',     label:'KAGI KEY'},
-  {id:'bing',     label:'BING KEY'},
-  {id:'google',   label:'GOOGLE KEY'},
-  {id:'googleCx', label:'GOOGLE CX'},
-  {id:'serpapi',  label:'SERPAPI KEY'},
-  {id:'mojeek',   label:'MOJEEK KEY'},
-  {id:'exa',      label:'EXA KEY'},
-  {id:'perplexity',label:'PERPLEXITY KEY'},
-  {id:'shodan',   label:'SHODAN KEY'},
-  {id:'censysId', label:'CENSYS ID'},
-  {id:'censysSecret',label:'CENSYS SECRET'},
-  {id:'hunter',   label:'HUNTER KEY'},
-  {id:'intelx',   label:'INTELX KEY'},
-  {id:'publicwww',label:'PUBLICWWW KEY'},
-  {id:'tineye',   label:'TINEYE KEY'},
-  {id:'dehashed', label:'DEHASHED email:key'},
-  {id:'hibp',     label:'HIBP API KEY'},
-  {id:'greynoise',label:'GREYNOISE KEY'},
-  {id:'yandex',   label:'YANDEX user:key'},
-  {id:'naverClientId',     label:'NAVER CLIENT ID'},
-  {id:'naverClientSecret', label:'NAVER SECRET'},
-  {id:'metager',  label:'METAGER KEY'},
-  {id:'swisscows',label:'SWISSCOWS KEY'},
-  {id:'listennotes',label:'LISTENNOTES KEY'},
-  {id:'searxngUrl',label:'SEARXNG INSTANCE URL'},
-];
+// ── SHARED ENGINE METADATA ────────────────────────────────────────────────────
+const ENGINE_METADATA=globalThis.TRACER_ENGINE_METADATA||{
+  keyDefs:[],
+  standalone:{openFetchers:[],sourceTierMap:{}},
+  sourceTierMap:{},
+};
+const KEY_DEFS=ENGINE_METADATA.keyDefs||[];
 
 // Build key grid
 (function(){
@@ -577,9 +556,12 @@ let connected=false;
 const isFileProtocol=location.protocol==='file:';
 const isStandaloneClient=isFileProtocol||location.hostname.endsWith('.github.io');
 function getStandaloneEngineLabel(){
+  const openCount=(ENGINE_METADATA.standalone&&ENGINE_METADATA.standalone.openFetchers
+    ?ENGINE_METADATA.standalone.openFetchers.length
+    :0);
   if(!isStandaloneClient)return '0 (server offline - open-API fallback)';
-  if(isFileProtocol)return '34 open APIs (portable mode works now - start local server for 550+)';
-  return '34 open APIs (standalone - start local server for 550+)';
+  if(isFileProtocol)return `${openCount} open APIs (portable mode works now - start local server for 550+)`;
+  return `${openCount} open APIs (standalone - start local server for 550+)`;
 }
 
 function openLocalServerGuide(){
@@ -1352,30 +1334,7 @@ async function doSearch(){
 document.getElementById('query').addEventListener('keydown',e=>{if(e.key==='Enter')doSearch()});
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
-const TIER_MAP={
-  brave:'core',serpapi:'core',mojeek:'core',kagi:'core',bing:'core',google:'core',
-  metager:'core',swisscows:'core',listennotes:'core',exa:'core',perplexity:'core',
-  duckduckgo:'open',searxng:'open',marginalia:'open',wiby:'open',qwant:'open',yep:'open',
-  searchcode:'open','grep.app':'open',openverse:'open',base:'open','crt.sh':'open',
-  urlscan:'open',opencorporates:'open',opensanctions:'open','semantic-scholar':'open',
-  crossref:'open',openalex:'open',worldcat:'open',ahmia:'open',carrot2:'open',
-  'whats-my-name':'open','social-searcher':'open',orcid:'open',arxiv:'open',
-  lens:'open',stract:'open',crowdview:'open',yacy:'open',europeana:'open',jstor:'open',
-  'companies-house':'open','social-profiles':'social',
-  wikipedia:'open',wikidata:'open',github:'open',hackernews:'open',stackoverflow:'open',
-  'archive.org':'open',openlibrary:'open',pubmed:'open',npm:'open',
-  arxiv:'open',core:'open',europeana:'open',nominatim:'open',doaj:'open',
-  wikibooks:'open',commons:'open',
-  'google-books':'open','google-scholar':'open',
-  gitlab:'social',codeberg:'social',mastodon:'social',keybase:'social',
-  gravatar:'social','reddit-users':'social',reddit:'social',lichess:'social',
-  marginalia:'open',wiby:'open',
-  shodan:'osint',censys:'osint',hunter:'osint',intelx:'osint',publicwww:'osint',tineye:'osint',
-  yandex:'regional',baidu:'regional',naver:'regional',sogou:'regional',so360:'regional',seznam:'regional','mail.ru':'regional',rambler:'regional',
-  startpage:'meta',dogpile:'meta',metacrawler:'meta',etools:'meta',ecosia:'meta',
-  presearch:'meta',webcrawler:'meta',faganfinder:'meta',yahoo:'meta',gibiru:'meta',freespoke:'meta',mamma:'meta','you.com':'meta',
-  wayback:'wayback',
-};
+const TIER_MAP=ENGINE_METADATA.sourceTierMap||{};
 function bclass(src,tags){
   if(tags&&tags.includes('fossil'))return'b-wayback';
   if(tags&&tags.includes('document'))return'b-obscure';

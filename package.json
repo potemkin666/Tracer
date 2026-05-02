@@ -10,6 +10,7 @@
   "scripts": {
     "start": "node src/index.js",
     "serve": "node src/ui/server.js",
+    "sync:engine-metadata": "node scripts/generate-engine-metadata.js",
     "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "lint": "eslint ."
   },

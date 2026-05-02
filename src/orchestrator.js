@@ -9,50 +9,28 @@ import * as timeSlice from './connectors/timeSlice.js';
 import * as docSearch from './connectors/docSearch.js';
 import * as fossilHunter from './fossilHunter.js';
 import * as avatarHunter from './avatarHunter.js';
+import {
+  combineSignals,
+  createAbortError,
+  isAbortError,
+  normaliseAbortError,
+  runWithRequestContext,
+  throwIfAborted,
+} from './requestContext.js';
 
-/**
- * Per-connector timeout in milliseconds.
- * Prevents a single slow connector from stalling the entire pipeline.
- */
 const CONNECTOR_TIMEOUT_MS = 15_000;
-
-/**
- * Maximum number of concurrent connector requests.
- * Prevents flooding upstream APIs and triggering rate limits.
- */
 const DEFAULT_CONCURRENCY = 12;
 
-/**
- * Run a function with a timeout. Resolves to the result or rejects
- * with a timeout error if the function takes longer than `ms`.
- * Uses Promise.race to ensure the timer is always cleaned up.
- */
-function withTimeout(fn, ms) {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error('connector timeout')), ms);
-  });
-  return Promise.race([fn(), timeout]).finally(() => clearTimeout(timer));
-}
-
-/**
- * Run an array of async task-factories with bounded concurrency.
- * Each factory is () => Promise<T>. Returns Promise<T[]> in order.
- *
- * @param {Array<() => Promise>} tasks
- * @param {number} concurrency
- * @returns {Promise<Array>}
- */
-function poolAll(tasks, concurrency) {
+function poolAll(tasks, concurrency, signal) {
   const results = new Array(tasks.length);
   let next = 0;
 
   function runNext() {
-    if (next >= tasks.length) return Promise.resolve();
+    if (signal?.aborted || next >= tasks.length) return Promise.resolve();
     const idx = next++;
     return tasks[idx]().then(
-      (val) => { results[idx] = { status: 'fulfilled', value: val }; },
-      (err) => { results[idx] = { status: 'rejected', reason: err }; },
+      (value) => { results[idx] = { status: 'fulfilled', value }; },
+      (reason) => { results[idx] = { status: 'rejected', reason }; },
     ).then(runNext);
   }
 
@@ -63,15 +41,62 @@ function poolAll(tasks, concurrency) {
   return Promise.all(workers).then(() => results);
 }
 
-/**
- * Run the Tracer pipeline.
- *
- * @param {string} input – search term (name / username / alias)
- * @param {object} config
- * @param {function} [config.onProgress] – optional callback invoked with
- *   { phase: string, connector?: string, resultsSoFar: number } after each
- *   connector completes. Allows callers to stream incremental progress.
- */
+function createProgressTracker(notify, connectorStats, signal) {
+  return {
+    markPhase(phase, resultsSoFar) {
+      throwIfAborted(signal);
+      notify({ phase, resultsSoFar });
+    },
+
+    recordSuccess(connectorId, startedAt, batch) {
+      throwIfAborted(signal);
+      connectorStats.push({
+        id: connectorId,
+        ok: true,
+        ms: Date.now() - startedAt,
+        count: batch.length,
+      });
+      notify({ phase: 'connectors', connector: connectorId, resultsSoFar: batch.length });
+      return batch;
+    },
+
+    recordFailure(connectorId, startedAt, err) {
+      if (isAbortError(err)) {
+        throw err;
+      }
+      connectorStats.push({
+        id: connectorId,
+        ok: false,
+        ms: Date.now() - startedAt,
+        error: err.message,
+      });
+      notify({ phase: 'connectors', connector: connectorId, error: err.message });
+      return [];
+    },
+  };
+}
+
+async function runConnectorSearch(connector, query, apiKeys, requestSignal) {
+  const timeoutController = new AbortController();
+  const timeoutError = createAbortError('connector timeout');
+  const timer = setTimeout(() => timeoutController.abort(timeoutError), CONNECTOR_TIMEOUT_MS);
+  const signal = combineSignals(requestSignal, timeoutController.signal);
+
+  try {
+    return await runWithRequestContext({ signal }, () => connector.search(query, apiKeys, { signal }));
+  } catch (err) {
+    if (timeoutController.signal.aborted) {
+      throw new Error('connector timeout');
+    }
+    if (requestSignal?.aborted) {
+      throw normaliseAbortError(err, requestSignal);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function run(input, config = {}) {
   const {
     apiKeys = {},
@@ -82,90 +107,88 @@ export async function run(input, config = {}) {
     documents = false,
     onProgress,
     concurrency = DEFAULT_CONCURRENCY,
+    signal,
   } = config;
 
-  const notify =
-    typeof onProgress === 'function'
-      ? onProgress
-      : () => {};
+  return runWithRequestContext({ signal }, async () => {
+    throwIfAborted(signal);
 
-  const aggressive = mode === 'aggressive';
-  const queries = generateQueries(input);
-  const limited = aggressive ? queries : queries.slice(0, 6);
+    const notify = typeof onProgress === 'function' ? onProgress : () => {};
+    const trackerStats = [];
+    const tracker = createProgressTracker(notify, trackerStats, signal);
+    const aggressive = mode === 'aggressive';
+    const queries = generateQueries(input);
+    const limited = aggressive ? queries : queries.slice(0, 6);
+    const activeConnectors = getActive(apiKeys, mode);
 
-  const activeConnectors = getActive(apiKeys, mode);
-
-  // ── Connector stats (timing + errors) ──────────────────────────────────
-  const connectorStats = [];
-
-  // Build a flat list of tasks: one per (query, connector) pair.
-  const tasks = [];
-  for (const query of limited) {
-    for (const c of activeConnectors) {
-      tasks.push(() => {
-        const start = Date.now();
-        return withTimeout(() => c.search(query, apiKeys), CONNECTOR_TIMEOUT_MS)
-          .then((batch) => {
-            connectorStats.push({ id: c.id, ok: true, ms: Date.now() - start, count: batch.length });
-            notify({ phase: 'connectors', connector: c.id, resultsSoFar: batch.length });
-            return batch;
-          })
-          .catch((err) => {
-            connectorStats.push({ id: c.id, ok: false, ms: Date.now() - start, error: err.message });
-            notify({ phase: 'connectors', connector: c.id, error: err.message });
-            return [];
-          });
-      });
+    const tasks = [];
+    for (const query of limited) {
+      for (const connector of activeConnectors) {
+        tasks.push(() => {
+          const startedAt = Date.now();
+          return runConnectorSearch(connector, query, apiKeys, signal)
+            .then((batch) => tracker.recordSuccess(connector.id, startedAt, batch))
+            .catch((err) => tracker.recordFailure(connector.id, startedAt, err));
+        });
+      }
     }
-  }
 
-  // Run with bounded concurrency
-  const settled = await poolAll(tasks, concurrency);
-  let all = settled.map(s => s.status === 'fulfilled' ? s.value : []).flat();
+    const settled = await poolAll(tasks, concurrency, signal);
+    throwIfAborted(signal);
 
-  notify({ phase: 'wayback', resultsSoFar: all.length });
+    let all = settled
+      .map((entry) => (entry?.status === 'fulfilled' ? entry.value : []))
+      .flat();
 
-  const [waybackResults, namechkResults] = await Promise.all([
-    wayback.search(input),
-    namechk.search(input.split(/\s+/)[0]),
-  ]);
+    tracker.markPhase('wayback', all.length);
+    const [waybackResults, namechkResults] = await Promise.all([
+      wayback.search(input, apiKeys, { signal }),
+      namechk.search(input.split(/\s+/)[0], apiKeys, { signal }),
+    ]);
+    throwIfAborted(signal);
 
-  all = all.concat(waybackResults, namechkResults);
-  notify({ phase: 'namechk', resultsSoFar: all.length });
+    all = all.concat(waybackResults, namechkResults);
+    tracker.markPhase('namechk', all.length);
 
-  // Time-slice: search historical eras via Wayback CDX
-  if (timeSliceMode || aggressive) {
-    const sliceResults = await timeSlice.search(input);
-    all = all.concat(sliceResults);
-    notify({ phase: 'timeSlice', resultsSoFar: all.length });
-  }
+    if (timeSliceMode || aggressive) {
+      const sliceResults = await timeSlice.search(input, apiKeys, { signal });
+      throwIfAborted(signal);
+      all = all.concat(sliceResults);
+      tracker.markPhase('timeSlice', all.length);
+    }
 
-  // Document edge scraping: PDFs, DOCs, PPTs via Wayback + filetype: operators
-  if (documents || aggressive) {
-    const docResults = await docSearch.search(input, apiKeys);
-    all = all.concat(docResults);
-    notify({ phase: 'docSearch', resultsSoFar: all.length });
-  }
+    if (documents || aggressive) {
+      const docResults = await docSearch.search(input, apiKeys, { signal });
+      throwIfAborted(signal);
+      all = all.concat(docResults);
+      tracker.markPhase('docSearch', all.length);
+    }
 
-  const unique = dedupe(all);
-  notify({ phase: 'dedupe', resultsSoFar: unique.length });
+    const unique = dedupe(all);
+    tracker.markPhase('dedupe', unique.length);
 
-  // ── Enrichment: detect platforms, extract usernames, classify domains ──
-  const enriched = enrich(unique, input);
+    const enriched = enrich(unique, input);
 
-  // Fossil hunting: find old captures of profile URLs already discovered
-  if (fossils || aggressive) {
-    const fossilResults = await fossilHunter.hunt(input, enriched);
-    const withFossils = dedupe([...enriched, ...fossilResults]);
-    notify({ phase: 'fossils', resultsSoFar: withFossils.length });
-    const scored = score(withFossils, input);
-    const avatarClusters = avatars || aggressive ? await avatarHunter.hunt(scored) : [];
-    notify({ phase: 'done', resultsSoFar: scored.length });
-    return { results: scored, avatarClusters, connectorStats };
-  }
+    if (fossils || aggressive) {
+      const fossilResults = await fossilHunter.hunt(input, enriched, { signal });
+      throwIfAborted(signal);
+      const withFossils = dedupe([...enriched, ...fossilResults]);
+      tracker.markPhase('fossils', withFossils.length);
+      const scored = score(withFossils, input);
+      const avatarClusters = avatars || aggressive
+        ? await avatarHunter.hunt(scored, { signal })
+        : [];
+      throwIfAborted(signal);
+      tracker.markPhase('done', scored.length);
+      return { results: scored, avatarClusters, connectorStats: trackerStats }; 
+    }
 
-  const scored = score(enriched, input);
-  const avatarClusters = avatars || aggressive ? await avatarHunter.hunt(scored) : [];
-  notify({ phase: 'done', resultsSoFar: scored.length });
-  return { results: scored, avatarClusters, connectorStats };
+    const scored = score(enriched, input);
+    const avatarClusters = avatars || aggressive
+      ? await avatarHunter.hunt(scored, { signal })
+      : [];
+    throwIfAborted(signal);
+    tracker.markPhase('done', scored.length);
+    return { results: scored, avatarClusters, connectorStats: trackerStats };
+  });
 }
