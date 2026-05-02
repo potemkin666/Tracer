@@ -50,6 +50,6 @@ if errorlevel 1 exit /b 1
 powershell -NoProfile ^
   -ExecutionPolicy Bypass ^
   -File "%ROOT%\Start Tracer.wait.ps1" ^
-  %PORT% ^
-  %MAX_WAIT_SECONDS%
+  -Port %PORT% ^
+  -MaxWaitSeconds %MAX_WAIT_SECONDS%
 exit /b %errorlevel%
