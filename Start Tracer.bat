@@ -2,6 +2,7 @@
 setlocal
 cd /d "%~dp0"
 set "ROOT=%CD%"
+set "STANDALONE_TARGET=%ROOT%\index.html"
 set "PORT=3000"
 set "MAX_WAIT_SECONDS=20"
 
@@ -24,8 +25,10 @@ start "Tracer Server" /D "%ROOT%" cmd /k "npm run serve"
 call :wait_for_server >nul 2>nul
 if errorlevel 1 (
   echo Tracer server did not respond within %MAX_WAIT_SECONDS% seconds.
-  echo Opening portable standalone mode instead...
-  start "" "%ROOT%\docs\index.html"
+  echo Standalone mode is opening now from the repo root...
+  start "" "%STANDALONE_TARGET%"
+  echo You can use Tracer right away with the built-in open APIs.
+  echo Install Node.js 18+ later from https://nodejs.org if you want the 550+ engine local server.
 ) else (
   start "" "http://localhost:%PORT%"
 )
@@ -33,10 +36,11 @@ exit /b 0
 
 :standalone
 echo Node.js/npm not found or setup failed.
-echo Opening portable standalone mode instead...
-start "" "%ROOT%\docs\index.html"
+echo Standalone mode is opening now from the repo root...
+start "" "%STANDALONE_TARGET%"
 echo.
-echo Standalone mode works without installs, but the local server needs Node.js.
+echo You can use Tracer right away with the built-in open APIs.
+echo Install Node.js 18+ later from https://nodejs.org if you want the 550+ engine local server.
 pause
 exit /b 0
 

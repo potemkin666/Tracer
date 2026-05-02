@@ -9,10 +9,10 @@ cd "$ROOT" || exit 1
 
 open_target() {
   local target="$1"
-  if command -v open >/dev/null 2>&1; then
-    open "$target"
-  elif command -v xdg-open >/dev/null 2>&1; then
+  if command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$target" >/dev/null 2>&1 &
+  elif command -v gio >/dev/null 2>&1; then
+    gio open "$target" >/dev/null 2>&1 &
   fi
 }
 
