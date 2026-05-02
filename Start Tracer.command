@@ -38,10 +38,12 @@ if [ ! -d "$ROOT/node_modules" ]; then
 fi
 
 ( if command -v curl >/dev/null 2>&1; then
-    for attempt in $(seq 1 20); do
+    attempt=0
+    while [ "$attempt" -lt 20 ]; do
       if curl -fsS "http://localhost:3000/health" >/dev/null 2>&1; then
         break
       fi
+      attempt=$((attempt + 1))
       sleep 1
     done
   else

@@ -35,9 +35,5 @@ exit /b 0
 :wait_for_server
 where powershell >nul 2>nul
 if errorlevel 1 exit /b 1
-for /l %%I in (1,1,20) do (
-  powershell -NoProfile -Command "try { $r=Invoke-WebRequest -UseBasicParsing 'http://localhost:3000/health' -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } } catch { exit 1 }"
-  if not errorlevel 1 exit /b 0
-  timeout /t 1 >nul
-)
-exit /b 1
+powershell -NoProfile -Command "$deadline=(Get-Date).AddSeconds(20); while ((Get-Date) -lt $deadline) { try { $r=Invoke-WebRequest -UseBasicParsing 'http://localhost:3000/health' -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } } catch {} Start-Sleep -Seconds 1 }; exit 1"
+exit /b %errorlevel%
