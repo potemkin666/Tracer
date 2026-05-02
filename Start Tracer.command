@@ -13,6 +13,8 @@ open_target() {
     open "$target"
   elif command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$target" >/dev/null 2>&1 &
+  else
+    echo "Could not open $target automatically. Please open it manually."
   fi
 }
 

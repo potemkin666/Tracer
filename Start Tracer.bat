@@ -47,7 +47,7 @@ exit /b 0
 :wait_for_server
 where powershell >nul 2>nul
 if errorlevel 1 (
-  echo PowerShell was not found, so Tracer cannot auto-check the local server.
+  echo PowerShell not found, so Tracer cannot auto-check the local server.
   exit /b 1
 )
 powershell -NoProfile ^
