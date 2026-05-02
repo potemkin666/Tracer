@@ -1,5 +1,5 @@
 #!/bin/bash
-set -u
+set -eu
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 PORT=3000
