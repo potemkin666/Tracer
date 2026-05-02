@@ -18,7 +18,7 @@ if not exist "%ROOT%\node_modules" (
 )
 
 echo Launching local Tracer server...
-start "Tracer Server" cmd /k "cd /d ""%ROOT%"" && npm run serve"
+start "Tracer Server" /D "%ROOT%" cmd /k "npm run serve"
 call :wait_for_server >nul 2>nul
 start "" "http://localhost:3000"
 exit /b 0

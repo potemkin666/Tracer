@@ -38,7 +38,7 @@ if [ ! -d "$ROOT/node_modules" ]; then
 fi
 
 ( if command -v curl >/dev/null 2>&1; then
-    for _ in $(seq 1 20); do
+    for attempt in $(seq 1 20); do
       if curl -fsS "http://localhost:3000/health" >/dev/null 2>&1; then
         break
       fi
