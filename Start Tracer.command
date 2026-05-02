@@ -51,21 +51,28 @@ if [ ! -d "$ROOT/node_modules" ]; then
   fi
 fi
 
-( attempt=0
-  server_ready=0
-  while [ "$attempt" -lt "$MAX_ATTEMPTS" ]; do
-    if server_responding; then
-      server_ready=1
-      break
-    fi
-    attempt=$((attempt + 1))
-    sleep 1
-  done
-  if [ "$server_ready" -eq 1 ]; then
-    open_target "http://localhost:${PORT}"
-  else
-    open_standalone "Tracer server did not respond after about ${MAX_ATTEMPTS} checks."
-  fi
-) &
 echo "Launching local Tracer server..."
-npm run serve
+npm run serve &
+SERVER_PID=$!
+
+attempt=0
+server_ready=0
+while [ "$attempt" -lt "$MAX_ATTEMPTS" ]; do
+  if server_responding; then
+    server_ready=1
+    break
+  fi
+  if ! kill -0 "$SERVER_PID" >/dev/null 2>&1; then
+    break
+  fi
+  attempt=$((attempt + 1))
+  sleep 1
+done
+
+if [ "$server_ready" -eq 1 ]; then
+  open_target "http://localhost:${PORT}"
+else
+  open_standalone "Tracer server did not respond after about ${MAX_ATTEMPTS} checks."
+fi
+
+wait "$SERVER_PID"
