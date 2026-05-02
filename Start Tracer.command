@@ -2,6 +2,7 @@
 set -u
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+PORT=3000
 cd "$ROOT" || exit 1
 
 open_target() {
@@ -40,7 +41,7 @@ fi
 ( if command -v curl >/dev/null 2>&1; then
     attempt=0
     while [ "$attempt" -lt 20 ]; do
-      if curl -fsS "http://localhost:3000/health" >/dev/null 2>&1; then
+      if curl -fsS "http://localhost:${PORT}/health" >/dev/null 2>&1; then
         break
       fi
       attempt=$((attempt + 1))
@@ -49,7 +50,7 @@ fi
   else
     sleep 2
   fi
-  open_target "http://localhost:3000"
+  open_target "http://localhost:${PORT}"
 ) &
 echo "Launching local Tracer server..."
 npm run serve

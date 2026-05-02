@@ -2,6 +2,7 @@
 setlocal
 cd /d "%~dp0"
 set "ROOT=%CD%"
+set "PORT=3000"
 
 echo Starting Tracer from "%ROOT%"
 echo.
@@ -20,7 +21,7 @@ if not exist "%ROOT%\node_modules" (
 echo Launching local Tracer server...
 start "Tracer Server" /D "%ROOT%" cmd /k "npm run serve"
 call :wait_for_server >nul 2>nul
-start "" "http://localhost:3000"
+start "" "http://localhost:%PORT%"
 exit /b 0
 
 :standalone
@@ -35,5 +36,5 @@ exit /b 0
 :wait_for_server
 where powershell >nul 2>nul
 if errorlevel 1 exit /b 1
-powershell -NoProfile -Command "$deadline=(Get-Date).AddSeconds(20); while ((Get-Date) -lt $deadline) { try { $r=Invoke-WebRequest -UseBasicParsing 'http://localhost:3000/health' -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } } catch {} Start-Sleep -Seconds 1 }; exit 1"
+powershell -NoProfile -Command "$port=$env:PORT; $deadline=(Get-Date).AddSeconds(20); while ((Get-Date) -lt $deadline) { try { $r=Invoke-WebRequest -UseBasicParsing ('http://localhost:' + $port + '/health') -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } } catch {} Start-Sleep -Seconds 1 }; exit 1"
 exit /b %errorlevel%
