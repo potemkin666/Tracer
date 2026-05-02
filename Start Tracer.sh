@@ -64,7 +64,7 @@ fi
   if [ "$server_ready" -eq 1 ]; then
     open_target "http://localhost:${PORT}"
   else
-    open_standalone "Tracer server did not respond after about ${MAX_ATTEMPTS} seconds."
+    open_standalone "Tracer server did not respond after about ${MAX_ATTEMPTS} checks."
   fi
 ) &
 echo "Launching local Tracer server..."
