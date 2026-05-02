@@ -19,7 +19,7 @@ if not exist "%ROOT%\node_modules" (
 
 echo Launching local Tracer server...
 start "Tracer Server" cmd /k "cd /d ""%ROOT%"" && npm run serve"
-timeout /t 3 >nul
+call :wait_for_server >nul 2>nul
 start "" "http://localhost:3000"
 exit /b 0
 
@@ -30,3 +30,14 @@ start "" "%ROOT%\docs\index.html"
 echo.
 echo Standalone mode works without installs, but the local server needs Node.js.
 pause
+exit /b 0
+
+:wait_for_server
+where powershell >nul 2>nul
+if errorlevel 1 exit /b 1
+for /l %%I in (1,1,20) do (
+  powershell -NoProfile -Command "try { $r=Invoke-WebRequest -UseBasicParsing 'http://localhost:3000/health' -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } } catch { exit 1 }"
+  if not errorlevel 1 exit /b 0
+  timeout /t 1 >nul
+)
+exit /b 1

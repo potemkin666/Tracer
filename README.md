@@ -93,7 +93,7 @@ npm run serve
 
 ## Portable / external-drive use
 
-- **Fastest no-install option:** double-click `index.html` after copying the repo to the drive. Tracer will open in **portable standalone mode** and run directly from the browser with the built-in open APIs.
+- **Fastest no-install option:** double-click `docs/index.html` after copying the repo to the drive. Tracer will open in **portable standalone mode** and run directly from the browser with the built-in open APIs.
 - **Easiest full local-server option:** use the launcher in the repo root:
   - Windows: `Start Tracer.bat`
   - macOS: `Start Tracer.command`

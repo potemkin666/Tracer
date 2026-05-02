@@ -345,7 +345,8 @@
           <button class="btn btn-sm" onclick="checkConn()">PING</button>
         </div>
         <div id="guide" style="font-size:.8rem;line-height:1.7;color:var(--silver)">
-          <p style="margin-bottom:.6rem">If you opened this page straight from your hard drive, you're already in <strong style="color:var(--bright)">portable standalone mode</strong> and can search right now with the built-in open APIs. Want the <strong style="color:var(--bright)">full 550+ engine power</strong>? Follow these steps.</p>
+          <p style="margin-bottom:.6rem">If you opened this page straight from your hard drive, you're already in <strong style="color:var(--bright)">portable standalone mode</strong> and can search right now with the built-in open APIs.</p>
+          <p style="margin-bottom:.6rem">Want the <strong style="color:var(--bright)">full 550+ engine power</strong>? Follow these steps.</p>
 
           <p style="color:var(--cyan);margin-bottom:.2rem"><strong>STEP 0 — Do you have Node.js?</strong></p>
           <p style="margin-bottom:.2rem">Open a terminal (Command Prompt on Windows, Terminal on Mac/Linux) and type:</p>
@@ -519,6 +520,11 @@ function collectKeys(){const o={};KEY_DEFS.forEach(k=>{const el=document.getElem
 let connected=false;
 const isPortableFile=location.protocol==='file:';
 const isStandaloneClient=isPortableFile||location.hostname.endsWith('.github.io');
+function standaloneEngineLabel(){
+  if(!isStandaloneClient)return '0 (server offline — open-API fallback)';
+  if(isPortableFile)return '34 open APIs (portable standalone — start local server for 550+)';
+  return '34 open APIs (standalone — start local server for 550+)';
+}
 
 async function checkConn(){
   const base=document.getElementById('endpoint').value.replace(/\/$/,'');
@@ -535,9 +541,7 @@ async function checkConn(){
   connected=false;
   document.getElementById('dot').className='dot'+(isStandaloneClient?' standalone':'');
   document.getElementById('conn-lbl').textContent=isStandaloneClient?'STANDALONE':'OFFLINE';
-  document.getElementById('eng-count').textContent=isStandaloneClient
-    ? (isPortableFile?'34 open APIs (portable standalone — start local server for 550+)':'34 open APIs (standalone — start local server for 550+)')
-    : '0 (server offline — open-API fallback)';
+  document.getElementById('eng-count').textContent=standaloneEngineLabel();
   return false;
 }
 document.getElementById('endpoint').addEventListener('change',checkConn);

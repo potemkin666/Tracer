@@ -37,6 +37,17 @@ if [ ! -d "$ROOT/node_modules" ]; then
   fi
 fi
 
-( sleep 2; open_target "http://localhost:3000" ) &
+( if command -v curl >/dev/null 2>&1; then
+    for _ in $(seq 1 20); do
+      if curl -fsS "http://localhost:3000/health" >/dev/null 2>&1; then
+        break
+      fi
+      sleep 1
+    done
+  else
+    sleep 2
+  fi
+  open_target "http://localhost:3000"
+) &
 echo "Launching local Tracer server..."
 npm run serve
