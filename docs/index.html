@@ -653,7 +653,7 @@ function buildStandaloneQueryPlan(query){
   return{
     raw,lower,tokens,
     exact:tokens.length>1?`"${raw}"`:raw,
-    slug:tokens.join(''),
+    noSpaces:tokens.join(''),
     underscored:tokens.join('_'),
     hyphenated:tokens.join('-')
   };
@@ -662,7 +662,7 @@ function buildStandaloneQueryPlan(query){
 function queryVariants(plan,opts={}){
   const variants=[plan.raw];
   if(opts.includeExact&&plan.exact&&plan.exact!==plan.raw)variants.push(plan.exact);
-  if(opts.includeSlug&&plan.slug&&plan.slug!==plan.lower)variants.push(plan.slug);
+  if(opts.includeSlug&&plan.noSpaces&&plan.noSpaces!==plan.lower)variants.push(plan.noSpaces);
   if(opts.includeUnderscored&&plan.underscored&&plan.underscored!==plan.lower)variants.push(plan.underscored);
   if(opts.includeHyphenated&&plan.hyphenated&&plan.hyphenated!==plan.lower)variants.push(plan.hyphenated);
   const seen=new Set();
@@ -713,7 +713,7 @@ function getStandaloneMatchSignals(r,plan){
   return{
     title,snippet,url,combined,tokenHits,
     exact:plan.lower&&combined.includes(plan.lower),
-    slug:plan.slug&&combined.includes(plan.slug),
+    noSpaces:plan.noSpaces&&combined.includes(plan.noSpaces),
     underscored:plan.underscored&&combined.includes(plan.underscored),
     hyphenated:plan.hyphenated&&combined.includes(plan.hyphenated)
   };
@@ -722,8 +722,8 @@ function getStandaloneMatchSignals(r,plan){
 function isRelevantStandaloneResult(r,plan){
   if(!plan.tokens.length)return false;
   const signals=getStandaloneMatchSignals(r,plan);
-  if(plan.tokens.length===1)return signals.tokenHits>0||signals.slug;
-  return signals.exact||signals.slug||signals.underscored||signals.hyphenated||signals.tokenHits===plan.tokens.length;
+  if(plan.tokens.length===1)return signals.tokenHits>0||signals.noSpaces;
+  return signals.exact||signals.noSpaces||signals.underscored||signals.hyphenated||signals.tokenHits===plan.tokens.length;
 }
 
 async function searchDirect(query){
@@ -826,7 +826,7 @@ async function searchDirect(query){
       return searchVariants(queryVariants(plan,{includeExact:true}),async(_term,encoded)=>{
         const d=await fetchWithRetry(`https://api.duckduckgo.com/?q=${encoded}&format=json&no_html=1&skip_disambig=0`);
         const out=[];
-        if(d.AbstractText)out.push({source:'duckduckgo',title:d.Heading||query,url:d.AbstractURL||'',snippet:d.AbstractText.slice(0,200),score:9,seenOn:['duckduckgo']});
+        if(d.AbstractText)out.push({source:'duckduckgo',title:d.Heading||plan.raw,url:d.AbstractURL||'',snippet:d.AbstractText.slice(0,200),score:9,seenOn:['duckduckgo']});
         (d.RelatedTopics||[]).slice(0,5).forEach((t,i)=>{
           if(t.Text&&t.FirstURL)out.push({source:'duckduckgo',title:t.Text.slice(0,100),url:t.FirstURL,snippet:t.Text.slice(0,180),score:6-i,seenOn:['duckduckgo']});
         });
@@ -882,7 +882,7 @@ async function searchDirect(query){
 
     // ── Wayback CDX ──
     {name:'wayback',fn:async()=>{
-      const rows=await fetchWithRetry(`https://web.archive.org/cdx/search/cdx?url=*${encodeURIComponent(plan.slug||plan.raw)}*&output=json&fl=original,timestamp,statuscode&filter=statuscode:200&limit=8&collapse=urlkey`);
+      const rows=await fetchWithRetry(`https://web.archive.org/cdx/search/cdx?url=*${encodeURIComponent(plan.noSpaces||plan.lower)}*&output=json&fl=original,timestamp,statuscode&filter=statuscode:200&limit=8&collapse=urlkey`);
       if(!Array.isArray(rows)||rows.length<=1)return[];
       const hi=rows[0].indexOf('original'),ti=rows[0].indexOf('timestamp');
       return rows.slice(1).map((row,i)=>{
@@ -1536,7 +1536,7 @@ function scoreStandalone(results,originalInput){
     const feats={
       titleExact:   signals.title.includes(plan.lower)?1:0,
       snippetExact: signals.snippet.includes(plan.lower)?1:0,
-      urlUsername:  signals.slug||signals.underscored||signals.hyphenated?1:0,
+      urlUsername:  signals.noSpaces||signals.underscored||signals.hyphenated?1:0,
       multiSource:  (urlMap[r.url]||0)>1?1:0,
       archiveSource:r.source==='wayback'||/archive\.org/.test(signals.url)?1:0,
       allTokensPresent:plan.tokens.length>1&&signals.tokenHits===plan.tokens.length?1:0,

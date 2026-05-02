@@ -45,7 +45,7 @@ export function extractFeatures(r, lowerInput, tokens, urlMap) {
     lowerInput.replace(/\s+/g, ''),
     tokens.join('_'),
     tokens.join('-'),
-  ].filter(Boolean);
+  ];
 
   return {
      titleExact:    title.includes(lowerInput) ? 1 : 0,
