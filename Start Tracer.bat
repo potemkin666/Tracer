@@ -22,7 +22,7 @@ if not exist "%ROOT%\node_modules" (
 
 echo Launching local Tracer server...
 start "Tracer Server" /D "%ROOT%" cmd /k "npm run serve"
-call :wait_for_server >nul 2>nul
+call :wait_for_server 2>nul
 if errorlevel 1 (
   call :open_standalone "Tracer server did not respond within %MAX_WAIT_SECONDS% seconds."
 ) else (
