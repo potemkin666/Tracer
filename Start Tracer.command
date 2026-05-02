@@ -53,7 +53,7 @@ fi
     if [ "$server_ready" -eq 1 ]; then
       open_target "http://localhost:${PORT}"
     else
-      echo "Tracer server did not respond after ${MAX_ATTEMPTS} checks."
+      echo "Tracer server did not respond after about ${MAX_ATTEMPTS} seconds."
       echo "Opening portable standalone mode instead..."
       open_target "$ROOT/docs/index.html"
     fi
