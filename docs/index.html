@@ -354,7 +354,7 @@
       <div class="quickstart-grid">
         <div class="quickstart-item">
           <strong>Use now with built-in APIs</strong>
-          <p>Double-click the repo root <code style="color:var(--bright)">index.html</code>. Portable standalone mode works right away from a copied folder or external drive.</p>
+          <p>Double-click the repo root <code style="color:var(--bright)">index.html</code>. Portable standalone mode works right away from a copied folder or external drive, and you can search immediately.</p>
           <div class="quickstart-actions">
             <button class="btn btn-sm" type="button" onclick="document.getElementById('query').focus()">SEARCH NOW</button>
           </div>
@@ -577,9 +577,9 @@ let connected=false;
 const isFileProtocol=location.protocol==='file:';
 const isStandaloneClient=isFileProtocol||location.hostname.endsWith('.github.io');
 function getStandaloneEngineLabel(){
-  if(!isStandaloneClient)return '0 (server offline — open-API fallback)';
-  if(isFileProtocol)return '34 open APIs (portable mode works now — start local server for 550+)';
-  return '34 open APIs (standalone — start local server for 550+)';
+  if(!isStandaloneClient)return '0 (server offline - open-API fallback)';
+  if(isFileProtocol)return '34 open APIs (portable mode works now - start local server for 550+)';
+  return '34 open APIs (standalone - start local server for 550+)';
 }
 
 function openLocalServerGuide(){
