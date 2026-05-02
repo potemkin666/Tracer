@@ -19,7 +19,7 @@ echo
 if ! command -v node >/dev/null 2>&1 || ! command -v npm >/dev/null 2>&1; then
   echo "Node.js/npm not found."
   echo "Opening portable standalone mode instead..."
-  open_target "$ROOT/index.html"
+  open_target "$ROOT/docs/index.html"
   echo
   read -r -p "Press Enter to close this window."
   exit 0
@@ -30,7 +30,7 @@ if [ ! -d "$ROOT/node_modules" ]; then
   if ! npm install; then
     echo
     echo "npm install failed. Opening portable standalone mode instead..."
-    open_target "$ROOT/index.html"
+    open_target "$ROOT/docs/index.html"
     echo
     read -r -p "Press Enter to close this window."
     exit 0

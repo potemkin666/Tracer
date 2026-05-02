@@ -26,7 +26,7 @@ exit /b 0
 :standalone
 echo Node.js/npm not found or setup failed.
 echo Opening portable standalone mode instead...
-start "" "%ROOT%\index.html"
+start "" "%ROOT%\docs\index.html"
 echo.
 echo Standalone mode works without installs, but the local server needs Node.js.
 pause
