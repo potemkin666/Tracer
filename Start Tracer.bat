@@ -24,24 +24,24 @@ echo Launching local Tracer server...
 start "Tracer Server" /D "%ROOT%" cmd /k "npm run serve"
 call :wait_for_server >nul 2>nul
 if errorlevel 1 (
-  echo Tracer server did not respond within %MAX_WAIT_SECONDS% seconds.
-  echo Standalone mode is opening now from the repo root...
-  start "" "%STANDALONE_TARGET%"
-  echo You can use Tracer right away with the built-in open APIs.
-  echo Install Node.js 18+ later from https://nodejs.org if you want the 550+ engine local server.
+  call :open_standalone "Tracer server did not respond within %MAX_WAIT_SECONDS% seconds."
 ) else (
   start "" "http://localhost:%PORT%"
 )
 exit /b 0
 
 :standalone
-echo Node.js/npm not found or setup failed.
+call :open_standalone "Node.js/npm not found or setup failed."
+pause
+exit /b 0
+
+:open_standalone
+echo %~1
 echo Standalone mode is opening now from the repo root...
 start "" "%STANDALONE_TARGET%"
 echo.
 echo You can use Tracer right away with the built-in open APIs.
 echo Install Node.js 18+ later from https://nodejs.org if you want the 550+ engine local server.
-pause
 exit /b 0
 
 :wait_for_server

@@ -25,6 +25,11 @@ open_standalone() {
   echo "Install Node.js 18+ later from https://nodejs.org if you want the 550+ engine local server."
 }
 
+server_responding() {
+  node -e "fetch(process.argv[1]).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" \
+    "http://localhost:${PORT}/health" >/dev/null 2>&1
+}
+
 echo "Starting Tracer from \"$ROOT\""
 echo
 
@@ -46,25 +51,20 @@ if [ ! -d "$ROOT/node_modules" ]; then
   fi
 fi
 
-( if command -v curl >/dev/null 2>&1; then
-    attempt=0
-    server_ready=0
-    while [ "$attempt" -lt "$MAX_ATTEMPTS" ]; do
-      if curl -fsS "http://localhost:${PORT}/health" >/dev/null 2>&1; then
-        server_ready=1
-        break
-      fi
-      attempt=$((attempt + 1))
-      sleep 1
-    done
-    if [ "$server_ready" -eq 1 ]; then
-      open_target "http://localhost:${PORT}"
-    else
-      open_standalone "Tracer server did not respond after about ${MAX_ATTEMPTS} seconds."
+( attempt=0
+  server_ready=0
+  while [ "$attempt" -lt "$MAX_ATTEMPTS" ]; do
+    if server_responding; then
+      server_ready=1
+      break
     fi
-  else
-    sleep 2
+    attempt=$((attempt + 1))
+    sleep 1
+  done
+  if [ "$server_ready" -eq 1 ]; then
     open_target "http://localhost:${PORT}"
+  else
+    open_standalone "Tracer server did not respond after about ${MAX_ATTEMPTS} seconds."
   fi
 ) &
 echo "Launching local Tracer server..."
