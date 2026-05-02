@@ -41,17 +41,26 @@ fi
 
 ( if command -v curl >/dev/null 2>&1; then
     attempt=0
+    server_ready=0
     while [ "$attempt" -lt "$MAX_ATTEMPTS" ]; do
       if curl -fsS "http://localhost:${PORT}/health" >/dev/null 2>&1; then
+        server_ready=1
         break
       fi
       attempt=$((attempt + 1))
       sleep 1
     done
+    if [ "$server_ready" -eq 1 ]; then
+      open_target "http://localhost:${PORT}"
+    else
+      echo "Tracer server did not respond after ${MAX_ATTEMPTS} checks."
+      echo "Opening portable standalone mode instead..."
+      open_target "$ROOT/docs/index.html"
+    fi
   else
     sleep 2
+    open_target "http://localhost:${PORT}"
   fi
-  open_target "http://localhost:${PORT}"
 ) &
 echo "Launching local Tracer server..."
 npm run serve
