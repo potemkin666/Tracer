@@ -518,11 +518,11 @@ function collectKeys(){const o={};KEY_DEFS.forEach(k=>{const el=document.getElem
 
 // ── CONNECTION ────────────────────────────────────────────────────────────────
 let connected=false;
-const isPortableFile=location.protocol==='file:';
-const isStandaloneClient=isPortableFile||location.hostname.endsWith('.github.io');
+const isFileProtocol=location.protocol==='file:';
+const isStandaloneClient=isFileProtocol||location.hostname.endsWith('.github.io');
 function getStandaloneEngineLabel(){
   if(!isStandaloneClient)return '0 (server offline — open-API fallback)';
-  if(isPortableFile)return '34 open APIs (portable standalone — start local server for 550+)';
+  if(isFileProtocol)return '34 open APIs (portable standalone — start local server for 550+)';
   return '34 open APIs (standalone — start local server for 550+)';
 }
 

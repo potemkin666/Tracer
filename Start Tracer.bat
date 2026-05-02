@@ -43,12 +43,9 @@ exit /b 0
 :wait_for_server
 where powershell >nul 2>nul
 if errorlevel 1 exit /b 1
-powershell -NoProfile -Command ^
-  "$port=%PORT%; " ^
-  "$maxWait=%MAX_WAIT_SECONDS%; " ^
-  "$deadline=(Get-Date).AddSeconds([int]$maxWait); " ^
-  "while ((Get-Date) -lt $deadline) { " ^
-  "  try { $r=Invoke-WebRequest -UseBasicParsing ('http://localhost:' + $port + '/health') -TimeoutSec 2; if ($r.StatusCode -eq 200) { exit 0 } } catch {} " ^
-  "  Start-Sleep -Seconds 1 " ^
-  "}; exit 1"
+powershell -NoProfile ^
+  -ExecutionPolicy Bypass ^
+  -File "%ROOT%\Start Tracer.wait.ps1" ^
+  %PORT% ^
+  %MAX_WAIT_SECONDS%
 exit /b %errorlevel%
