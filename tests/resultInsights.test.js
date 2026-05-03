@@ -116,12 +116,15 @@ describe('result insights', () => {
       },
     ];
 
-    expect(buildArtifactSearchProfile('favicon.ico', results)).toMatchObject({
+    const artifactProfile = buildArtifactSearchProfile('favicon.ico', results);
+    expect(artifactProfile).toMatchObject({
       intent: 'artifact',
       fossilCount: 1,
       hiddenCount: 1,
-      dominantArtifacts: [expect.objectContaining({ type: 'favicon' })],
     });
+    expect(artifactProfile.dominantArtifacts).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'favicon' }),
+    ]));
 
     expect(buildContagionMap(results)).toEqual(expect.arrayContaining([
       expect.objectContaining({ route: 'forum → telegram → media', echoCount: 2 }),

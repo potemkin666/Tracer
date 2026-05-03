@@ -447,9 +447,9 @@ export function buildRelatedQueries(input, results = [], limit = 8) {
     plan.intent === 'artifact' && plan.raw ? `"${plan.raw}" rss` : null,
     ...domains.map((domain) => plan.raw ? `site:${domain} "${plan.raw}"` : null),
     ...usernames.map((username) => `"${username}" profile`),
+    ...orgs.map((org) => plan.raw ? `"${org}" "${plan.raw}"` : `"${org}"`),
     ...usernames.map((username) => `site:github.com ${username}`),
     ...scentVariants.map((value) => plan.intent === 'artifact' ? `"${value}"` : `${value} profile`),
-    ...orgs.map((org) => plan.raw ? `"${org}" "${plan.raw}"` : `"${org}"`),
     ...regions.map((region) => plan.raw ? `${plan.raw} region:${region}` : `region:${region}`),
     ...language.map((code) => plan.raw ? `${plan.raw} lang:${code}` : `lang:${code}`),
   ]).slice(0, limit);

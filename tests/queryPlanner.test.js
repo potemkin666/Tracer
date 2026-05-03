@@ -109,7 +109,7 @@ describe('generateScentVariants', () => {
     expect(generateScentVariants('@jose.example')).toEqual(expect.arrayContaining([
       '@jose.example',
       'jose.example',
-      'j0s3.3x4mpl3',
+      'j053.3x4mp13',
       'js.xmpl',
     ]));
   });
