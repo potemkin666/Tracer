@@ -1208,8 +1208,15 @@ function renderResults(results,clusters,context={}){
     const card=document.createElement('div');card.className='card';
     if(r.url){
       card.dataset.openable='true';
+      card.tabIndex=0;
       card.title='Double-click to open in a new tab';
       card.addEventListener('dblclick',()=>openResultInNewTab(r.url));
+      card.addEventListener('keydown',(event)=>{
+        if(event.key==='Enter'||event.key===' '){
+          event.preventDefault();
+          openResultInNewTab(r.url);
+        }
+      });
     }
     card.style.animationDelay=(i*.035)+'s';
     card.innerHTML=

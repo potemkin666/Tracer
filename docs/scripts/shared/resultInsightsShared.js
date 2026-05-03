@@ -49,6 +49,8 @@ const LOW_QUALITY_BUCKETS = new Set(['forum', 'unknown']);
 const MAX_ECHO_TOKENS = 8;
 const MAX_TITLE_TOKENS = 7;
 const MAX_SNIPPET_TOKENS = 5;
+const MAX_SCENT_VARIANTS = 8;
+const MAX_RELATED_SCENT_VARIANTS = 2;
 const ARTIFACT_MATCHERS = [
   { type: 'pdf', re: /\.pdf(?:$|[?#])/iu },
   { type: 'document', re: /\.(docx?|pptx?|xlsx?|txt)(?:$|[?#])/iu },
@@ -368,7 +370,7 @@ export function buildConsensusFractureMap(results = []) {
 
 export function buildArtifactSearchProfile(input = '', results = []) {
   const plan = buildQueryPlan(input);
-  const scentVariants = generateScentVariants(plan).slice(0, 8);
+  const scentVariants = generateScentVariants(plan).slice(0, MAX_SCENT_VARIANTS);
   const artifactHits = results
     .map((result) => ({
       title: result.title || result.url || 'Untitled result',
@@ -437,7 +439,9 @@ export function buildRelatedQueries(input, results = [], limit = 8) {
   const orgs = unique(results.flatMap((result) => result.meta?.entities?.orgs || [])).slice(0, 2);
   const regions = unique(results.map((result) => result.meta?.region).filter(Boolean)).slice(0, 1);
   const language = unique(results.map((result) => result.meta?.language).filter((code) => code && code !== 'unknown' && code !== 'en')).slice(0, 1);
-  const scentVariants = generateScentVariants(plan).filter((value) => value && value !== plan.raw).slice(0, 2);
+  const scentVariants = generateScentVariants(plan)
+    .filter((value) => value && value !== plan.raw)
+    .slice(0, MAX_RELATED_SCENT_VARIANTS);
 
   return uniqueCaseInsensitive([
     plan.raw ? `intitle:"${plan.raw}"` : null,
