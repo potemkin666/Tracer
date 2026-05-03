@@ -61,7 +61,7 @@ const ARTIFACT_MATCHERS = [
   { type: 'redirect', re: /\bredirect\b|utm_|[?&](target|dest|url)=/iu },
   { type: 'favicon', re: /\bfavicon(?:\.ico)?\b/iu },
   { type: 'css', re: /\.css(?:$|[?#])|\bcss class\b/iu },
-  { type: 'commit', re: /\bcommit\b|\b[a-f0-9]{7,40}\b/iu },
+  { type: 'commit', re: /\bcommit\b/iu },
   { type: 'slug', re: /\bslug\b|\/[\w-]{6,}\/?$/iu },
   { type: 'metadata', re: /\b(metadata|byline|title tag|canonical)\b/iu },
   { type: 'exif', re: /\bexif\b/iu },
@@ -112,7 +112,11 @@ function normaliseFingerprintTokens(value) {
 }
 
 function buildEchoFingerprint(result = {}) {
-  const username = String(result.meta?.username || '').toLowerCase().trim();
+  const username = String(result.meta?.username || '')
+    .toLowerCase()
+    .trim()
+    .replace(/^@+/u, '')
+    .replace(/[^a-z0-9._-]/gu, '');
   if (username) return `handle:${username}`;
 
   const hostname = safeHostname(result.url || '');
@@ -178,7 +182,11 @@ function classifyCommunityLane(result = {}) {
 
 function detectArtifactMatches(result = {}) {
   const haystack = `${result.title || ''} ${result.snippet || ''} ${result.url || ''}`;
-  return unique(ARTIFACT_MATCHERS.filter(({ re }) => re.test(haystack)).map(({ type }) => type));
+  const detected = ARTIFACT_MATCHERS.filter(({ re }) => re.test(haystack)).map(({ type }) => type);
+  if (/\bcommit\b/iu.test(haystack) && /\b[a-f0-9]{7,40}\b/iu.test(haystack)) {
+    detected.push('commit');
+  }
+  return unique(detected);
 }
 
 export function detectLanguage(text) {
@@ -350,7 +358,7 @@ export function buildConsensusFractureMap(results = []) {
     .slice(0, 3);
   const dominantReliable = familyTree.find((family) => family.reliableCount > 0) || null;
   const divergence = familyTree
-    .filter((family) => family.reliableCount > 0 && family.fingerprint !== dominantReliable?.fingerprint)
+    .filter((family) => dominantReliable && family.reliableCount > 0 && family.fingerprint !== dominantReliable.fingerprint)
     .slice(0, 3);
   const amplification = familyTree
     .filter((family) => family.lowQualityCount >= 1 && family.size > family.reliableCount)
@@ -440,7 +448,7 @@ export function buildRelatedQueries(input, results = [], limit = 8) {
   const regions = unique(results.map((result) => result.meta?.region).filter(Boolean)).slice(0, 1);
   const language = unique(results.map((result) => result.meta?.language).filter((code) => code && code !== 'unknown' && code !== 'en')).slice(0, 1);
   const scentVariants = generateScentVariants(plan)
-    .filter((value) => value && value !== plan.raw)
+    .filter((value) => value && value !== plan.raw && value !== plan.exact)
     .slice(0, MAX_RELATED_SCENT_VARIANTS);
 
   return uniqueCaseInsensitive([

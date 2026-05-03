@@ -1209,7 +1209,7 @@ function renderResults(results,clusters,context={}){
     if(r.url){
       card.dataset.openable='true';
       card.tabIndex=0;
-      card.title='Double-click to open in a new tab';
+      card.title='Double-click or press Enter/Space to open in a new tab';
       card.addEventListener('dblclick',()=>openResultInNewTab(r.url));
       card.addEventListener('keydown',(event)=>{
         if(event.key==='Enter'||event.key===' '){

@@ -22,11 +22,15 @@ function looksLikePhone(raw) {
 export function detectQueryIntent(input) {
   const raw = String(input || '').trim();
   const lower = raw.toLowerCase();
+  const hasArtifactKeyword = ARTIFACT_KEYWORDS.test(raw);
+  const hasHashPattern = HASH_PATTERN.test(raw);
+  const hasFilenamePattern = FILENAME_PATTERN.test(raw);
+  const hasCssClassPattern = CSS_CLASS_PATTERN.test(raw) && /[-_.]/u.test(raw);
   if (!raw) return 'name';
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(raw)) return 'email';
   if (looksLikePhone(raw)) return 'phone';
   if (/\b(image|avatar|logo|photo|picture)\b/iu.test(raw) || /\.(png|jpe?g|gif|webp)$/iu.test(raw)) return 'image';
-  if (ARTIFACT_KEYWORDS.test(raw) || HASH_PATTERN.test(raw) || FILENAME_PATTERN.test(raw) || (CSS_CLASS_PATTERN.test(raw) && /[-_.]/u.test(raw))) return 'artifact';
+  if (hasArtifactKeyword || hasHashPattern || hasFilenamePattern || hasCssClassPattern) return 'artifact';
   if (/\b(inc|llc|ltd|corp|corporation|company|group|studio|labs?|agency|foundation|institute|university|college)\b/iu.test(raw)) return 'company';
   if (/^@/u.test(raw) || (!/\s/u.test(raw) && /^[a-z0-9._-]{2,}$/iu.test(raw))) return 'handle';
   if (lower.includes('@') && !lower.startsWith('@')) return 'email';
