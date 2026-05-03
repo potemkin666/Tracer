@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { once } from 'events';
-import { createApp } from '../src/ui/server.js';
+import { createApp, parseAllowedOrigins } from '../src/ui/server.js';
 
 async function withServer(app, run) {
   const server = app.listen(0);
@@ -19,6 +19,14 @@ async function readJson(response) {
 }
 
 describe('ui server', () => {
+  test('parseAllowedOrigins falls back to defaults and supports custom lists', () => {
+    expect(parseAllowedOrigins()).toContain('https://potemkin666.github.io');
+    expect(parseAllowedOrigins('https://a.test, https://b.test')).toEqual([
+      'https://a.test',
+      'https://b.test',
+    ]);
+  });
+
   test('GET /health returns ok', async () => {
     await withServer(createApp(), async (baseUrl) => {
       const response = await globalThis.fetch(`${baseUrl}/health`);
@@ -147,6 +155,26 @@ describe('ui server', () => {
       expect(first.status).toBe(200);
       expect(second.status).toBe(429);
       await expect(readJson(second)).resolves.toEqual({ error: 'rate limit exceeded' });
+    });
+  });
+
+  test('reflects allowed origins and blocks disallowed origins', async () => {
+    const app = createApp({
+      allowedOrigins: ['https://potemkin666.github.io'],
+      runImpl: async () => ({ results: [], avatarClusters: [], connectorStats: [] }),
+    });
+
+    await withServer(app, async (baseUrl) => {
+      const allowed = await globalThis.fetch(`${baseUrl}/health`, {
+        headers: { Origin: 'https://potemkin666.github.io' },
+      });
+      const blocked = await globalThis.fetch(`${baseUrl}/health`, {
+        headers: { Origin: 'https://evil.example' },
+      });
+
+      expect(allowed.headers.get('access-control-allow-origin')).toBe('https://potemkin666.github.io');
+      expect(blocked.status).toBe(403);
+      await expect(readJson(blocked)).resolves.toEqual({ error: 'origin not allowed' });
     });
   });
 });

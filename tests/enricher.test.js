@@ -127,4 +127,20 @@ describe('enrich', () => {
   test('handles empty results array', () => {
     expect(enrich([], 'test')).toEqual([]);
   });
+
+  test('does not mutate input results or nested meta structures', () => {
+    const results = [
+      { url: 'https://twitter.com/jsmith', title: '', snippet: '', meta: { tags: ['fossil'] } },
+    ];
+    const original = structuredClone(results);
+
+    const enriched = enrich(results, 'jsmith');
+
+    expect(results).toEqual(original);
+    expect(enriched).not.toBe(results);
+    expect(enriched[0]).not.toBe(results[0]);
+    expect(enriched[0].meta).not.toBe(results[0].meta);
+    expect(enriched[0].meta.tags).toContain('social');
+    expect(results[0].meta.tags).toEqual(['fossil']);
+  });
 });

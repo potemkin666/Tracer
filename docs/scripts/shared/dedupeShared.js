@@ -21,6 +21,7 @@ function defaultMergeEntry(existing, result) {
 export function dedupeResultsByUrl(
   results,
   {
+    getKey = (result) => result.url,
     createEntry = defaultCreateEntry,
     mergeEntry = defaultMergeEntry,
   } = {}
@@ -28,14 +29,15 @@ export function dedupeResultsByUrl(
   const map = new Map();
 
   for (const result of results) {
-    if (!result.url) continue;
+    const key = getKey(result);
+    if (!key) continue;
 
-    if (!map.has(result.url)) {
-      map.set(result.url, createEntry(result));
+    if (!map.has(key)) {
+      map.set(key, createEntry(result));
       continue;
     }
 
-    mergeEntry(map.get(result.url), result);
+    mergeEntry(map.get(key), result);
   }
 
   return Array.from(map.values());

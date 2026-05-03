@@ -1,6 +1,7 @@
-/* global AbortSignal, DOMParser, EventSource, TextEncoder, URLSearchParams, crypto, document, fetch, localStorage, location */
+/* global AbortSignal, DOMParser, EventSource, TextEncoder, URLSearchParams, crypto, document, fetch, localStorage, location, sessionStorage */
 
 import { buildQueryPlan, queryVariants } from './shared/queryShared.js';
+import { createKeyStorage } from './shared/keyStorage.js';
 import {
   searchDirect as runStandaloneSearch,
   searchVariants,
@@ -38,6 +39,7 @@ const ENGINE_METADATA=globalThis.TRACER_ENGINE_METADATA||{
   sourceTierMap:{},
 };
 const KEY_DEFS=ENGINE_METADATA.keyDefs||[];
+const keyStorage = createKeyStorage({ storage: sessionStorage, prefix: 'tracer_' });
 
 // Build key grid
 (function(){
@@ -51,9 +53,9 @@ const KEY_DEFS=ENGINE_METADATA.keyDefs||[];
   });
 })();
 
-function loadKeys(){KEY_DEFS.forEach(k=>{const el=document.getElementById('k-'+k.id);if(el)el.value=localStorage.getItem('tracer_'+k.id)||''})}
-function saveKeys(){KEY_DEFS.forEach(k=>{const el=document.getElementById('k-'+k.id);if(el)el.value?localStorage.setItem('tracer_'+k.id,el.value):localStorage.removeItem('tracer_'+k.id)});showErr('Keys saved.',false)}
-function clearKeys(){KEY_DEFS.forEach(k=>{localStorage.removeItem('tracer_'+k.id);const el=document.getElementById('k-'+k.id);if(el)el.value=''})}
+function loadKeys(){KEY_DEFS.forEach(k=>{const el=document.getElementById('k-'+k.id);if(el)el.value=keyStorage.get(k.id)})}
+function saveKeys(){KEY_DEFS.forEach(k=>{const el=document.getElementById('k-'+k.id);if(el)el.value?keyStorage.set(k.id,el.value):keyStorage.remove(k.id)});showErr('Keys saved for this session.',false)}
+function clearKeys(){KEY_DEFS.forEach(k=>{keyStorage.remove(k.id);const el=document.getElementById('k-'+k.id);if(el)el.value=''})}
 function collectKeys(){const o={};KEY_DEFS.forEach(k=>{const el=document.getElementById('k-'+k.id);if(el&&el.value.trim())o[k.id]=el.value.trim()});return o}
 
 // ── CONNECTION ────────────────────────────────────────────────────────────────

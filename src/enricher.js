@@ -12,45 +12,53 @@ export { classifyUrl } from './identity.js';
  *
  * @param {object[]} results - deduplicated results
  * @param {string} input - original search term
- * @returns {object[]} results with enriched meta (mutated in place for speed)
+ * @returns {object[]} cloned results with enriched meta
  */
 export function enrich(results, input) {
   const inputLower = (input || '').toLowerCase();
   const slug = inputLower.replace(/\s+/g, '');
 
-  for (const r of results) {
-    if (!r.meta || typeof r.meta !== 'object') r.meta = {};
-    if (!Array.isArray(r.meta.tags)) r.meta.tags = [...(r.meta.tags || [])];
+  return results.map((result) => {
+    const metaSource = result.meta && typeof result.meta === 'object'
+      ? result.meta
+      : {};
+    const meta = {
+      ...metaSource,
+      tags: Array.isArray(metaSource.tags) ? [...metaSource.tags] : [...(metaSource.tags || [])],
+    };
 
-    const { category, username } = classifyUrl(r.url);
+    const { category, username } = classifyUrl(result.url);
 
     if (category) {
-      r.meta.domainCategory = category;
+      meta.domainCategory = category;
 
-      if (category === 'social' && !r.meta.tags.includes('social')) {
-        r.meta.tags.push('social');
+      if (category === 'social' && !meta.tags.includes('social')) {
+        meta.tags.push('social');
       }
-      if (category === 'academic' && !r.meta.tags.includes('academic')) {
-        r.meta.tags.push('academic');
+      if (category === 'academic' && !meta.tags.includes('academic')) {
+        meta.tags.push('academic');
       }
-      if (category === 'gov' && !r.meta.tags.includes('gov')) {
-        r.meta.tags.push('gov');
+      if (category === 'gov' && !meta.tags.includes('gov')) {
+        meta.tags.push('gov');
       }
     }
 
     if (username) {
-      r.meta.username = username;
+      meta.username = username;
       // If username matches the search term, this is likely a profile page
       if (
         username.toLowerCase() === slug ||
         username.toLowerCase() === inputLower
       ) {
-        if (!r.meta.tags.includes('profile')) {
-          r.meta.tags.push('profile');
+        if (!meta.tags.includes('profile')) {
+          meta.tags.push('profile');
         }
       }
     }
-  }
 
-  return results;
+    return {
+      ...result,
+      meta,
+    };
+  });
 }

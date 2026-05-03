@@ -1,7 +1,11 @@
 import { dedupeResultsByUrl, mergeUniqueValues } from '../docs/scripts/shared/dedupeShared.js';
+import { normaliseUrlForDedupe } from './urlNormaliser.js';
 
 export function dedupe(results) {
   return dedupeResultsByUrl(results, {
+    getKey(result) {
+      return normaliseUrlForDedupe(result.url);
+    },
     createEntry(result) {
       return {
         ...result,

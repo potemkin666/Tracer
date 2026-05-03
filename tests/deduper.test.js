@@ -1,4 +1,5 @@
 import { dedupe } from '../src/deduper.js';
+import { normaliseUrlForDedupe } from '../src/urlNormaliser.js';
 
 describe('dedupe', () => {
   test('returns unique results by URL', () => {
@@ -101,5 +102,27 @@ describe('dedupe', () => {
     const result = dedupe(input);
     expect(result.length).toBe(1);
     expect(result[0].url).toBe('https://a.com');
+  });
+
+  test('normalizes trailing slashes, fragments, and tracking params before dedupe', () => {
+    const input = [
+      { url: 'https://example.com/path/?utm_source=news#bio', title: 'A', source: 'brave' },
+      { url: 'https://example.com/path', title: 'B', source: 'bing' },
+    ];
+    const result = dedupe(input);
+    expect(result).toHaveLength(1);
+    expect(result[0].sources).toEqual(['brave', 'bing']);
+  });
+});
+
+describe('normaliseUrlForDedupe', () => {
+  test('removes fragments, default ports, and tracking params', () => {
+    expect(normaliseUrlForDedupe('https://Example.com:443/path/?utm_source=x&b=2#frag'))
+      .toBe('https://example.com/path?b=2');
+  });
+
+  test('falls back gracefully for invalid URLs', () => {
+    expect(normaliseUrlForDedupe(' example/path/#frag '))
+      .toBe('example/path');
   });
 });

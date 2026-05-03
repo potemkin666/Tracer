@@ -15,12 +15,58 @@ const PORT = process.env.PORT || 3000;
 const INTERNAL_ERROR_MESSAGE = 'internal server error';
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const SEARCH_RATE_LIMIT_MAX = 20;
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://potemkin666.github.io',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'null',
+];
 
 function logInternalError(context, err) {
   logger.error('server-error', {
     context,
     error: err.message,
   });
+}
+
+export function parseAllowedOrigins(value = process.env.TRACER_ALLOWED_ORIGINS) {
+  if (typeof value !== 'string' || !value.trim()) {
+    return [...DEFAULT_ALLOWED_ORIGINS];
+  }
+
+  return value
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
+function isOriginAllowed(origin, allowedOrigins) {
+  if (!origin) return true;
+  return allowedOrigins.includes(origin);
+}
+
+function createCorsMiddleware(allowedOrigins) {
+  return (req, res, next) => {
+    const origin = req.get('Origin');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.header('Vary', 'Origin');
+
+    if (!isOriginAllowed(origin, allowedOrigins)) {
+      if (req.method === 'OPTIONS') {
+        return res.status(403).json({ error: 'origin not allowed' });
+      }
+      return res.status(403).json({ error: 'origin not allowed' });
+    }
+
+    if (origin) {
+      res.header('Access-Control-Allow-Origin', origin);
+    }
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(204);
+    }
+    return next();
+  };
 }
 
 function createRateLimiter({
@@ -56,21 +102,13 @@ export function createApp({
   allConnectors = ALL_CONNECTORS,
   getActiveImpl = getActive,
   rateLimiterOptions,
+  allowedOrigins = parseAllowedOrigins(),
 } = {}) {
   const serverApiKeys = loadKeysImpl();
   const app = express();
 
   app.use(express.json());
-
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(204);
-    }
-    next();
-  });
+  app.use(createCorsMiddleware(allowedOrigins));
 
   const docsDir = path.resolve(__dirname, '../../docs');
   const publicDir = path.join(__dirname, 'public');
@@ -127,7 +165,6 @@ export function createApp({
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
     });
 
     let closed = false;
