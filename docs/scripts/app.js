@@ -995,7 +995,7 @@ function openResultInNewTab(url){
 
 function renderFirstBloodPanel(firstBlood){
   if(!firstBlood)return '';
-  const echoCount=firstBlood.familySize||firstBlood.echoCount||1;
+  const echoCount=firstBlood.echoCount??Math.max((firstBlood.familySize||1)-1,0);
   const sourceLink=firstBlood.url
     ? `<a href="${esc(firstBlood.url)}" target="_blank" rel="noopener noreferrer">${esc(firstBlood.title)}</a>`
     : esc(firstBlood.title);
@@ -1012,7 +1012,7 @@ function renderSourceFamilyPanel(familyTree){
       const originLink=family.ancestor.url
         ? `<a href="${esc(family.ancestor.url)}" target="_blank" rel="noopener noreferrer">${esc(family.ancestor.source||family.ancestor.hostname||'origin')}</a>`
         : esc(family.ancestor.source||family.ancestor.hostname||'origin');
-      return `<div class="tree-item"><strong>${esc(family.label)}</strong><div class="card-seen">ANCESTOR <span>${family.ancestor.dateLabel?esc(family.ancestor.dateLabel):'undated'}</span> · ${originLink} · ECHOES <span>${family.size}</span> · HOSTS <span>${family.hostnames.length}</span></div></div>`;
+      return `<div class="tree-item"><strong>${esc(family.label)}</strong><div class="card-seen">ANCESTOR <span>${family.ancestor.dateLabel?esc(family.ancestor.dateLabel):'undated'}</span> · ${originLink} · ECHOES <span>${family.echoCount}</span> · HOSTS <span>${family.hostnames.length}</span></div></div>`;
     }).join('')+
     '</div></details>';
 }
@@ -1351,7 +1351,7 @@ function buildTextExport(results){
     '',
     '🧬 Source family tree',
     ...(familyTree.length
-      ? familyTree.map((family,index)=>`${index+1}. ${family.label}\n   Ancestor: ${family.ancestor.dateLabel||'Undated'} | ${family.ancestor.title} | ${family.ancestor.url||family.ancestor.source}\n   Echoes: ${family.size} | Reliable: ${family.reliableCount} | Low-quality: ${family.lowQualityCount}`)
+      ? familyTree.map((family,index)=>`${index+1}. ${family.label}\n   Ancestor: ${family.ancestor.dateLabel||'Undated'} | ${family.ancestor.title} | ${family.ancestor.url||family.ancestor.source}\n   Echoes: ${family.echoCount} | Reliable: ${family.reliableCount} | Low-quality: ${family.lowQualityCount}`)
       : ['- No echo families formed.']),
     '',
     '⚖️ Consensus fracture map',
