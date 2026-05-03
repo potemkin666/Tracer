@@ -64,6 +64,7 @@ let connected=false;
 const isFileProtocol=location.protocol==='file:';
 const isStandaloneClient=isFileProtocol||location.hostname.endsWith('.github.io');
 const LOCAL_SERVER_BASE='http://localhost:3000';
+const CONNECTION_TIMEOUT_MS=3000;
 function setUiStatus(status,text){
   document.body.dataset.status=status;
   const el=document.getElementById('status-text');
@@ -81,7 +82,7 @@ function getStandaloneEngineLabel(){
 async function checkConn(){
   const base=LOCAL_SERVER_BASE;
   try{
-    const r=await fetch(base+'/health',{signal:AbortSignal.timeout(3000)});
+    const r=await fetch(base+'/health',{signal:AbortSignal.timeout(CONNECTION_TIMEOUT_MS)});
     if(r.ok){
       connected=true;
       document.getElementById('dot').className='dot on';
@@ -101,7 +102,7 @@ async function checkConn(){
 
 async function updateEngCount(base){
   try{
-    const r=await fetch(base+'/engines',{signal:AbortSignal.timeout(3000)});
+    const r=await fetch(base+'/engines',{signal:AbortSignal.timeout(CONNECTION_TIMEOUT_MS)});
     if(r.ok){const d=await r.json();document.getElementById('eng-count').textContent=d.total+' engines ('+d.active+' live currents) — sonar streaming';return}
   }catch{
     // ignore engine count failures
