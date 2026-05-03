@@ -60,7 +60,7 @@ describe('rewriteQueryTerms', () => {
     ]));
   });
 
-  test('normalises repeated letters for spelling-like corrections', () => {
+  test('normalizes repeated letters for spelling-like corrections', () => {
     expect(rewriteQueryTerms('jooohn')).toContain('joohn');
   });
 });
