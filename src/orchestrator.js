@@ -118,7 +118,7 @@ export async function run(input, config = {}) {
     const tracker = createProgressTracker(notify, trackerStats, signal);
     const aggressive = mode === 'aggressive';
     const queries = generateQueries(input);
-    const limited = aggressive ? queries : queries.slice(0, 6);
+    const limited = queries;
     const activeConnectors = getActive(apiKeys, mode);
 
     const tasks = [];

@@ -18,8 +18,13 @@ const serverApiKeys = loadKeysFromEnv();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const INTERNAL_ERROR_MESSAGE = 'internal server error';
 
 app.use(express.json());
+
+function logInternalError(context, err) {
+  console.error(`[${context}]`, err);
+}
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
 // Allow the GitHub Pages frontend (and any local file:// or localhost origin)
@@ -69,7 +74,8 @@ app.post('/search', async (req, res) => {
     if (err instanceof SearchValidationError) {
       return res.status(err.statusCode).json({ error: err.message });
     }
-    res.status(500).json({ error: err.message });
+    logInternalError('search', err);
+    res.status(500).json({ error: INTERNAL_ERROR_MESSAGE });
   }
 });
 
@@ -88,7 +94,8 @@ app.get('/search/stream', async (req, res) => {
     if (err instanceof SearchValidationError) {
       return res.status(err.statusCode).json({ error: err.message });
     }
-    return res.status(400).json({ error: err.message });
+    logInternalError('search-stream-parse', err);
+    return res.status(400).json({ error: 'invalid request' });
   }
 
   // SSE headers
@@ -133,7 +140,8 @@ app.get('/search/stream', async (req, res) => {
     sendEvent('done', { results, avatarClusters, graph, connectorStats });
   } catch (err) {
     if (isAbortError(err)) return;
-    sendEvent('error', { error: err.message });
+    logInternalError('search-stream', err);
+    sendEvent('error', { error: INTERNAL_ERROR_MESSAGE });
   } finally {
     clearInterval(keepAlive);
     res.end();
