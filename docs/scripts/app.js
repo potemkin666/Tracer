@@ -63,6 +63,7 @@ function collectKeys(){const o={};KEY_DEFS.forEach(k=>{const el=document.getElem
 let connected=false;
 const isFileProtocol=location.protocol==='file:';
 const isStandaloneClient=isFileProtocol||location.hostname.endsWith('.github.io');
+const LOCAL_SERVER_BASE='http://localhost:3000';
 function setUiStatus(status,text){
   document.body.dataset.status=status;
   const el=document.getElementById('status-text');
@@ -77,14 +78,8 @@ function getStandaloneEngineLabel(){
   return `${openCount} open currents (standalone shoreline mode)`;
 }
 
-function openLocalServerGuide(){
-  const guide=document.getElementById('local-server-guide');
-  guide.open=true;
-  guide.scrollIntoView({behavior:'smooth',block:'start'});
-}
-
 async function checkConn(){
-  const base=document.getElementById('endpoint').value.replace(/\/$/,'');
+  const base=LOCAL_SERVER_BASE;
   try{
     const r=await fetch(base+'/health',{signal:AbortSignal.timeout(3000)});
     if(r.ok){
@@ -103,7 +98,6 @@ async function checkConn(){
   document.getElementById('eng-count').textContent=getStandaloneEngineLabel();
   return false;
 }
-document.getElementById('endpoint').addEventListener('change',checkConn);
 
 async function updateEngCount(base){
   try{
@@ -831,7 +825,7 @@ async function doSearch(){
   // launched `npm run serve` locally and the server now has CORS enabled).
   // Use SSE streaming for real-time progress from all 550+ connectors.
   // Fall back to standalone client-side search if the server isn't reachable.
-  const base=document.getElementById('endpoint').value.replace(/\/$/,'');
+  const base=LOCAL_SERVER_BASE;
   const online=connected||await checkConn();
   if(online){
     try{
@@ -1128,6 +1122,5 @@ Object.assign(globalThis,{
   doSearch,
   exportCSV,
   exportJSON,
-  openLocalServerGuide,
   saveKeys,
 });
