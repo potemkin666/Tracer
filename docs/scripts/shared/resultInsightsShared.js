@@ -1,4 +1,4 @@
-import { buildQueryPlan, uniqueCaseInsensitive } from './queryShared.js';
+import { buildQueryPlan, generateScentVariants, uniqueCaseInsensitive } from './queryShared.js';
 
 const LANGUAGE_PATTERNS = [
   { code: 'es', re: /\b(el|la|los|las|de|del|para|con|sobre|perfil|cuenta)\b|[ñáéíóú]/iu },
@@ -49,6 +49,21 @@ const LOW_QUALITY_BUCKETS = new Set(['forum', 'unknown']);
 const MAX_ECHO_TOKENS = 8;
 const MAX_TITLE_TOKENS = 7;
 const MAX_SNIPPET_TOKENS = 5;
+const ARTIFACT_MATCHERS = [
+  { type: 'pdf', re: /\.pdf(?:$|[?#])/iu },
+  { type: 'document', re: /\.(docx?|pptx?|xlsx?|txt)(?:$|[?#])/iu },
+  { type: 'image', re: /\.(png|jpe?g|gif|webp|svg)(?:$|[?#])/iu },
+  { type: 'rss', re: /\b(rss|atom|feed)\b|\/feed(?:$|[/?#])|\.xml(?:$|[?#])/iu },
+  { type: 'robots', re: /\brobots\.txt\b/iu },
+  { type: 'sitemap', re: /\bsitemap(?:[_-]index)?\.xml\b/iu },
+  { type: 'redirect', re: /\bredirect\b|utm_|[?&](target|dest|url)=/iu },
+  { type: 'favicon', re: /\bfavicon(?:\.ico)?\b/iu },
+  { type: 'css', re: /\.css(?:$|[?#])|\bcss class\b/iu },
+  { type: 'commit', re: /\bcommit\b|\b[a-f0-9]{7,40}\b/iu },
+  { type: 'slug', re: /\bslug\b|\/[\w-]{6,}\/?$/iu },
+  { type: 'metadata', re: /\b(metadata|byline|title tag|canonical)\b/iu },
+  { type: 'exif', re: /\bexif\b/iu },
+];
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
@@ -113,6 +128,7 @@ function buildEchoFingerprint(result = {}) {
 function summariseTrace(result = {}) {
   const timeline = extractTimelinePoint(result);
   const hostname = safeHostname(result.url || '');
+  const lane = classifyCommunityLane(result);
   return {
     title: result.title || result.url || 'Untitled result',
     url: result.url || '',
@@ -122,6 +138,7 @@ function summariseTrace(result = {}) {
     sourceFamily: result.meta?.sourceFamily || hostname || result.source || 'unknown',
     dateLabel: timeline?.label || null,
     sortKey: timeline?.sortKey || null,
+    lane,
   };
 }
 
@@ -140,6 +157,26 @@ function isLowQualityTrace(trace = {}) {
   return LOW_QUALITY_BUCKETS.has(trace.reliability)
     || trace.sourceFamily === 'social'
     || trace.sourceFamily === 'broker-directory';
+}
+
+function classifyCommunityLane(result = {}) {
+  const family = result.meta?.sourceFamily || '';
+  const hostname = safeHostname(result.url || '');
+  if (family === 'forum' || /forum|board|thread/u.test(hostname)) return 'forum';
+  if (/t\.me$|telegram/u.test(hostname)) return 'telegram';
+  if (/youtube\.com$|youtu\.be$/u.test(hostname)) return 'youtube';
+  if (family === 'media' || /\.news$|blog/u.test(hostname)) return hostname.includes('blog') ? 'blog' : 'media';
+  if (family === 'archive') return 'archive';
+  if (family === 'academic' || family === 'official') return 'records';
+  if (family === 'social') return 'social';
+  if (family === 'code-hosting') return 'code';
+  if (family === 'package-ecosystem') return 'package';
+  return 'open-web';
+}
+
+function detectArtifactMatches(result = {}) {
+  const haystack = `${result.title || ''} ${result.snippet || ''} ${result.url || ''}`;
+  return unique(ARTIFACT_MATCHERS.filter(({ re }) => re.test(haystack)).map(({ type }) => type));
 }
 
 export function detectLanguage(text) {
@@ -329,6 +366,70 @@ export function buildConsensusFractureMap(results = []) {
   };
 }
 
+export function buildArtifactSearchProfile(input = '', results = []) {
+  const plan = buildQueryPlan(input);
+  const scentVariants = generateScentVariants(plan).slice(0, 8);
+  const artifactHits = results
+    .map((result) => ({
+      title: result.title || result.url || 'Untitled result',
+      url: result.url || '',
+      source: result.source || '',
+      types: detectArtifactMatches(result),
+      archived: Boolean(result.meta?.tags?.includes('fossil') || result.meta?.pageStatus === 'archived' || result.meta?.sourceFamily === 'archive'),
+      hidden: Boolean(result.meta?.tags?.includes('document') || result.meta?.tags?.includes('archive-lane') || result.meta?.whySurvived),
+    }))
+    .filter((result) => result.types.length || result.archived || result.hidden);
+
+  const artifactCounts = new Map();
+  artifactHits.forEach((result) => {
+    result.types.forEach((type) => artifactCounts.set(type, (artifactCounts.get(type) || 0) + 1));
+  });
+
+  return {
+    intent: plan.intent,
+    scentVariants,
+    artifactHits: artifactHits.slice(0, 6),
+    dominantArtifacts: [...artifactCounts.entries()]
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .slice(0, 5)
+      .map(([type, count]) => ({ type, count })),
+    fossilCount: artifactHits.filter((result) => result.archived).length,
+    hiddenCount: artifactHits.filter((result) => result.hidden).length,
+  };
+}
+
+export function buildContagionMap(results = []) {
+  return buildSourceFamilyTree(results)
+    .filter((family) => family.size > 1)
+    .slice(0, 5)
+    .map((family) => {
+      const lanes = unique(family.members.map((member) => member.lane));
+      return {
+        label: family.label,
+        route: lanes.join(' → '),
+        familySize: family.size,
+        echoCount: family.echoCount,
+        lowQualityCount: family.lowQualityCount,
+        reliableCount: family.reliableCount,
+      };
+    });
+}
+
+export function buildCloneSludgeReport(results = []) {
+  const families = buildSourceFamilyTree(results);
+  const clones = families.filter((family) => family.echoCount > 0);
+  const repeatedResults = clones.reduce((total, family) => total + family.echoCount, 0);
+  return {
+    cloneFamilies: clones.length,
+    repeatedResults,
+    largestFamilies: clones.slice(0, 3).map((family) => ({
+      label: family.label,
+      echoCount: family.echoCount,
+      size: family.size,
+    })),
+  };
+}
+
 export function buildRelatedQueries(input, results = [], limit = 8) {
   const plan = buildQueryPlan(input);
   const domains = unique(results.map((result) => safeHostname(result.url || '')).filter(Boolean)).slice(0, 2);
@@ -336,13 +437,18 @@ export function buildRelatedQueries(input, results = [], limit = 8) {
   const orgs = unique(results.flatMap((result) => result.meta?.entities?.orgs || [])).slice(0, 2);
   const regions = unique(results.map((result) => result.meta?.region).filter(Boolean)).slice(0, 1);
   const language = unique(results.map((result) => result.meta?.language).filter((code) => code && code !== 'unknown' && code !== 'en')).slice(0, 1);
+  const scentVariants = generateScentVariants(plan).filter((value) => value && value !== plan.raw).slice(0, 2);
 
   return uniqueCaseInsensitive([
     plan.raw ? `intitle:"${plan.raw}"` : null,
     plan.raw ? `filetype:pdf "${plan.raw}"` : null,
+    plan.intent === 'artifact' && plan.raw ? `"${plan.raw}" "favicon.ico"` : null,
+    plan.intent === 'artifact' && plan.raw ? `"${plan.raw}" "robots.txt"` : null,
+    plan.intent === 'artifact' && plan.raw ? `"${plan.raw}" rss` : null,
     ...domains.map((domain) => plan.raw ? `site:${domain} "${plan.raw}"` : null),
     ...usernames.map((username) => `"${username}" profile`),
     ...usernames.map((username) => `site:github.com ${username}`),
+    ...scentVariants.map((value) => plan.intent === 'artifact' ? `"${value}"` : `${value} profile`),
     ...orgs.map((org) => plan.raw ? `"${org}" "${plan.raw}"` : `"${org}"`),
     ...regions.map((region) => plan.raw ? `${plan.raw} region:${region}` : `region:${region}`),
     ...language.map((code) => plan.raw ? `${plan.raw} lang:${code}` : `lang:${code}`),
@@ -359,6 +465,7 @@ export function buildResultInsights(result = {}, input = '') {
   const timeline = extractTimelinePoint(result);
 
   return {
+    artifactTypes: detectArtifactMatches(result),
     entities,
     language,
     languageLabel: normaliseLanguageLabel(language),

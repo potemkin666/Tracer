@@ -4,7 +4,10 @@ import { buildQueryPlan, queryVariants } from './shared/queryShared.js';
 import { createKeyStorage } from './shared/keyStorage.js';
 import { buildResultsBrief } from './shared/resultBrief.js';
 import {
+  buildArtifactSearchProfile,
+  buildCloneSludgeReport,
   buildConsensusFractureMap,
+  buildContagionMap,
   buildRelatedQueries,
   buildSourceFamilyTree,
   buildTimeline,
@@ -973,6 +976,7 @@ const QUERY_TYPE_LABELS={
   email:'EMAIL TRACE',
   phone:'PHONE TRACE',
   image:'IMAGE TRACE',
+  artifact:'ARTIFACT TRACE',
   company:'COMPANY TRACE',
 };
 function bclass(src,tags){
@@ -1013,6 +1017,38 @@ function renderSourceFamilyPanel(familyTree){
         : esc(family.ancestor.source||family.ancestor.hostname||'origin');
       return `<div class="tree-item"><strong>${esc(family.label)}</strong><div class="card-seen">ANCESTOR <span>${family.ancestor.dateLabel?esc(family.ancestor.dateLabel):'undated'}</span> · ${originLink} · ECHOES <span>${family.echoCount}</span> · HOSTS <span>${family.hostnames.length}</span></div></div>`;
     }).join('')+
+    '</div></details>';
+}
+
+function renderArtifactProfilePanel(profile,cloneReport){
+  if(!profile)return '';
+  const dominant=profile.dominantArtifacts.length
+    ? profile.dominantArtifacts.map((entry)=>`${entry.type} (${entry.count})`).join(' · ')
+    : 'no artifact remnants detected yet';
+  const scent=profile.scentVariants.length
+    ? profile.scentVariants.map((value)=>`<span class="tag">${esc(value)}</span>`).join('')
+    : '<span class="tag">no mutation variants</span>';
+  const hits=profile.artifactHits.length
+    ? profile.artifactHits.map((hit)=>`<div class="tree-item"><strong>${esc(hit.title)}</strong><div class="card-seen">${esc(hit.source)} · ${(hit.types.length?hit.types.map((type)=>esc(type)).join(', '):'hidden layer')} · ${hit.archived?'archived':'live'}${hit.hidden?' · low-visibility':''}</div></div>`).join('')
+    : '<div class="tree-item"><strong>No artifact-heavy hits yet</strong><div class="card-seen">Try a filename, hash, favicon term, CSS class, or old slug.</div></div>';
+  return '<details class="cluster"><summary class="cluster-hdr">🦴 ARTIFACT-FIRST / DIGITAL BLOODHOUND</summary><div class="consensus-list">'+
+    `<div class="consensus-item"><strong>Dominant fossil layer</strong><div class="card-seen">${dominant}</div></div>`+
+    `<div class="consensus-item"><strong>Low-visibility finds</strong><div class="card-seen">${profile.hiddenCount} hidden-layer hits · ${profile.fossilCount} archive-layer hits · ${cloneReport.repeatedResults} cloned repeats</div></div>`+
+    `<div class="consensus-item"><strong>Scent mutations</strong><div class="tags">${scent}</div></div>`+
+    hits+
+    '</div></details>';
+}
+
+function renderContagionPanel(contagion,cloneReport){
+  const routeHtml=contagion.length
+    ? contagion.map((entry)=>`<div class="consensus-item"><strong>${esc(entry.label)}</strong><div class="card-seen">${esc(entry.route||'single lane')} · repeats ${entry.echoCount} · reliable ${entry.reliableCount} · low-quality ${entry.lowQualityCount}</div></div>`).join('')
+    : '<div class="consensus-item"><strong>No contagion chain yet</strong><div class="card-seen">No repeated cross-community route surfaced in this pass.</div></div>';
+  const sludgeHtml=cloneReport.largestFamilies.length
+    ? cloneReport.largestFamilies.map((family)=>`${family.label} (${family.echoCount} repeats)`).join('; ')
+    : 'No sludge-farm clone wave detected.';
+  return '<details class="cluster"><summary class="cluster-hdr">🧫 CONTAGION MAP / CLONE SLUDGE</summary><div class="consensus-list">'+
+    routeHtml+
+    `<div class="consensus-item"><strong>Sludge families</strong><div class="card-seen">${cloneReport.cloneFamilies} echo families · ${cloneReport.repeatedResults} repeated results · ${esc(sludgeHtml)}</div></div>`+
     '</div></details>';
 }
 
@@ -1145,6 +1181,7 @@ function renderResults(results,clusters,context={}){
     const tagsHtml=tags.length?`<div class="tags">${tags.map(t=>`<span class="tag">${esc(t.toUpperCase())}</span>`).join('')}</div>`:'';
     const eraTag=r.meta&&r.meta.era?`<span class="tag" style="border-color:var(--gold);color:var(--gold)">ERA ${r.meta.era}</span>`:'';
     const ftTag=r.meta&&r.meta.fileType?`<span class="tag" style="border-color:#b5838d;color:#b5838d">${esc(r.meta.fileType.toUpperCase())}</span>`:'';
+    const artifactTags=(r.meta&&r.meta.artifactTypes||[]).slice(0,3).map((type)=>`<span class="tag" style="border-color:#6ad5ff;color:#6ad5ff">${esc(type.toUpperCase())}</span>`).join('');
     const insightRow=`<div class="card-seen">RELIABILITY <span>${esc(reliability.toUpperCase())}</span> · LANG <span>${esc(language.toUpperCase())}</span>${region}</div>`;
     const whyHtml=r.meta&&r.meta.whySurvived?`<div class="card-seen">WHY THIS SURVIVED · ${esc(r.meta.whySurvived)}</div>`:'';
     const pageInspection=r.meta&&r.meta.pageInspection;
@@ -1190,7 +1227,7 @@ function renderResults(results,clusters,context={}){
       seenHtml+
       actionsHtml+
       entityHtml+
-      ((eraTag||ftTag||tagsHtml)?`<div class="tags">${eraTag}${ftTag}${tagsHtml}</div>`:'');
+      ((eraTag||ftTag||artifactTags||tagsHtml)?`<div class="tags">${eraTag}${ftTag}${artifactTags}${tagsHtml}</div>`:'');
     list.appendChild(card);
   });
 }
@@ -1199,18 +1236,24 @@ function renderInsightPanels(results){
   const timelineEl=document.getElementById('timeline-panel');
   const relatedEl=document.getElementById('related-panel');
   const insightsEl=document.getElementById('insights-panel');
+  const artifactEl=document.getElementById('artifact-panel');
   const originEl=document.getElementById('origin-panel');
   const familyEl=document.getElementById('family-panel');
+  const contagionEl=document.getElementById('contagion-panel');
   const consensusEl=document.getElementById('consensus-panel');
   if(timelineEl)timelineEl.innerHTML='';
   if(relatedEl)relatedEl.innerHTML='';
   if(insightsEl)insightsEl.innerHTML='';
+  if(artifactEl)artifactEl.innerHTML='';
   if(originEl)originEl.innerHTML='';
   if(familyEl)familyEl.innerHTML='';
+  if(contagionEl)contagionEl.innerHTML='';
   if(consensusEl)consensusEl.innerHTML='';
   if(!results.length)return;
 
   const query=document.getElementById('query').value.trim();
+  const artifactProfile=buildArtifactSearchProfile(query,results);
+  const cloneReport=buildCloneSludgeReport(results);
   const entities=[
     ...new Set(results.flatMap((result)=>[
       ...((result.meta&&result.meta.entities&&result.meta.entities.names)||[]),
@@ -1220,6 +1263,9 @@ function renderInsightPanels(results){
   ].slice(0,8);
   if(insightsEl&&entities.length){
     insightsEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">ENTITY EXTRACTION</summary><div class="tags">'+entities.map(v=>`<span class="tag">${esc(v)}</span>`).join('')+'</div></details>';
+  }
+  if(artifactEl){
+    artifactEl.innerHTML=renderArtifactProfilePanel(artifactProfile,cloneReport);
   }
 
   const firstBlood=findFirstBlood(results);
@@ -1237,6 +1283,11 @@ function renderInsightPanels(results){
     timelineEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">TIMELINE VIEW</summary>'+
       timeline.map((item)=>`<div class="card-seen"><span>${esc(item.label)}</span> · <a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title)}</a> · ${esc(item.reliability.toUpperCase())}</div>`).join('')+
       '</details>';
+  }
+
+  const contagion=buildContagionMap(results);
+  if(contagionEl){
+    contagionEl.innerHTML=renderContagionPanel(contagion,cloneReport);
   }
 
   const consensus=buildConsensusFractureMap(results);
@@ -1333,8 +1384,11 @@ function hideLiveProgress(){
 
 function buildTextExport(results){
   const query=document.getElementById('query').value.trim();
+  const artifactProfile=buildArtifactSearchProfile(query,results);
+  const cloneReport=buildCloneSludgeReport(results);
   const familyTree=buildSourceFamilyTree(results);
   const firstBlood=findFirstBlood(results);
+  const contagion=buildContagionMap(results);
   const consensus=buildConsensusFractureMap(results);
   const sections=[
     '🧭 TRACER INTELLIGENCE BRIEF',
@@ -1343,10 +1397,20 @@ function buildTextExport(results){
     '',
     `🌊 Summary: ${buildResultsBrief(results)}`,
     '',
+    '🦴 Artifact-first / digital bloodhound',
+    `- Dominant artifacts: ${artifactProfile.dominantArtifacts.length?artifactProfile.dominantArtifacts.map((entry)=>`${entry.type} (${entry.count})`).join('; '):'none yet'}`,
+    `- Scent variants: ${artifactProfile.scentVariants.length?artifactProfile.scentVariants.join(', '):'none'}`,
+    `- Hidden-layer hits: ${artifactProfile.hiddenCount} | Archive-layer hits: ${artifactProfile.fossilCount}`,
+    '',
     '🩸 First-blood finder',
     firstBlood
       ? `- ${firstBlood.dateLabel||'Undated'} | ${firstBlood.title} | ${firstBlood.url||firstBlood.source}`
       : '- No dated origin surfaced.',
+    '',
+    '🧫 Contagion map',
+    ...(contagion.length
+      ? contagion.map((entry,index)=>`${index+1}. ${entry.label}\n   Route: ${entry.route||'single lane'}\n   Repeats: ${entry.echoCount} | Reliable: ${entry.reliableCount} | Low-quality: ${entry.lowQualityCount}`)
+      : ['- No repeated cross-community route detected.']),
     '',
     '🧬 Source family tree',
     ...(familyTree.length
@@ -1357,6 +1421,7 @@ function buildTextExport(results){
     `- Agreement lanes: ${consensus.agreement.length?consensus.agreement.map((family)=>`${family.label} (${family.reliableCount} reliable / ${family.size} echoes)`).join('; '):'none yet'}`,
     `- Divergence lanes: ${consensus.divergence.length?consensus.divergence.map((family)=>family.label).join('; '):'none detected'}`,
     `- Amplification risk: ${consensus.amplification.length?consensus.amplification.map((family)=>`${family.label} (${family.lowQualityCount} low-quality repeats)`).join('; '):'no fake-certainty spike detected'}`,
+    `- Clone sludge: ${cloneReport.cloneFamilies} clone families | ${cloneReport.repeatedResults} repeated results`,
     '',
     '📎 Result ledger',
     ...results.map((result,index)=>[
@@ -1476,9 +1541,11 @@ function clearResults(){
   document.getElementById('avatar-clusters').innerHTML='';
   document.getElementById('src-status-wrap').innerHTML='';
   resetPanel('insights-panel');
+  resetPanel('artifact-panel');
   resetPanel('origin-panel');
   resetPanel('family-panel');
   resetPanel('timeline-panel');
+  resetPanel('contagion-panel');
   resetPanel('consensus-panel');
   resetPanel('related-panel');
   const eb=document.getElementById('export-bar');

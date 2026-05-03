@@ -74,6 +74,28 @@ describe('score', () => {
 
     expect(scored[0].meta.whySurvived).toContain('archive');
   });
+
+  test('prefers archive and document signals for artifact-first queries', () => {
+    const scored = score([
+      {
+        title: 'favicon.ico historical capture',
+        url: 'https://archive.org/details/favicon-ico',
+        snippet: 'favicon.ico robots.txt archive',
+        source: 'wayback',
+        meta: { tags: ['fossil', 'document'] },
+      },
+      {
+        title: 'favicon chat',
+        url: 'https://social.example/post',
+        snippet: 'casual mention only',
+        source: 'social',
+        meta: { tags: ['social'] },
+      },
+    ], 'favicon.ico');
+
+    expect(scored[0].meta.queryIntent).toBe('artifact');
+    expect(scored[0].url).toBe('https://archive.org/details/favicon-ico');
+  });
 });
 
 describe('extractFeatures', () => {

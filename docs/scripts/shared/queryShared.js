@@ -1,5 +1,19 @@
 const OPERATOR_PATTERN = /(?:^|\s)(site|filetype|intitle|inurl|lang|region):("[^"]+"|\S+)/giu;
 const FUZZY_MATCH_TOLERANCE_RATIO = 6;
+const ARTIFACT_KEYWORDS = /\b(pdf|screenshot|filename|favicon|favicon\.ico|css|class|commit|slug|deleted slug|rss|feed|metadata|exif|redirect|robots|robots\.txt|sitemap|sitemap\.xml|hash|sha1|sha256|md5|artifact|fossil)\b/iu;
+const HASH_PATTERN = /\b[a-f0-9]{16,64}\b/iu;
+const FILENAME_PATTERN = /\b[\w.-]+\.(pdf|docx?|pptx?|xlsx?|png|jpe?g|gif|webp|svg|css|js|xml|json|txt)\b/iu;
+const CSS_CLASS_PATTERN = /^[.#]?[a-z0-9_-]{3,}$/iu;
+const LEET_SWAPS = new Map([
+  ['a', '4'],
+  ['e', '3'],
+  ['i', '1'],
+  ['l', '1'],
+  ['o', '0'],
+  ['s', '5'],
+  ['t', '7'],
+]);
+const ARTIFACT_FILETYPES = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'xml', 'json'];
 
 function looksLikePhone(raw) {
   const digits = String(raw || '').replace(/\D+/gu, '');
@@ -13,6 +27,7 @@ export function detectQueryIntent(input) {
   if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(raw)) return 'email';
   if (looksLikePhone(raw)) return 'phone';
   if (/\b(image|avatar|logo|photo|picture)\b/iu.test(raw) || /\.(png|jpe?g|gif|webp)$/iu.test(raw)) return 'image';
+  if (ARTIFACT_KEYWORDS.test(raw) || HASH_PATTERN.test(raw) || FILENAME_PATTERN.test(raw) || (CSS_CLASS_PATTERN.test(raw) && /[-_.]/u.test(raw))) return 'artifact';
   if (/\b(inc|llc|ltd|corp|corporation|company|group|studio|labs?|agency|foundation|institute|university|college)\b/iu.test(raw)) return 'company';
   if (/^@/u.test(raw) || (!/\s/u.test(raw) && /^[a-z0-9._-]{2,}$/iu.test(raw))) return 'handle';
   if (lower.includes('@') && !lower.startsWith('@')) return 'email';
@@ -95,6 +110,24 @@ function collapseRepeats(value) {
   return value.replace(/(.)\1{2,}/gu, '$1$1');
 }
 
+function toLeetspeak(value) {
+  return String(value || '').toLowerCase().split('').map((char) => LEET_SWAPS.get(char) || char).join('');
+}
+
+function fromLeetspeak(value) {
+  return String(value || '').toLowerCase()
+    .replace(/4/gu, 'a')
+    .replace(/3/gu, 'e')
+    .replace(/[1!]/gu, 'i')
+    .replace(/0/gu, 'o')
+    .replace(/5/gu, 's')
+    .replace(/7/gu, 't');
+}
+
+function stripVowels(value) {
+  return String(value || '').replace(/[aeiou]/giu, '');
+}
+
 function stemToken(token) {
   if (token.length <= 3) return token;
   if (/ies$/u.test(token) && token.length > 4) {
@@ -172,6 +205,28 @@ export function rewriteQueryTerms(input) {
   ]);
 }
 
+export function generateScentVariants(input) {
+  const plan = typeof input === 'string' ? buildQueryPlan(input) : input;
+  const stem = plan.localPart || plan.noSpaces || plan.raw;
+  const mutationSeeds = [
+    plan.raw,
+    plan.exact,
+    plan.noSpaces,
+    plan.underscored,
+    plan.hyphenated,
+    plan.dotted,
+    plan.localPart,
+    stem,
+    stem ? toLeetspeak(stem) : null,
+    stem ? fromLeetspeak(stem) : null,
+    stem ? collapseRepeats(stem) : null,
+    stem ? stripVowels(stem) : null,
+    stripDiacritics(plan.raw),
+  ];
+
+  return uniqueCaseInsensitive(mutationSeeds.filter((value) => value && value.length >= 2));
+}
+
 function siteQuery(value, site) {
   return value ? `${value} site:${site}` : null;
 }
@@ -228,13 +283,28 @@ export function generateQueries(input) {
   const plan = buildQueryPlan(input);
   const rewrites = rewriteQueryTerms(input);
   const fuzzyVariants = buildFuzzyVariants(plan);
+  const scentVariants = generateScentVariants(plan).filter((value) => value !== plan.raw && value !== plan.exact);
   const isSingleToken = plan.tokens.length <= 1;
+  const artifactQueries = plan.intent === 'artifact'
+    ? [
+      ...ARTIFACT_FILETYPES.map((filetype) => `"${plan.raw}" filetype:${filetype}`),
+      `"${plan.raw}" "favicon.ico"`,
+      `"${plan.raw}" "robots.txt"`,
+      `"${plan.raw}" "sitemap.xml"`,
+      `"${plan.raw}" rss`,
+      `"${plan.raw}" exif`,
+      `"${plan.raw}" redirect`,
+      `"${plan.raw}" "commit"`,
+      siteQuery(plan.exact, 'web.archive.org'),
+    ]
+    : [];
 
   const queries = isSingleToken
     ? [
       plan.raw,
       plan.atHandle,
       ...fuzzyVariants,
+      ...scentVariants,
       ...rewrites.map((value) => (value && value !== plan.raw ? `"${value}" profile` : null)),
       siteQuery(plan.localPart, 'github.com'),
       siteQuery(plan.localPart, 'reddit.com/user'),
@@ -249,10 +319,12 @@ export function generateQueries(input) {
       siteQuery(plan.localPart, 'news.ycombinator.com/user'),
       siteQuery(plan.localPart, 'dev.to'),
       siteQuery(plan.localPart, 'web.archive.org'),
+      ...artifactQueries,
     ]
     : [
       plan.exact,
       plan.raw,
+      ...scentVariants.map((value) => value.includes(' ') ? `"${value}"` : value),
       ...rewrites.filter((value) => value !== plan.raw).map((value) => `"${value}"`),
       siteQuery(plan.exact, 'linkedin.com/in'),
       siteQuery(plan.exact, 'github.com'),
@@ -271,6 +343,7 @@ export function generateQueries(input) {
       plan.reversedExact,
       siteQuery(plan.exact, 'facebook.com'),
       siteQuery(plan.exact, 'web.archive.org'),
+      ...artifactQueries,
     ];
 
   return uniqueCaseInsensitive(queries.map((query) => applyOperators(query, plan.operators)));

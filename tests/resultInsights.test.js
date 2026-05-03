@@ -1,5 +1,8 @@
 import {
+  buildArtifactSearchProfile,
+  buildCloneSludgeReport,
   buildConsensusFractureMap,
+  buildContagionMap,
   buildRelatedQueries,
   buildResultInsights,
   buildSourceFamilyTree,
@@ -88,6 +91,49 @@ describe('result insights', () => {
     ]));
   });
 
+  test('builds artifact-first profile, contagion map, and clone sludge report', () => {
+    const results = [
+      {
+        title: 'favicon.ico captured from old forum',
+        snippet: 'May 1, 2021 archived favicon and robots.txt remnants',
+        url: 'https://forum.example/favicon.ico',
+        source: 'forum',
+        meta: { reliability: 'forum', sourceFamily: 'forum', tags: ['fossil', 'document'] },
+      },
+      {
+        title: 'favicon.ico captured from old forum',
+        snippet: 'May 2, 2021 Telegram repost',
+        url: 'https://t.me/example/123',
+        source: 'telegram',
+        meta: { reliability: 'unknown', sourceFamily: 'social' },
+      },
+      {
+        title: 'favicon.ico captured from old forum',
+        snippet: 'May 3, 2021 tabloid story',
+        url: 'https://tabloid.example/story',
+        source: 'tabloid',
+        meta: { reliability: 'media', sourceFamily: 'media' },
+      },
+    ];
+
+    expect(buildArtifactSearchProfile('favicon.ico', results)).toMatchObject({
+      intent: 'artifact',
+      fossilCount: 1,
+      hiddenCount: 1,
+      dominantArtifacts: [expect.objectContaining({ type: 'favicon' })],
+    });
+
+    expect(buildContagionMap(results)).toEqual(expect.arrayContaining([
+      expect.objectContaining({ route: 'forum → telegram → media', echoCount: 2 }),
+    ]));
+
+    expect(buildCloneSludgeReport(results)).toMatchObject({
+      cloneFamilies: 1,
+      repeatedResults: 2,
+      largestFamilies: [expect.objectContaining({ echoCount: 2 })],
+    });
+  });
+
   test('builds echo families, earliest origin, and consensus fracture signals', () => {
     const results = [
       {
@@ -142,6 +188,8 @@ describe('result insights', () => {
       dateLabel: 'May 1, 2021',
       echoCount: 2,
     });
+
+    expect(buildResultInsights(results[0], 'Wire claim spreads across outlets').artifactTypes).toEqual([]);
 
     const consensus = buildConsensusFractureMap(results);
     expect(consensus.agreement).toEqual(expect.arrayContaining([

@@ -99,6 +99,7 @@ export function scoreStandalone(results, originalInput) {
 
   const scored = scoreResults(results, (result) => {
     const signals = getStandaloneMatchSignals(result, plan);
+    const tags = result.meta?.tags || [];
     return {
       titleExact: signals.title.includes(plan.lower) ? 1 : 0,
       snippetExact: signals.snippet.includes(plan.lower) ? 1 : 0,
@@ -107,6 +108,11 @@ export function scoreStandalone(results, originalInput) {
       multiSource: (urlMap[result.url] || 0) > 1 ? 1 : 0,
       identitySource: IDENTITY_SOURCES.has(result.source) ? 1 : 0,
       archiveSource: result.source === 'wayback' || /archive\.org/.test(signals.url) ? 1 : 0,
+      fossilTag: tags.includes('fossil') ? 1 : 0,
+      timesliceTag: tags.includes('timeslice') ? 1 : 0,
+      documentTag: tags.includes('document') ? 1 : 0,
+      socialTag: tags.includes('social') ? 1 : 0,
+      profileTag: tags.includes('profile') ? 1 : 0,
       allTokensPresent: plan.tokens.length > 1 && signals.tokenHits === plan.tokens.length ? 1 : 0,
       titlePartial: plan.tokens.some((token) => signals.title.includes(token)) ? 1 : 0,
       snippetPartial: plan.tokens.some((token) => signals.snippet.includes(token)) ? 1 : 0,
@@ -227,12 +233,13 @@ export async function searchDirect(query, namedFetchers, options = {}) {
   const expanded = expandRelevantResults(results, plan, extraRatio);
   const deduped = dedupeStandalone(expanded).map((result) => {
     const insights = buildResultInsights(result, query);
-    return {
-      ...result,
-      meta: {
-        ...(result.meta || {}),
-        entities: insights.entities,
-        language: insights.language,
+      return {
+        ...result,
+        meta: {
+          ...(result.meta || {}),
+          artifactTypes: insights.artifactTypes,
+          entities: insights.entities,
+          language: insights.language,
         languageLabel: insights.languageLabel,
         translationUrl: insights.translationUrl,
         reliability: insights.reliability,

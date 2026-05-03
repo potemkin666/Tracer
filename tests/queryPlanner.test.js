@@ -1,4 +1,4 @@
-import { buildQueryPlan, detectQueryIntent, generateQueries, isFuzzyHandleMatch, rewriteQueryTerms } from '../src/queryPlanner.js';
+import { buildQueryPlan, detectQueryIntent, generateQueries, generateScentVariants, isFuzzyHandleMatch, rewriteQueryTerms } from '../src/queryPlanner.js';
 
 describe('generateQueries', () => {
   const results = generateQueries('john smith');
@@ -48,6 +48,15 @@ describe('generateQueries', () => {
     expect(queries).toContain('alice site:codeberg.org');
     expect(queries).toContain('alice site:news.ycombinator.com/user');
   });
+
+  test('adds artifact-first fossil queries for digital bloodhound searches', () => {
+    const queries = generateQueries('favicon.ico');
+    expect(queries).toEqual(expect.arrayContaining([
+      '"favicon.ico" filetype:pdf',
+      '"favicon.ico" "robots.txt"',
+      '"favicon.ico" rss',
+    ]));
+  });
 });
 
 describe('rewriteQueryTerms', () => {
@@ -95,6 +104,17 @@ describe('isFuzzyHandleMatch', () => {
   });
 });
 
+describe('generateScentVariants', () => {
+  test('builds mutation variants for handle-style bloodhound searches', () => {
+    expect(generateScentVariants('@jose.example')).toEqual(expect.arrayContaining([
+      '@jose.example',
+      'jose.example',
+      'j0s3.3x4mpl3',
+      'js.xmpl',
+    ]));
+  });
+});
+
 describe('detectQueryIntent', () => {
   test('classifies core query intents', () => {
     expect(detectQueryIntent('alice@example.com')).toBe('email');
@@ -102,6 +122,7 @@ describe('detectQueryIntent', () => {
     expect(detectQueryIntent('@alice_example')).toBe('handle');
     expect(detectQueryIntent('Example Labs Inc')).toBe('company');
     expect(detectQueryIntent('avatar alice example')).toBe('image');
+    expect(detectQueryIntent('favicon.ico')).toBe('artifact');
     expect(detectQueryIntent('Alice Example')).toBe('name');
   });
 

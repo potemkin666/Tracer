@@ -1,5 +1,8 @@
 export {
+  buildArtifactSearchProfile,
+  buildCloneSludgeReport,
   buildConsensusFractureMap,
+  buildContagionMap,
   buildRelatedQueries,
   buildResultInsights,
   buildSourceFamilyTree,
