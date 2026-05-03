@@ -77,8 +77,9 @@ export function createApp({
   const searchRateLimiter = createRateLimiter(rateLimiterOptions);
   app.use(express.static(docsDir));
   app.use(express.static(publicDir));
+  app.use(['/search', '/search/stream'], searchRateLimiter);
 
-  app.post('/search', searchRateLimiter, async (req, res) => {
+  app.post('/search', async (req, res) => {
     const controller = new globalThis.AbortController();
     let closed = false;
     res.on('close', () => {
@@ -110,7 +111,7 @@ export function createApp({
     }
   });
 
-  app.get('/search/stream', searchRateLimiter, async (req, res) => {
+  app.get('/search/stream', async (req, res) => {
     let searchRequest;
     try {
       searchRequest = normaliseSearchRequest(req.query || {});

@@ -32,6 +32,16 @@ function emailDomain(email) {
   return at >= 0 ? email.slice(at + 1) : email;
 }
 
+/**
+ * Extract absolute URLs from a snippet for cross-link detection.
+ *
+ * Trailing punctuation is stripped so snippets like "https://x.test)." still
+ * match known node URLs, and all results are lowercased for case-insensitive
+ * lookup against the graph node map.
+ *
+ * @param {string} text
+ * @returns {string[]}
+ */
 function extractUrls(text) {
   if (!text) return [];
   return (text.match(/https?:\/\/[^\s<>"')\]]+/gi) || [])
