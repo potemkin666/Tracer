@@ -18,6 +18,9 @@ export const WEIGHTS = {
   freshHit: 0.9,
   authorityHit: 0.8,
   keywordProximity: 1.2,
+  fuzzyUsername: 0.9,
+  geoHit: 0.7,
+  officialHit: 0.6,
   bias: -2.0,
 };
 
@@ -145,4 +148,10 @@ export function estimateKeywordProximity(text, tokens = []) {
   const last = Math.max(...positions.map((hits) => hits[0]));
   const span = Math.max(last - first, 1);
   return Math.max(0, 1 - Math.min(span / 120, 1));
+}
+
+export function estimateGeoAffinity(result = {}, operators = {}) {
+  const targetRegion = operators.region || null;
+  if (!targetRegion) return 0;
+  return String(result.meta?.region || '').toLowerCase() === String(targetRegion).toLowerCase() ? 1 : 0;
 }

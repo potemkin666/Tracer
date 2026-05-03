@@ -8,6 +8,8 @@ import { buildGraph } from '../graphBuilder.js';
 import { ALL_CONNECTORS, getActive } from '../connectors/registry.js';
 import { createAbortError, isAbortError } from '../requestContext.js';
 import { SearchValidationError, normaliseSearchRequest } from '../searchOptions.js';
+import { lookupArchiveSnapshot } from '../archiveFallback.js';
+import { createResponseCache } from '../searchCache.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -101,6 +103,8 @@ export function createApp({
   loadKeysImpl = loadKeysFromEnv,
   allConnectors = ALL_CONNECTORS,
   getActiveImpl = getActive,
+  snapshotLookupImpl = lookupArchiveSnapshot,
+  responseCache = createResponseCache(),
   rateLimiterOptions,
   allowedOrigins = parseAllowedOrigins(),
 } = {}) {
@@ -127,6 +131,11 @@ export function createApp({
 
     try {
       const searchRequest = normaliseSearchRequest(req.body || {});
+      const cacheKey = responseCache.buildSearchKey(searchRequest);
+      const cached = responseCache.getSearch(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
       const { results, avatarClusters, connectorStats } = await runImpl(searchRequest.input, {
         mode: searchRequest.mode,
         apiKeys: serverApiKeys,
@@ -138,7 +147,9 @@ export function createApp({
       });
       if (closed) return;
       const graph = buildGraphImpl(results, avatarClusters);
-      res.json({ results, avatarClusters, graph, connectorStats });
+      const payload = { results, avatarClusters, graph, connectorStats };
+      responseCache.setSearch(cacheKey, payload);
+      res.json(payload);
     } catch (err) {
       if (closed || isAbortError(err)) return;
       if (err instanceof SearchValidationError) {
@@ -183,6 +194,13 @@ export function createApp({
     }
 
     try {
+      const cacheKey = responseCache.buildSearchKey(searchRequest);
+      const cached = responseCache.getSearch(cacheKey);
+      if (cached) {
+        sendEvent('progress', { phase: 'cache', resultsSoFar: cached.results.length });
+        sendEvent('done', cached);
+        return;
+      }
       const { results, avatarClusters, connectorStats } = await runImpl(searchRequest.input, {
         mode: searchRequest.mode,
         apiKeys: serverApiKeys,
@@ -196,7 +214,9 @@ export function createApp({
         },
       });
       const graph = buildGraphImpl(results, avatarClusters);
-      sendEvent('done', { results, avatarClusters, graph, connectorStats });
+      const payload = { results, avatarClusters, graph, connectorStats };
+      responseCache.setSearch(cacheKey, payload);
+      sendEvent('done', payload);
     } catch (err) {
       if (isAbortError(err)) return;
       logInternalError('search-stream', err);
@@ -210,6 +230,41 @@ export function createApp({
   app.get('/engines', (req, res) => {
     const active = getActiveImpl(serverApiKeys, 'aggressive');
     res.json({ total: allConnectors.length, active: active.length });
+  });
+
+  app.get('/snapshot', async (req, res) => {
+    const url = typeof req.query.url === 'string' ? req.query.url.trim() : '';
+    if (!url) return res.status(400).json({ error: 'url is required' });
+    const cached = responseCache.getSnapshot(url);
+    if (cached) return res.json(cached);
+    try {
+      const snapshot = await snapshotLookupImpl(url, {});
+      responseCache.setSnapshot(url, snapshot);
+      return res.json(snapshot);
+    } catch (err) {
+      logInternalError('snapshot', err);
+      return res.status(500).json({ error: INTERNAL_ERROR_MESSAGE });
+    }
+  });
+
+  app.get('/snapshot/view', async (req, res) => {
+    const url = typeof req.query.url === 'string' ? req.query.url.trim() : '';
+    if (!url) return res.status(400).send('url is required');
+    try {
+      const cached = responseCache.getSnapshot(url);
+      const snapshot = cached || await snapshotLookupImpl(url, {});
+      if (!cached) responseCache.setSnapshot(url, snapshot);
+      const archiveUrl = snapshot.archiveUrl;
+      const escapedOriginal = url.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const escapedArchive = String(archiveUrl || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      if (!archiveUrl) {
+        return res.status(404).send(`<html><body><p>No archived snapshot found for <code>${escapedOriginal}</code>.</p></body></html>`);
+      }
+      return res.send(`<!DOCTYPE html><html><head><title>Snapshot Viewer</title><style>body{margin:0;font-family:Arial,sans-serif;background:#111;color:#fff}header{padding:12px 16px;background:#1c1c1c}a{color:#8ec5ff}iframe{width:100%;height:calc(100vh - 56px);border:0;background:#fff}</style></head><body><header>Snapshot viewer · <a href="${escapedArchive}" target="_blank" rel="noopener noreferrer">open archive directly</a> · <a href="${escapedOriginal}" target="_blank" rel="noopener noreferrer">open original</a></header><iframe src="${escapedArchive}"></iframe></body></html>`);
+    } catch (err) {
+      logInternalError('snapshot-view', err);
+      return res.status(500).send('internal server error');
+    }
   });
 
   app.get('/health', (req, res) => {

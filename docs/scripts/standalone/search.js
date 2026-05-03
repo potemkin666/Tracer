@@ -11,10 +11,13 @@ import {
   IDENTITY_SOURCES,
   estimateDomainAuthority,
   estimateFreshnessScore,
+  estimateGeoAffinity,
   estimateKeywordProximity,
   scoreResults,
 } from '../shared/scoringShared.js';
 import { clusterResults } from '../shared/resultClusterShared.js';
+import { buildResultInsights } from '../shared/resultInsightsShared.js';
+import { isFuzzyHandleMatch } from '../shared/queryShared.js';
 
 export function mergeVariantResults(results) {
   const map = new Map();
@@ -107,6 +110,9 @@ export function scoreStandalone(results, originalInput) {
       freshHit: estimateFreshnessScore(result),
       authorityHit: estimateDomainAuthority(result),
       keywordProximity: estimateKeywordProximity(`${signals.title} ${signals.snippet} ${signals.url}`, plan.tokens),
+      fuzzyUsername: isFuzzyHandleMatch(result.meta?.username || signals.url, plan.localPart || plan.noSpaces) ? 1 : 0,
+      geoHit: estimateGeoAffinity(result, plan.operators),
+      officialHit: result.meta?.reliability === 'official' ? 1 : 0,
       bias: 1,
     };
   });
@@ -195,6 +201,21 @@ export async function searchDirect(query, namedFetchers, options = {}) {
   }
 
   const expanded = expandRelevantResults(results, plan, extraRatio);
-  const deduped = dedupeStandalone(expanded);
+  const deduped = dedupeStandalone(expanded).map((result) => {
+    const insights = buildResultInsights(result, query);
+    return {
+      ...result,
+      meta: {
+        ...(result.meta || {}),
+        entities: insights.entities,
+        language: insights.language,
+        languageLabel: insights.languageLabel,
+        translationUrl: insights.translationUrl,
+        reliability: insights.reliability,
+        region: insights.region,
+        ...(insights.timeline ? { timeline: insights.timeline, year: insights.timeline.year } : {}),
+      },
+    };
+  });
   return clusterResults(scoreStandalone(deduped, query));
 }

@@ -1,6 +1,8 @@
 export {
   buildQueryPlan,
   generateQueries,
+  isFuzzyHandleMatch,
+  parseOperators,
   rewriteQueryTerms,
   uniqueCaseInsensitive,
 } from '../docs/scripts/shared/queryShared.js';

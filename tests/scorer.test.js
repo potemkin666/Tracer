@@ -1,4 +1,5 @@
 import { score, extractFeatures, computeConfidence, WEIGHTS } from '../src/scorer.js';
+import { buildQueryPlan } from '../src/queryPlanner.js';
 
 describe('score', () => {
   test('adds score and confidence properties to each result', () => {
@@ -49,17 +50,19 @@ describe('score', () => {
 describe('extractFeatures', () => {
   test('returns expected feature keys', () => {
     const r = { title: 'test', url: 'https://x.com', snippet: '', source: 'brave', meta: {} };
-    const features = extractFeatures(r, 'test', ['test'], {});
+    const features = extractFeatures(r, buildQueryPlan('test'), {});
     expect(features).toHaveProperty('titleExact');
     expect(features).toHaveProperty('freshHit');
     expect(features).toHaveProperty('authorityHit');
     expect(features).toHaveProperty('keywordProximity');
+    expect(features).toHaveProperty('fuzzyUsername');
+    expect(features).toHaveProperty('geoHit');
     expect(features).toHaveProperty('bias', 1);
   });
 
   test('detects fossil and timeslice tags', () => {
     const r = { title: '', url: '', snippet: '', source: 'timeslice', meta: { tags: ['fossil', 'timeslice'] } };
-    const features = extractFeatures(r, 'query', ['query'], {});
+    const features = extractFeatures(r, buildQueryPlan('query'), {});
     expect(features.fossilTag).toBe(1);
     expect(features.timesliceTag).toBe(1);
   });
@@ -72,7 +75,7 @@ describe('extractFeatures', () => {
       source: 'brave',
       meta: {},
     };
-    const features = extractFeatures(r, 'brian kalbacher', ['brian', 'kalbacher'], {});
+    const features = extractFeatures(r, buildQueryPlan('brian kalbacher'), {});
     expect(features.urlUsername).toBe(1);
     expect(features.allTokensPresent).toBe(1);
   });
@@ -84,7 +87,7 @@ describe('extractFeatures', () => {
       snippet: 'GitHub user',
       source: 'github',
       meta: { username: 'alice', tags: ['social', 'profile'] },
-    }, '@alice', ['alice'], {});
+    }, buildQueryPlan('@alice'), {});
     expect(features.usernameExact).toBe(1);
     expect(features.identitySource).toBe(1);
   });
@@ -95,12 +98,14 @@ describe('extractFeatures', () => {
       url: 'https://github.com/alice-example',
       snippet: 'Alice Example maintains this repository',
       source: 'github',
-      meta: { username: 'alice-example', year: 2025 },
-    }, 'alice example', ['alice', 'example'], {});
+      meta: { username: 'alice-example', year: 2025, region: 'uk', reliability: 'official' },
+    }, buildQueryPlan('alice example region:uk'), {});
 
     expect(features.freshHit).toBeGreaterThan(0);
     expect(features.authorityHit).toBeGreaterThan(0.5);
     expect(features.keywordProximity).toBeGreaterThan(0.5);
+    expect(features.geoHit).toBe(1);
+    expect(features.officialHit).toBe(1);
   });
 });
 

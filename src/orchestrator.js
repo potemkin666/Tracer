@@ -11,6 +11,7 @@ import * as profileProbe from './profileProbe.js';
 import * as fossilHunter from './fossilHunter.js';
 import * as avatarHunter from './avatarHunter.js';
 import { clusterResults } from './resultClusters.js';
+import { attachArchiveFallback } from './archiveFallback.js';
 import { ORCHESTRATOR_DEFAULTS } from './runtimeConfig.js';
 import {
   combineSignals,
@@ -228,7 +229,9 @@ export async function run(input, config = {}) {
       throwIfAborted(signal);
       const withFossils = dedupe([...enriched, ...fossilResults]);
       tracker.markPhase('fossils', withFossils.length);
-      const clustered = clusterResults(score(withFossils, input));
+      const archived = await attachArchiveFallback(score(withFossils, input), { signal });
+      throwIfAborted(signal);
+      const clustered = clusterResults(archived);
       const avatarClusters = avatars || aggressive
         ? await avatarHunter.hunt(clustered, { signal })
         : [];
@@ -237,7 +240,9 @@ export async function run(input, config = {}) {
       return { results: clustered, avatarClusters, connectorStats: trackerStats }; 
     }
 
-    const clustered = clusterResults(score(enriched, input));
+    const archived = await attachArchiveFallback(score(enriched, input), { signal });
+    throwIfAborted(signal);
+    const clustered = clusterResults(archived);
     const avatarClusters = avatars || aggressive
       ? await avatarHunter.hunt(clustered, { signal })
       : [];

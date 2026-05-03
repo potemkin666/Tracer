@@ -1,4 +1,5 @@
 import { classifyUrl } from './identity.js';
+import { buildResultInsights } from './resultInsights.js';
 
 export { classifyUrl } from './identity.js';
 
@@ -54,6 +55,21 @@ export function enrich(results, input) {
           meta.tags.push('profile');
         }
       }
+    }
+
+    const insights = buildResultInsights({
+      ...result,
+      meta,
+    }, input);
+    meta.entities = insights.entities;
+    meta.language = insights.language;
+    meta.languageLabel = insights.languageLabel;
+    meta.translationUrl = insights.translationUrl;
+    meta.reliability = insights.reliability;
+    meta.region = insights.region;
+    if (insights.timeline) {
+      meta.timeline = insights.timeline;
+      meta.year = meta.year || insights.timeline.year;
     }
 
     return {

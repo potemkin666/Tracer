@@ -77,6 +77,7 @@
 
 <script type="module">
 import { buildResultsBrief } from '/scripts/shared/resultBrief.js';
+import { buildRelatedQueries, buildTimeline } from '/scripts/shared/resultInsightsShared.js';
 
 // ── Tab switching ──
 document.querySelectorAll('.tabs button').forEach(btn => {
@@ -133,8 +134,22 @@ function renderList(results) {
   const el = document.getElementById('listPanel');
   if (!results.length) { el.innerHTML = '<p style="padding:1rem;color:#888;">No results.</p>'; return; }
   const brief = buildResultsBrief(results);
+  const query = document.getElementById('input').value.trim();
+  const timeline = buildTimeline(results).slice(0, 6);
+  const related = buildRelatedQueries(query, results).slice(0, 6);
+  const entities = [...new Set(results.flatMap(r => [
+    ...((r.meta && r.meta.entities && r.meta.entities.names) || []),
+    ...((r.meta && r.meta.entities && r.meta.entities.orgs) || []),
+    ...((r.meta && r.meta.entities && r.meta.entities.emails) || []),
+  ]))].slice(0, 8);
   let currentClusterId = '';
-  el.innerHTML = (brief ? `<div class="result-brief">${esc(brief)}</div>` : '') + results.map(r => {
+  const headerSections = [
+    brief ? `<div class="result-brief">${esc(brief)}</div>` : '',
+    entities.length ? `<div class="result-brief"><strong>Entities:</strong> ${entities.map(esc).join(' · ')}</div>` : '',
+    timeline.length ? `<div class="result-brief"><strong>Timeline:</strong> ${timeline.map(item => `${esc(item.label)} — ${esc(item.title)}`).join(' · ')}</div>` : '',
+    related.length ? `<div class="result-brief"><strong>Related queries:</strong> ${related.map(value => `<button class="rq" data-query="${esc(value)}" style="margin:0 0.35rem 0.35rem 0;padding:0.3rem 0.55rem;border:1px solid #d7e3f7;border-radius:999px;background:#eef5ff;color:#1a73e8;cursor:pointer;">${esc(value)}</button>`).join('')}</div>` : '',
+  ].join('');
+  el.innerHTML = headerSections + results.map(r => {
     const tags = (r.meta && r.meta.tags && r.meta.tags.length) ? ' · ' + r.meta.tags.join(', ') : '';
     const clusterId = r.meta && r.meta.clusterId;
     const clusterSize = r.meta && r.meta.clusterSize;
@@ -146,10 +161,15 @@ function renderList(results) {
     return `${clusterHeader}<div class="result-card">
       <h3><span class="score-badge" style="background:${scoreColor(r.score)}">${r.score}</span>
         <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title || r.url)}</a></h3>
-      <div class="meta">${esc(r.source)} · rank ${r.rank}${tags}</div>
+      <div class="meta">${esc(r.source)} · rank ${r.rank} · ${(r.meta && r.meta.reliability) || 'unknown'}${tags}</div>
       ${r.snippet ? '<div class="snippet">' + esc(r.snippet) + '</div>' : ''}
+      ${r.meta && r.meta.snapshotViewerUrl ? `<div class="meta"><a href="${esc(r.meta.snapshotViewerUrl)}" target="_blank" rel="noopener">Snapshot</a></div>` : ''}
     </div>`;
   }).join('');
+  el.querySelectorAll('[data-query]').forEach(btn => btn.addEventListener('click', () => {
+    document.getElementById('input').value = btn.dataset.query || '';
+    doSearch();
+  }));
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }

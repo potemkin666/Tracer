@@ -1,18 +1,49 @@
+const OPERATOR_PATTERN = /(?:^|\s)(site|filetype|intitle|inurl|lang|region):("[^"]+"|\S+)/giu;
+
+export function parseOperators(input) {
+  const operators = {
+    site: [],
+    filetype: [],
+    intitle: [],
+    inurl: [],
+    lang: null,
+    region: null,
+  };
+
+  const original = String(input || '').trim();
+  const stripped = original.replace(OPERATOR_PATTERN, (match, key, rawValue) => {
+    const value = String(rawValue || '').replace(/^"|"$/gu, '');
+    if (key === 'lang' || key === 'region') {
+      operators[key] = value.toLowerCase();
+    } else {
+      operators[key].push(value);
+    }
+    return ' ';
+  }).replace(/\s+/gu, ' ').trim();
+
+  return {
+    original,
+    operators,
+    stripped: stripped || original,
+  };
+}
+
 export function buildQueryPlan(input) {
-  const raw = String(input || '').trim();
+  const { original, operators, stripped } = parseOperators(input);
+  const raw = stripped;
   const lower = raw.toLowerCase();
   const tokens = lower.split(/\s+/).filter(Boolean);
-  // For emails, keep only the local part. Otherwise treat the input like a
-  // potential handle and strip leading @ plus internal spaces for username variants.
   const localPart = (lower.includes('@') && !lower.startsWith('@'))
     ? lower.split('@')[0]
     : lower.replace(/^@+/u, '').replace(/\s+/gu, '');
   const reversed = tokens.length > 1 ? [...tokens].reverse().join(' ') : raw;
 
   return {
+    original,
     raw,
     lower,
     tokens,
+    operators,
     exact: tokens.length > 1 ? `"${raw}"` : raw,
     noSpaces: tokens.join(''),
     underscored: tokens.join('_'),
@@ -65,6 +96,36 @@ const QUERY_SYNONYMS = new Map([
   ['company', ['organization', 'org']],
 ]);
 
+function editDistance(left, right) {
+  const a = String(left || '');
+  const b = String(right || '');
+  const matrix = Array.from({ length: a.length + 1 }, (_, row) => [row]);
+  for (let col = 0; col <= b.length; col += 1) {
+    matrix[0][col] = col;
+  }
+  for (let row = 1; row <= a.length; row += 1) {
+    for (let col = 1; col <= b.length; col += 1) {
+      const cost = a[row - 1] === b[col - 1] ? 0 : 1;
+      matrix[row][col] = Math.min(
+        matrix[row - 1][col] + 1,
+        matrix[row][col - 1] + 1,
+        matrix[row - 1][col - 1] + cost,
+      );
+    }
+  }
+  return matrix[a.length][b.length];
+}
+
+export function isFuzzyHandleMatch(left, right) {
+  const a = String(left || '').toLowerCase().replace(/[^a-z0-9]/gu, '');
+  const b = String(right || '').toLowerCase().replace(/[^a-z0-9]/gu, '');
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const distance = editDistance(a, b);
+  const maxDistance = Math.max(1, Math.floor(Math.max(a.length, b.length) / 6));
+  return distance <= maxDistance;
+}
+
 export function rewriteQueryTerms(input) {
   const plan = buildQueryPlan(input);
   const stemmedTokens = plan.tokens.map(stemToken);
@@ -95,6 +156,19 @@ function siteQuery(value, site) {
   return value ? `${value} site:${site}` : null;
 }
 
+function applyOperators(query, operators = {}) {
+  if (!query) return query;
+  const suffix = [
+    ...(operators.site || []).map((value) => `site:${value}`),
+    ...(operators.filetype || []).map((value) => `filetype:${value}`),
+    ...(operators.intitle || []).map((value) => `intitle:${value.includes(' ') ? `"${value}"` : value}`),
+    ...(operators.inurl || []).map((value) => `inurl:${value}`),
+    operators.lang ? `lang:${operators.lang}` : null,
+    operators.region ? `region:${operators.region}` : null,
+  ].filter(Boolean);
+  return suffix.length ? `${query} ${suffix.join(' ')}` : query;
+}
+
 export function queryVariants(plan, options = {}) {
   const {
     includeRaw = true,
@@ -119,15 +193,28 @@ export function queryVariants(plan, options = {}) {
   ]);
 }
 
+function buildFuzzyVariants(plan) {
+  if (plan.tokens.length !== 1) return [];
+  const base = plan.localPart || plan.noSpaces;
+  if (!base || base.length < 4) return [];
+  return uniqueCaseInsensitive([
+    collapseRepeats(base),
+    base.replace(/[._-]+/gu, ''),
+    base.replace(/(.)\1/gu, '$1'),
+  ].filter((value) => value && value !== base));
+}
+
 export function generateQueries(input) {
   const plan = buildQueryPlan(input);
   const rewrites = rewriteQueryTerms(input);
+  const fuzzyVariants = buildFuzzyVariants(plan);
   const isSingleToken = plan.tokens.length <= 1;
 
-  if (isSingleToken) {
-    return uniqueCaseInsensitive([
+  const queries = isSingleToken
+    ? [
       plan.raw,
       plan.atHandle,
+      ...fuzzyVariants,
       ...rewrites.map((value) => (value && value !== plan.raw ? `"${value}" profile` : null)),
       siteQuery(plan.localPart, 'github.com'),
       siteQuery(plan.localPart, 'reddit.com/user'),
@@ -142,31 +229,31 @@ export function generateQueries(input) {
       siteQuery(plan.localPart, 'news.ycombinator.com/user'),
       siteQuery(plan.localPart, 'dev.to'),
       siteQuery(plan.localPart, 'web.archive.org'),
-    ]);
-  }
+    ]
+    : [
+      plan.exact,
+      plan.raw,
+      ...rewrites.filter((value) => value !== plan.raw).map((value) => `"${value}"`),
+      siteQuery(plan.exact, 'linkedin.com/in'),
+      siteQuery(plan.exact, 'github.com'),
+      siteQuery(plan.exact, 'reddit.com/user'),
+      siteQuery(plan.exact, 'gitlab.com'),
+      siteQuery(plan.exact, 'codeberg.org'),
+      siteQuery(plan.exact, 'keybase.io'),
+      siteQuery(plan.exact, 'bsky.app/profile'),
+      siteQuery(plan.exact, 'mastodon.social'),
+      siteQuery(plan.exact, 'news.ycombinator.com/user'),
+      siteQuery(plan.exact, 'dev.to'),
+      plan.noSpaces,
+      plan.underscored,
+      plan.hyphenated,
+      plan.dotted,
+      plan.reversedExact,
+      siteQuery(plan.exact, 'facebook.com'),
+      siteQuery(plan.exact, 'web.archive.org'),
+    ];
 
-  return uniqueCaseInsensitive([
-    plan.exact,
-    plan.raw,
-    ...rewrites.filter((value) => value !== plan.raw).map((value) => `"${value}"`),
-    siteQuery(plan.exact, 'linkedin.com/in'),
-    siteQuery(plan.exact, 'github.com'),
-    siteQuery(plan.exact, 'reddit.com/user'),
-    siteQuery(plan.exact, 'gitlab.com'),
-    siteQuery(plan.exact, 'codeberg.org'),
-    siteQuery(plan.exact, 'keybase.io'),
-    siteQuery(plan.exact, 'bsky.app/profile'),
-    siteQuery(plan.exact, 'mastodon.social'),
-    siteQuery(plan.exact, 'news.ycombinator.com/user'),
-    siteQuery(plan.exact, 'dev.to'),
-    plan.noSpaces,
-    plan.underscored,
-    plan.hyphenated,
-    plan.dotted,
-    plan.reversedExact,
-    siteQuery(plan.exact, 'facebook.com'),
-    siteQuery(plan.exact, 'web.archive.org'),
-  ]);
+  return uniqueCaseInsensitive(queries.map((query) => applyOperators(query, plan.operators)));
 }
 
 export function getStandaloneMatchSignals(result, plan) {
@@ -175,6 +262,7 @@ export function getStandaloneMatchSignals(result, plan) {
   const url = (result.url || '').toLowerCase();
   const combined = `${title}|${snippet}|${url}`;
   const tokenHits = plan.tokens.filter((token) => combined.includes(token)).length;
+  const username = String(result.meta?.username || '').toLowerCase();
 
   return {
     title,
@@ -182,6 +270,7 @@ export function getStandaloneMatchSignals(result, plan) {
     url,
     combined,
     tokenHits,
+    username,
     exact: Boolean(plan.lower && combined.includes(plan.lower)),
     noSpaces: Boolean(plan.noSpaces && combined.includes(plan.noSpaces)),
     underscored: Boolean(plan.underscored && combined.includes(plan.underscored)),
@@ -189,6 +278,7 @@ export function getStandaloneMatchSignals(result, plan) {
     dotted: Boolean(plan.dotted && combined.includes(plan.dotted)),
     localPart: Boolean(plan.localPart && combined.includes(plan.localPart)),
     handle: Boolean(plan.atHandle && combined.includes(plan.atHandle)),
+    fuzzyHandle: isFuzzyHandleMatch(username || url, plan.localPart || plan.noSpaces),
   };
 }
 
@@ -196,13 +286,14 @@ export function isRelevantStandaloneResult(result, plan) {
   if (!plan.tokens.length) return false;
   const signals = getStandaloneMatchSignals(result, plan);
   if (plan.tokens.length === 1) {
-    return signals.tokenHits > 0 || signals.noSpaces || signals.handle || signals.localPart;
+    return signals.tokenHits > 0 || signals.noSpaces || signals.handle || signals.localPart || signals.fuzzyHandle;
   }
   return signals.exact
     || signals.noSpaces
     || signals.underscored
     || signals.hyphenated
     || signals.dotted
+    || signals.fuzzyHandle
     || signals.tokenHits === plan.tokens.length;
 }
 
@@ -217,6 +308,7 @@ function rankNearMatch(result, plan) {
     + (signals.hyphenated ? 4 : 0)
     + (signals.dotted ? 4 : 0)
     + (signals.handle ? 3 : 0)
+    + (signals.fuzzyHandle ? 3 : 0)
     + (signals.exact ? 3 : 0)
     + signals.tokenHits
     + Math.max((result.score || 0) / 100, 0);

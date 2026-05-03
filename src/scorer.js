@@ -3,16 +3,20 @@ import {
   WEIGHTS,
   estimateDomainAuthority,
   estimateFreshnessScore,
+  estimateGeoAffinity,
   estimateKeywordProximity,
   scoreResults,
 } from '../docs/scripts/shared/scoringShared.js';
+import { buildQueryPlan, isFuzzyHandleMatch } from './queryPlanner.js';
 export { WEIGHTS } from '../docs/scripts/shared/scoringShared.js';
 
 /**
  * Extract numeric features from a single result.
  * All features are either 0/1 (binary) or a small positive number.
  */
-export function extractFeatures(r, lowerInput, tokens, urlMap) {
+export function extractFeatures(r, plan, urlMap) {
+  const lowerInput = plan.lower;
+  const tokens = plan.tokens;
   const title   = (r.title   || '').toLowerCase();
   const snippet = (r.snippet || '').toLowerCase();
   const url     = (r.url     || '').toLowerCase();
@@ -50,6 +54,9 @@ export function extractFeatures(r, lowerInput, tokens, urlMap) {
     freshHit: estimateFreshnessScore(r),
     authorityHit: estimateDomainAuthority(r),
     keywordProximity: estimateKeywordProximity(`${title} ${snippet} ${url}`, tokens),
+    fuzzyUsername: usernameVariants.some((variant) => isFuzzyHandleMatch(username, variant)) ? 1 : 0,
+    geoHit: estimateGeoAffinity(r, plan.operators),
+    officialHit: r.meta?.reliability === 'official' ? 1 : 0,
     bias: 1,
   };
 }
@@ -73,8 +80,7 @@ export { computeConfidence } from '../docs/scripts/shared/scoringShared.js';
  * @returns {object[]} results sorted by confidence descending
  */
 export function score(results, originalInput) {
-  const lowerInput = originalInput.toLowerCase();
-  const tokens = lowerInput.split(/\s+/).filter(Boolean);
+  const plan = buildQueryPlan(originalInput);
   const urlMap = {};
 
   results.forEach((r) => {
@@ -83,7 +89,7 @@ export function score(results, originalInput) {
 
   return scoreResults(
     results,
-    (result) => extractFeatures(result, lowerInput, tokens, urlMap),
+    (result) => extractFeatures(result, plan, urlMap),
     WEIGHTS
   );
 }

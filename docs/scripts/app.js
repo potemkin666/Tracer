@@ -3,6 +3,7 @@
 import { buildQueryPlan, queryVariants } from './shared/queryShared.js';
 import { createKeyStorage } from './shared/keyStorage.js';
 import { buildResultsBrief } from './shared/resultBrief.js';
+import { buildRelatedQueries, buildTimeline } from './shared/resultInsightsShared.js';
 import {
   searchDirect as runStandaloneSearch,
   searchVariants,
@@ -774,7 +775,7 @@ function searchViaSSE(base,query){
           progressPhase=info.phase;
           const bar=document.getElementById('eng-bar');
           if(bar){
-            const phases={connectors:'Scanning connectors',wayback:'Wayback Machine',namechk:'Username check',profileProbe:'Direct profile probing',timeSlice:'Time slicing',docSearch:'Document search',dedupe:'Deduplicating',fossils:'Fossil hunting'};
+            const phases={cache:'Using cached sweep',connectors:'Scanning connectors',wayback:'Wayback Machine',namechk:'Username check',profileProbe:'Direct profile probing',timeSlice:'Time slicing',docSearch:'Document search',dedupe:'Deduplicating',fossils:'Fossil hunting'};
             bar.textContent='SERVER · '+(phases[info.phase]||info.phase)+'…';
           }
         }
@@ -889,6 +890,8 @@ function renderResults(results,clusters){
     cd.appendChild(el);
   });
 
+  renderInsightPanels(results);
+
   const list=document.getElementById('results-list');list.innerHTML='';
   if(!results.length){
     setUiStatus('empty','NO TRACE FOUND');
@@ -914,11 +917,27 @@ function renderResults(results,clusters){
     const clusterLabel=r.meta&&r.meta.clusterLabel;
     const seenOn=r.seenOn||[];
     const bc=bclass(r.source,tags);
+    const reliability=(r.meta&&r.meta.reliability)||'unknown';
+    const language=(r.meta&&r.meta.languageLabel)||'Unknown';
+    const region=r.meta&&r.meta.region?` · ${esc(String(r.meta.region).toUpperCase())}`:'';
+    const entityParts=[
+      ...((r.meta&&r.meta.entities&&r.meta.entities.names)||[]).slice(0,2),
+      ...((r.meta&&r.meta.entities&&r.meta.entities.orgs)||[]).slice(0,2),
+      ...((r.meta&&r.meta.entities&&r.meta.entities.emails)||[]).slice(0,1),
+    ];
     const seenHtml=seenOn.length>1?
       `<div class="card-seen">SEEN ON ${seenOn.length}:${seenOn.map(s=>`<span>${esc(s)}</span>`).join('')}</div>`:'';
     const tagsHtml=tags.length?`<div class="tags">${tags.map(t=>`<span class="tag">${esc(t.toUpperCase())}</span>`).join('')}</div>`:'';
     const eraTag=r.meta&&r.meta.era?`<span class="tag" style="border-color:var(--gold);color:var(--gold)">ERA ${r.meta.era}</span>`:'';
     const ftTag=r.meta&&r.meta.fileType?`<span class="tag" style="border-color:#b5838d;color:#b5838d">${esc(r.meta.fileType.toUpperCase())}</span>`:'';
+    const insightRow=`<div class="card-seen">RELIABILITY <span>${esc(reliability.toUpperCase())}</span> · LANG <span>${esc(language.toUpperCase())}</span>${region}</div>`;
+    const entityHtml=entityParts.length?`<div class="tags">${entityParts.map(v=>`<span class="tag">${esc(v)}</span>`).join('')}</div>`:'';
+    const actionLinks=[
+      r.meta&&r.meta.translationUrl?`<a href="${esc(r.meta.translationUrl)}" target="_blank" rel="noopener noreferrer">TRANSLATE</a>`:'',
+      r.meta&&r.meta.snapshotViewerUrl?`<a href="${esc(r.meta.snapshotViewerUrl)}" target="_blank" rel="noopener noreferrer">SNAPSHOT</a>`:'',
+      !r.meta?.snapshotViewerUrl&&r.meta&&r.meta.archiveUrl?`<a href="${esc(r.meta.archiveUrl)}" target="_blank" rel="noopener noreferrer">ARCHIVE</a>`:'',
+    ].filter(Boolean);
+    const actionsHtml=actionLinks.length?`<div class="card-seen">${actionLinks.join(' · ')}</div>`:'';
     if(clusterId&&clusterSize>1&&clusterId!==currentClusterId){
       currentClusterId=clusterId;
       const hdr=document.createElement('div');
@@ -936,10 +955,58 @@ function renderResults(results,clusters){
       `</div>`+
       (r.snippet?`<div class="card-snip">${esc(r.snippet)}</div>`:'')+
       (r.url?`<div class="card-url">${esc(r.url)}</div>`:'')+
+      insightRow+
       seenHtml+
+      actionsHtml+
+      entityHtml+
       ((eraTag||ftTag||tagsHtml)?`<div class="tags">${eraTag}${ftTag}${tagsHtml}</div>`:'');
     list.appendChild(card);
   });
+}
+
+function renderInsightPanels(results){
+  const timelineEl=document.getElementById('timeline-panel');
+  const relatedEl=document.getElementById('related-panel');
+  const insightsEl=document.getElementById('insights-panel');
+  if(timelineEl)timelineEl.innerHTML='';
+  if(relatedEl)relatedEl.innerHTML='';
+  if(insightsEl)insightsEl.innerHTML='';
+  if(!results.length)return;
+
+  const query=document.getElementById('query').value.trim();
+  const entities=[
+    ...new Set(results.flatMap((result)=>[
+      ...((result.meta&&result.meta.entities&&result.meta.entities.names)||[]),
+      ...((result.meta&&result.meta.entities&&result.meta.entities.orgs)||[]),
+      ...((result.meta&&result.meta.entities&&result.meta.entities.emails)||[]),
+    ])),
+  ].slice(0,8);
+  if(insightsEl&&entities.length){
+    insightsEl.innerHTML='<div class="cluster"><div class="cluster-hdr">ENTITY EXTRACTION</div><div class="tags">'+entities.map(v=>`<span class="tag">${esc(v)}</span>`).join('')+'</div></div>';
+  }
+
+  const timeline=buildTimeline(results).slice(0,10);
+  if(timelineEl&&timeline.length){
+    timelineEl.innerHTML='<div class="cluster"><div class="cluster-hdr">TIMELINE VIEW</div>'+
+      timeline.map((item)=>`<div class="card-seen"><span>${esc(item.label)}</span> · <a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title)}</a> · ${esc(item.reliability.toUpperCase())}</div>`).join('')+
+      '</div>';
+  }
+
+  const related=buildRelatedQueries(query,results);
+  if(relatedEl&&related.length){
+    const wrap=document.createElement('div');
+    wrap.className='cluster';
+    wrap.innerHTML='<div class="cluster-hdr">RELATED QUERIES</div><div class="tags">'+
+      related.map((value)=>`<button class="btn btn-sm related-query" data-query="${esc(value)}" type="button">${esc(value)}</button>`).join('')+
+      '</div>';
+    relatedEl.appendChild(wrap);
+    relatedEl.querySelectorAll('[data-query]').forEach((btn)=>{
+      btn.addEventListener('click',()=>{
+        document.getElementById('query').value=btn.dataset.query||'';
+        doSearch();
+      });
+    });
+  }
 }
 
 // ── SOURCE STATUS BREAKDOWN ──────────────────────────────────────────────────
@@ -1105,7 +1172,7 @@ function rerunSearch(query){
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function showLoading(v){document.getElementById('loading').style.display=v?'block':'none';document.getElementById('srch-btn').disabled=v}
-function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';const brief=document.getElementById('results-brief');if(brief){brief.textContent='';brief.style.display='none'}_lastResults=[]}
+function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const insights=document.getElementById('insights-panel');if(insights)insights.innerHTML='';const timeline=document.getElementById('timeline-panel');if(timeline)timeline.innerHTML='';const related=document.getElementById('related-panel');if(related)related.innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';const brief=document.getElementById('results-brief');if(brief){brief.textContent='';brief.style.display='none'}_lastResults=[]}
 function showErr(msg,isErr){const el=document.getElementById('err');el.textContent=msg;el.style.display=msg?'block':'none';if(!isErr){el.style.color='var(--bright)';return}setUiStatus('error','SIGNAL LOST')}
 
 // ── INIT ─────────────────────────────────────────────────────────────────────

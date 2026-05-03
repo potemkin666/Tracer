@@ -177,4 +177,54 @@ describe('ui server', () => {
       await expect(readJson(blocked)).resolves.toEqual({ error: 'origin not allowed' });
     });
   });
+
+  test('caches repeated POST /search responses for the same request', async () => {
+    const runImpl = jest.fn(async () => ({
+      results: [{ url: 'https://example.com', title: 'Example', source: 'demo' }],
+      avatarClusters: [],
+      connectorStats: [],
+    }));
+    const app = createApp({ runImpl, buildGraphImpl: () => ({ nodes: [], edges: [] }) });
+
+    await withServer(app, async (baseUrl) => {
+      const payload = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: 'alice', mode: 'aggressive' }),
+      };
+      const first = await globalThis.fetch(`${baseUrl}/search`, payload);
+      const second = await globalThis.fetch(`${baseUrl}/search`, payload);
+
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(200);
+      expect(runImpl).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  test('GET /snapshot returns archive metadata and /snapshot/view renders html', async () => {
+    const snapshotLookupImpl = jest.fn(async (url) => ({
+      url,
+      archiveUrl: 'https://web.archive.org/web/20240101000000/https://example.com',
+      archiveTimestamp: '20240101000000',
+      pageStatus: 'dead',
+    }));
+    const app = createApp({ snapshotLookupImpl });
+
+    await withServer(app, async (baseUrl) => {
+      const snapshot = await globalThis.fetch(`${baseUrl}/snapshot?url=${encodeURIComponent('https://example.com')}`);
+      expect(snapshot.status).toBe(200);
+      await expect(readJson(snapshot)).resolves.toEqual({
+        url: 'https://example.com',
+        archiveUrl: 'https://web.archive.org/web/20240101000000/https://example.com',
+        archiveTimestamp: '20240101000000',
+        pageStatus: 'dead',
+      });
+
+      const view = await globalThis.fetch(`${baseUrl}/snapshot/view?url=${encodeURIComponent('https://example.com')}`);
+      const html = await view.text();
+      expect(view.status).toBe(200);
+      expect(html).toContain('Snapshot viewer');
+      expect(html).toContain('web.archive.org');
+    });
+  });
 });
