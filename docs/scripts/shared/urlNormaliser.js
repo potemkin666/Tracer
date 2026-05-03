@@ -33,10 +33,11 @@ export function normaliseUrlForDedupe(url) {
     }
 
     const filtered = [...parsed.searchParams.entries()]
-      .filter(([key]) => !TRACKING_PARAMS.has(key.toLowerCase()))
-      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
+      .map(([key, paramValue]) => ({ key, paramValue, lowerKey: key.toLowerCase() }))
+      .filter(({ lowerKey }) => !TRACKING_PARAMS.has(lowerKey))
+      .sort((leftEntry, rightEntry) => leftEntry.key.localeCompare(rightEntry.key));
     parsed.search = '';
-    filtered.forEach(([key, paramValue]) => parsed.searchParams.append(key, paramValue));
+    filtered.forEach(({ key, paramValue }) => parsed.searchParams.append(key, paramValue));
 
     if (parsed.pathname.length > 1) {
       parsed.pathname = parsed.pathname.replace(/\/+$/u, '');

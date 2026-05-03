@@ -34,7 +34,7 @@ export function buildResultsBrief(results = []) {
     .join(', ');
 
   const lead = results[0] || {};
-  const leadLabel = truncate(lead.title || lead.url || 'top lead');
+  const leadLabel = truncate(lead.title || lead.url || 'No title available');
   const leadSources = uniqueSources(lead);
 
   const parts = [
