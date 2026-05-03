@@ -40,9 +40,21 @@ const DATE_PATTERNS = [
   /\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},\s+\d{4})\b/iu,
   /\b(\d{4})\b/u,
 ];
+const ECHO_STOPWORDS = new Set([
+  'a', 'an', 'and', 'article', 'claim', 'coverage', 'for', 'from', 'in', 'is', 'news', 'of', 'on',
+  'report', 'reported', 'reporting', 'says', 'story', 'that', 'the', 'to', 'update', 'via', 'with',
+]);
+const RELIABLE_BUCKETS = new Set(['official', 'media']);
+const LOW_QUALITY_BUCKETS = new Set(['forum', 'unknown']);
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function truncateLabel(value, max = 72) {
+  const text = String(value || '').trim();
+  if (!text || text.length <= max) return text;
+  return `${text.slice(0, max)}…`;
 }
 
 function safeHostname(url) {
@@ -67,6 +79,63 @@ function isAsciiText(value) {
 
 function normaliseLanguageLabel(code) {
   return { en: 'English', es: 'Spanish', fr: 'French', de: 'German', pt: 'Portuguese' }[code] || 'Unknown';
+}
+
+function normaliseFingerprintTokens(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/gu, ' ')
+    .replace(/[^a-z0-9]+/gu, ' ')
+    .trim()
+    .split(/\s+/u)
+    .filter((token) => token && token.length > 2 && !ECHO_STOPWORDS.has(token));
+}
+
+function buildEchoFingerprint(result = {}) {
+  const username = String(result.meta?.username || '').toLowerCase().trim();
+  if (username) return `handle:${username}`;
+
+  const hostname = safeHostname(result.url || '');
+  const titleTokens = normaliseFingerprintTokens(result.title).slice(0, 7);
+  const snippetTokens = normaliseFingerprintTokens(result.snippet).slice(0, 5);
+  const mergedTokens = unique([...titleTokens, ...snippetTokens]).slice(0, 8);
+
+  if (mergedTokens.length >= 3) return `echo:${mergedTokens.join(' ')}`;
+  if (titleTokens.length) return `title:${titleTokens.join(' ')}`;
+  if (hostname) return `host:${hostname}`;
+  return `source:${String(result.source || 'unknown').toLowerCase()}`;
+}
+
+function summariseTrace(result = {}) {
+  const timeline = extractTimelinePoint(result);
+  const hostname = safeHostname(result.url || '');
+  return {
+    title: result.title || result.url || 'Untitled result',
+    url: result.url || '',
+    source: result.source || '',
+    hostname,
+    reliability: result.meta?.reliability || 'unknown',
+    sourceFamily: result.meta?.sourceFamily || hostname || result.source || 'unknown',
+    dateLabel: timeline?.label || null,
+    sortKey: timeline?.sortKey || null,
+  };
+}
+
+function compareEarliest(left = {}, right = {}) {
+  if (left.sortKey && right.sortKey) return left.sortKey.localeCompare(right.sortKey);
+  if (left.sortKey) return -1;
+  if (right.sortKey) return 1;
+  return (right.score || 0) - (left.score || 0);
+}
+
+function isReliableTrace(trace = {}) {
+  return RELIABLE_BUCKETS.has(trace.reliability) || trace.sourceFamily === 'academic';
+}
+
+function isLowQualityTrace(trace = {}) {
+  return LOW_QUALITY_BUCKETS.has(trace.reliability)
+    || trace.sourceFamily === 'social'
+    || trace.sourceFamily === 'broker-directory';
 }
 
 export function detectLanguage(text) {
@@ -178,6 +247,82 @@ export function buildTimeline(results = []) {
     })
     .filter(Boolean)
     .sort((left, right) => right.sortKey.localeCompare(left.sortKey));
+}
+
+export function buildSourceFamilyTree(results = []) {
+  const groups = new Map();
+
+  results.forEach((result) => {
+    const key = buildEchoFingerprint(result);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(result);
+  });
+
+  return [...groups.entries()]
+    .map(([fingerprint, members], index) => {
+      const traces = members.map(summariseTrace).sort(compareEarliest);
+      const ancestor = traces[0];
+      const hostnames = unique(traces.map((trace) => trace.hostname));
+      const reliableCount = traces.filter(isReliableTrace).length;
+      const lowQualityCount = traces.filter(isLowQualityTrace).length;
+
+      return {
+        id: `echo-family-${index + 1}`,
+        fingerprint,
+        label: truncateLabel(ancestor.title || ancestor.hostname || ancestor.source),
+        ancestor,
+        members: traces,
+        size: traces.length,
+        echoCount: Math.max(traces.length - 1, 0),
+        hostnames,
+        reliableCount,
+        lowQualityCount,
+      };
+    })
+    .sort((left, right) => (
+      right.size - left.size
+      || compareEarliest(left.ancestor, right.ancestor)
+      || left.label.localeCompare(right.label)
+    ));
+}
+
+export function findFirstBlood(results = []) {
+  const familyTree = buildSourceFamilyTree(results);
+  const datedAncestors = familyTree
+    .map((family) => ({ ...family.ancestor, echoCount: family.echoCount, familySize: family.size }))
+    .filter((trace) => trace.sortKey);
+
+  if (datedAncestors.length) {
+    return datedAncestors.sort(compareEarliest)[0];
+  }
+
+  const fallback = summariseTrace(results[0] || {});
+  return fallback.url || fallback.title ? fallback : null;
+}
+
+export function buildConsensusFractureMap(results = []) {
+  const familyTree = buildSourceFamilyTree(results);
+  const agreement = familyTree
+    .filter((family) => family.reliableCount > 0 && family.size > 1)
+    .slice(0, 3);
+  const dominantReliable = familyTree.find((family) => family.reliableCount > 0) || null;
+  const divergence = familyTree
+    .filter((family) => family.reliableCount > 0 && family.fingerprint !== dominantReliable?.fingerprint)
+    .slice(0, 3);
+  const amplification = familyTree
+    .filter((family) => family.lowQualityCount >= 1 && family.size > family.reliableCount)
+    .slice(0, 3);
+
+  return {
+    agreement,
+    divergence,
+    amplification,
+    stats: {
+      families: familyTree.length,
+      reliableFamilies: familyTree.filter((family) => family.reliableCount > 0).length,
+      lowQualityFamilies: familyTree.filter((family) => family.lowQualityCount > 0).length,
+    },
+  };
 }
 
 export function buildRelatedQueries(input, results = [], limit = 8) {

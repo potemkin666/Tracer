@@ -3,7 +3,13 @@
 import { buildQueryPlan, queryVariants } from './shared/queryShared.js';
 import { createKeyStorage } from './shared/keyStorage.js';
 import { buildResultsBrief } from './shared/resultBrief.js';
-import { buildRelatedQueries, buildTimeline } from './shared/resultInsightsShared.js';
+import {
+  buildConsensusFractureMap,
+  buildRelatedQueries,
+  buildSourceFamilyTree,
+  buildTimeline,
+  findFirstBlood,
+} from './shared/resultInsightsShared.js';
 import {
   searchDirect as runStandaloneSearch,
   searchVariants,
@@ -982,6 +988,11 @@ function formatQueryType(intent){
   return QUERY_TYPE_LABELS[intent]||`${String(intent||'name').toUpperCase()} TRACE`;
 }
 
+function openResultInNewTab(url){
+  if(!url)return;
+  globalThis.open(url,'_blank','noopener,noreferrer');
+}
+
 function describeSourceBucket(result){
   const tags=(result.meta&&result.meta.tags)||[];
   const family=result.meta&&result.meta.sourceFamily;
@@ -1128,6 +1139,11 @@ function renderResults(results,clusters,context={}){
       list.appendChild(hdr);
     }
     const card=document.createElement('div');card.className='card';
+    if(r.url){
+      card.dataset.openable='true';
+      card.title='Double-click to open in a new tab';
+      card.addEventListener('dblclick',()=>openResultInNewTab(r.url));
+    }
     card.style.animationDelay=(i*.035)+'s';
     card.innerHTML=
       `<div class="card-top">`+
@@ -1153,9 +1169,15 @@ function renderInsightPanels(results){
   const timelineEl=document.getElementById('timeline-panel');
   const relatedEl=document.getElementById('related-panel');
   const insightsEl=document.getElementById('insights-panel');
+  const originEl=document.getElementById('origin-panel');
+  const familyEl=document.getElementById('family-panel');
+  const consensusEl=document.getElementById('consensus-panel');
   if(timelineEl)timelineEl.innerHTML='';
   if(relatedEl)relatedEl.innerHTML='';
   if(insightsEl)insightsEl.innerHTML='';
+  if(originEl)originEl.innerHTML='';
+  if(familyEl)familyEl.innerHTML='';
+  if(consensusEl)consensusEl.innerHTML='';
   if(!results.length)return;
 
   const query=document.getElementById('query').value.trim();
@@ -1170,11 +1192,40 @@ function renderInsightPanels(results){
     insightsEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">ENTITY EXTRACTION</summary><div class="tags">'+entities.map(v=>`<span class="tag">${esc(v)}</span>`).join('')+'</div></details>';
   }
 
+  const firstBlood=findFirstBlood(results);
+  if(originEl&&firstBlood){
+    originEl.innerHTML='<details class="cluster" open><summary class="cluster-hdr">🩸 FIRST-BLOOD FINDER</summary><div class="tree-item">'+
+      `<strong>${esc(firstBlood.dateLabel||'Earliest surfaced lead')}</strong> · <a href="${esc(firstBlood.url)}" target="_blank" rel="noopener noreferrer">${esc(firstBlood.title)}</a>`+
+      `<div class="card-seen">ORIGIN SOURCE <span>${esc(firstBlood.source||'unknown')}</span> · FAMILY <span>${esc(firstBlood.sourceFamily||'unknown')}</span>${firstBlood.familySize?` · ECHOES <span>${firstBlood.familySize}</span>`:''}</div>`+
+      '</div></details>';
+  }
+
+  const familyTree=buildSourceFamilyTree(results).slice(0,6);
+  if(familyEl&&familyTree.length){
+    familyEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">🧬 SOURCE FAMILY TREE</summary><div class="tree-list">'+
+      familyTree.map((family)=>`<div class="tree-item"><strong>${esc(family.label)}</strong><div class="card-seen">ANCESTOR <span>${family.ancestor.dateLabel?esc(family.ancestor.dateLabel):'undated'}</span> · ${family.ancestor.url?`<a href="${esc(family.ancestor.url)}" target="_blank" rel="noopener noreferrer">${esc(family.ancestor.source||family.ancestor.hostname||'origin')}</a>`:esc(family.ancestor.source||family.ancestor.hostname||'origin')} · ECHOES <span>${family.size}</span> · HOSTS <span>${family.hostnames.length}</span></div></div>`).join('')+
+      '</div></details>';
+  }
+
   const timeline=buildTimeline(results).slice(0,10);
   if(timelineEl&&timeline.length){
     timelineEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">TIMELINE VIEW</summary>'+
       timeline.map((item)=>`<div class="card-seen"><span>${esc(item.label)}</span> · <a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title)}</a> · ${esc(item.reliability.toUpperCase())}</div>`).join('')+
       '</details>';
+  }
+
+  const consensus=buildConsensusFractureMap(results);
+  if(consensusEl){
+    const agreement=consensus.agreement.length
+      ? consensus.agreement.map((family)=>`<div class="consensus-item"><strong>Agreement</strong><div class="card-seen">${esc(family.label)} · reliable ${family.reliableCount} · echoes ${family.size}</div></div>`).join('')
+      : '<div class="consensus-item"><strong>Agreement</strong><div class="card-seen">No multi-source reliable agreement yet.</div></div>';
+    const divergence=consensus.divergence.length
+      ? consensus.divergence.map((family)=>`<div class="consensus-item"><strong>Divergence</strong><div class="card-seen">${esc(family.label)} · reliable ${family.reliableCount} · separate branch</div></div>`).join('')
+      : '<div class="consensus-item"><strong>Divergence</strong><div class="card-seen">Reliable sources are not materially split on this pass.</div></div>';
+    const amplification=consensus.amplification.length
+      ? consensus.amplification.map((family)=>`<div class="consensus-item"><strong>Amplification risk</strong><div class="card-seen">${esc(family.label)} · low-quality ${family.lowQualityCount} · echoes ${family.size}</div></div>`).join('')
+      : '<div class="consensus-item"><strong>Amplification risk</strong><div class="card-seen">No weak-source repetition spike detected.</div></div>';
+    consensusEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">⚖️ CONSENSUS FRACTURE MAP</summary><div class="consensus-list">'+agreement+divergence+amplification+'</div></details>';
   }
 
   const related=buildRelatedQueries(query,results);
@@ -1246,7 +1297,47 @@ function hideLiveProgress(){
   if(wrap)wrap.style.display='none';
 }
 
-// ── EXPORT (JSON + CSV) ──────────────────────────────────────────────────────
+function buildTextExport(results){
+  const query=document.getElementById('query').value.trim();
+  const familyTree=buildSourceFamilyTree(results);
+  const firstBlood=findFirstBlood(results);
+  const consensus=buildConsensusFractureMap(results);
+  const sections=[
+    '🧭 TRACER INTELLIGENCE BRIEF',
+    `Query: ${query||'Untitled search'}`,
+    `Generated: ${new Date().toISOString()}`,
+    '',
+    `🌊 Summary: ${buildResultsBrief(results)}`,
+    '',
+    '🩸 First-blood finder',
+    firstBlood
+      ? `- ${firstBlood.dateLabel||'Undated'} | ${firstBlood.title} | ${firstBlood.url||firstBlood.source}`
+      : '- No dated origin surfaced.',
+    '',
+    '🧬 Source family tree',
+    ...(familyTree.length
+      ? familyTree.map((family,index)=>`${index+1}. ${family.label}\n   Ancestor: ${family.ancestor.dateLabel||'Undated'} | ${family.ancestor.title} | ${family.ancestor.url||family.ancestor.source}\n   Echoes: ${family.size} | Reliable: ${family.reliableCount} | Low-quality: ${family.lowQualityCount}`)
+      : ['- No echo families formed.']),
+    '',
+    '⚖️ Consensus fracture map',
+    `- Agreement lanes: ${consensus.agreement.length?consensus.agreement.map((family)=>`${family.label} (${family.reliableCount} reliable / ${family.size} echoes)`).join('; '):'none yet'}`,
+    `- Divergence lanes: ${consensus.divergence.length?consensus.divergence.map((family)=>family.label).join('; '):'none detected'}`,
+    `- Amplification risk: ${consensus.amplification.length?consensus.amplification.map((family)=>`${family.label} (${family.lowQualityCount} low-quality repeats)`).join('; '):'no fake-certainty spike detected'}`,
+    '',
+    '📎 Result ledger',
+    ...results.map((result,index)=>[
+      `${index+1}. ${result.title||result.url||'Untitled result'}`,
+      `   🔗 ${result.url||'No URL available'}`,
+      `   🛰️ Source: ${result.source||'unknown'} | Score: ${result.score||0} | Reliability: ${(result.meta&&result.meta.reliability)||'unknown'}`,
+      `   👀 Seen on: ${(result.seenOn||[]).join(', ')||'single source'}`,
+      result.snippet?`   📝 ${String(result.snippet).replace(/\s+/gu,' ').trim()}`:'',
+    ].filter(Boolean).join('\n')),
+    '',
+  ];
+  return sections.join('\n');
+}
+
+// ── EXPORT (JSON + TXT) ──────────────────────────────────────────────────────
 function exportJSON(){
   if(!_lastResults.length)return;
   const data=_lastResults.map(r=>({
@@ -1257,26 +1348,10 @@ function exportJSON(){
   const blob=new globalThis.Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   downloadBlob(blob,'tracer-results.json');
 }
-function exportCSV(){
+function exportTXT(){
   if(!_lastResults.length)return;
-  const header='Score,Source,Title,URL,Snippet,Seen On';
-  const rows=_lastResults.map(r=>{
-    const fields=[
-      r.score||0,
-      csvSafe(r.source||''),
-      csvSafe(r.title||''),
-      csvSafe(r.url||''),
-      csvSafe((r.snippet||'').slice(0,300)),
-      csvSafe((r.seenOn||[]).join('; '))
-    ];
-    return fields.join(',');
-  });
-  const blob=new globalThis.Blob([header+'\n'+rows.join('\n')],{type:'text/csv'});
-  downloadBlob(blob,'tracer-results.csv');
-}
-function csvSafe(s){
-  s=String(s||'').replace(/"/g,'""');
-  return /[,"\n\r]/.test(s)?'"'+s+'"':s;
+  const blob=new globalThis.Blob([buildTextExport(_lastResults)],{type:'text/plain;charset=utf-8'});
+  downloadBlob(blob,'tracer-results.txt');
 }
 function downloadBlob(blob,filename){
   const a=document.createElement('a');
@@ -1356,7 +1431,7 @@ function rerunSearch(query){
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function showLoading(v){document.getElementById('loading').style.display=v?'block':'none';document.getElementById('srch-btn').disabled=v}
-function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const insights=document.getElementById('insights-panel');if(insights)insights.innerHTML='';const timeline=document.getElementById('timeline-panel');if(timeline)timeline.innerHTML='';const related=document.getElementById('related-panel');if(related)related.innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';const meta=document.getElementById('results-meta');if(meta){meta.innerHTML='';meta.style.display='none'}const brief=document.getElementById('results-brief');if(brief){brief.textContent='';brief.style.display='none'}_lastResults=[]}
+function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const insights=document.getElementById('insights-panel');if(insights)insights.innerHTML='';const origin=document.getElementById('origin-panel');if(origin)origin.innerHTML='';const family=document.getElementById('family-panel');if(family)family.innerHTML='';const timeline=document.getElementById('timeline-panel');if(timeline)timeline.innerHTML='';const consensus=document.getElementById('consensus-panel');if(consensus)consensus.innerHTML='';const related=document.getElementById('related-panel');if(related)related.innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';const meta=document.getElementById('results-meta');if(meta){meta.innerHTML='';meta.style.display='none'}const brief=document.getElementById('results-brief');if(brief){brief.textContent='';brief.style.display='none'}_lastResults=[]}
 function showErr(msg,isErr){const el=document.getElementById('err');el.textContent=msg;el.style.display=msg?'block':'none';if(!isErr){el.style.color='var(--bright)';return}setUiStatus('error','SIGNAL LOST')}
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -1383,7 +1458,7 @@ Object.assign(globalThis,{
   checkConn,
   clearKeys,
   doSearch,
-  exportCSV,
   exportJSON,
+  exportTXT,
   saveKeys,
 });

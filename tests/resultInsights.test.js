@@ -1,8 +1,11 @@
 import {
+  buildConsensusFractureMap,
   buildRelatedQueries,
   buildResultInsights,
+  buildSourceFamilyTree,
   buildTimeline,
   detectLanguage,
+  findFirstBlood,
   inferReliability,
 } from '../src/resultInsights.js';
 
@@ -83,5 +86,67 @@ describe('result insights', () => {
       '"alice-example" profile',
       '"Example Labs Inc" "alice example"',
     ]));
+  });
+
+  test('builds echo families, earliest origin, and consensus fracture signals', () => {
+    const results = [
+      {
+        title: 'Wire claim spreads across outlets',
+        snippet: 'May 1, 2021 report from the same claim',
+        url: 'https://news-a.example/story',
+        source: 'news-a',
+        meta: { reliability: 'media', sourceFamily: 'media' },
+      },
+      {
+        title: 'Wire claim spreads across outlets',
+        snippet: 'May 3, 2021 mirrored version of the same claim',
+        url: 'https://news-b.example/story',
+        source: 'news-b',
+        meta: { reliability: 'media', sourceFamily: 'media' },
+      },
+      {
+        title: 'Wire claim spreads across outlets',
+        snippet: 'May 4, 2021 forum repost',
+        url: 'https://forum.example/thread',
+        source: 'forum',
+        meta: { reliability: 'forum', sourceFamily: 'forum' },
+      },
+      {
+        title: 'Official correction lands later',
+        snippet: 'May 7, 2021 ministry statement',
+        url: 'https://gov.example/statement',
+        source: 'gov',
+        meta: { reliability: 'official', sourceFamily: 'official' },
+      },
+      {
+        title: 'Official correction lands later',
+        snippet: 'May 8, 2021 directory copy',
+        url: 'https://mirror.example/copy',
+        source: 'mirror',
+        meta: { reliability: 'unknown', sourceFamily: 'broker-directory' },
+      },
+    ];
+
+    const familyTree = buildSourceFamilyTree(results);
+    expect(familyTree[0]).toMatchObject({
+      size: 3,
+      echoCount: 2,
+      ancestor: {
+        url: 'https://news-a.example/story',
+        source: 'news-a',
+      },
+    });
+
+    expect(findFirstBlood(results)).toMatchObject({
+      url: 'https://news-a.example/story',
+      dateLabel: 'May 1, 2021',
+      echoCount: 2,
+    });
+
+    expect(buildConsensusFractureMap(results)).toMatchObject({
+      agreement: [expect.objectContaining({ size: 3, reliableCount: 2 })],
+      divergence: [expect.objectContaining({ reliableCount: 1 })],
+      amplification: [expect.objectContaining({ lowQualityCount: 1 })],
+    });
   });
 });
