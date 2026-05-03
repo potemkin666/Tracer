@@ -242,7 +242,7 @@ export function createApp({
 
   const snapshotRouter = express.Router();
   snapshotRouter.use(searchRateLimiter);
-  snapshotRouter.get('/', async (req, res) => {
+  snapshotRouter.get('/', searchRateLimiter, async (req, res) => {
     const url = typeof req.query.url === 'string' ? req.query.url.trim() : '';
     if (!url) return res.status(400).json({ error: 'url is required' });
     const cached = responseCache.getSnapshot(url);
@@ -257,7 +257,7 @@ export function createApp({
     }
   });
 
-  snapshotRouter.get('/view', async (req, res) => {
+  snapshotRouter.get('/view', searchRateLimiter, async (req, res) => {
     const url = typeof req.query.url === 'string' ? req.query.url.trim() : '';
     if (!url) return res.status(400).send('url is required');
     try {

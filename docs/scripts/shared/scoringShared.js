@@ -77,6 +77,10 @@ const PACKAGE_ECOSYSTEM_HOSTS = [
   /crates\.io/u, /hub\.docker\.com/u,
 ];
 
+function hostnameMatches(hostname, expected) {
+  return hostname === expected || hostname.endsWith(`.${expected}`);
+}
+
 export const IDENTITY_SOURCES = new Set([
   'bluesky',
   'codeberg',
@@ -131,9 +135,9 @@ export function deriveSourceFamily(result = {}) {
 
   if (PACKAGE_ECOSYSTEM_HOSTS.some((pattern) => pattern.test(hostname))) return 'package-ecosystem';
   if (BROKER_DIRECTORY_HOSTS.some((pattern) => pattern.test(hostname))) return 'broker-directory';
-  if (hostname.includes('github.com') || hostname.includes('gitlab.com') || hostname.includes('codeberg.org')) return 'code-hosting';
-  if (hostname.includes('archive.org') || result.source === 'wayback' || result.source === 'timeslice') return 'archive';
-  if (hostname.includes('reddit.com') || hostname.includes('ycombinator.com') || /forum|community/u.test(hostname)) return 'forum';
+  if (hostnameMatches(hostname, 'github.com') || hostnameMatches(hostname, 'gitlab.com') || hostnameMatches(hostname, 'codeberg.org')) return 'code-hosting';
+  if (hostnameMatches(hostname, 'archive.org') || result.source === 'wayback' || result.source === 'timeslice') return 'archive';
+  if (hostnameMatches(hostname, 'reddit.com') || hostnameMatches(hostname, 'ycombinator.com') || /forum|community/u.test(hostname)) return 'forum';
   if (category === 'social') return 'social';
   if (category === 'news') return 'media';
   if (category === 'academic') return 'academic';
