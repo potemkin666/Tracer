@@ -132,7 +132,7 @@ describe('enrich', () => {
     const results = [
       { url: 'https://twitter.com/jsmith', title: '', snippet: '', meta: { tags: ['fossil'] } },
     ];
-    const original = structuredClone(results);
+    const original = JSON.parse(JSON.stringify(results));
 
     const enriched = enrich(results, 'jsmith');
 
