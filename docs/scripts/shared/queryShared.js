@@ -2,6 +2,8 @@ export function buildQueryPlan(input) {
   const raw = String(input || '').trim();
   const lower = raw.toLowerCase();
   const tokens = lower.split(/\s+/).filter(Boolean);
+  // For emails, keep only the local part. Otherwise treat the input like a
+  // potential handle and strip leading @ plus internal spaces for username variants.
   const localPart = (lower.includes('@') && !lower.startsWith('@'))
     ? lower.split('@')[0]
     : lower.replace(/^@+/u, '').replace(/\s+/gu, '');

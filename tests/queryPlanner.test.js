@@ -19,6 +19,11 @@ describe('generateQueries', () => {
     expect(results.some((q) => q.includes('site:github.com'))).toBe(true);
   });
 
+  test('includes people-focused site queries for keybase and bluesky', () => {
+    expect(results.some((q) => q.includes('site:keybase.io'))).toBe(true);
+    expect(results.some((q) => q.includes('site:bsky.app/profile'))).toBe(true);
+  });
+
   test('includes username variant without spaces', () => {
     expect(results).toContain('johnsmith');
   });

@@ -159,6 +159,14 @@ async function fetchWithRetry(url,opts,retries=1){
 }
 // Safely decode HTML entities (StackExchange API returns encoded titles).
 function decodeEntities(s){const el=document.createElement('textarea');el.innerHTML=s;return el.value;}
+function formatStackExchangeUserSnippet(user){
+  const badgeCounts=user.badge_counts||{};
+  return [
+    user.reputation?`${user.reputation} reputation`:'',
+    user.location||'',
+    badgeCounts.gold?`${badgeCounts.gold} gold badges`:'',
+  ].filter(Boolean).join(' · ');
+}
 
 async function searchDirect(query){
   const plan=buildQueryPlan(query);
@@ -507,7 +515,7 @@ async function searchDirect(query){
         const d=await fetchWithRetry(`https://api.stackexchange.com/2.3/users?inname=${encoded}&site=stackoverflow&pagesize=5&order=desc&sort=reputation`);
         return(d.items||[]).map((u,i)=>({source:'stackexchange-users',
           title:u.display_name||'',url:u.link||'',
-          snippet:[u.reputation?`${u.reputation} reputation`:'',u.location||'',u.badge_counts?.gold?`${u.badge_counts.gold} gold badges`:'' ].filter(Boolean).join(' · '),
+          snippet:formatStackExchangeUserSnippet(u),
           score:6-i,seenOn:['stackexchange-users']}));
       });
     }},
