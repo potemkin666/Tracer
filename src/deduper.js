@@ -18,7 +18,8 @@ function cloneMetaValue(value) {
 }
 
 function isEmptyMetaValue(value) {
-  return value == null
+  return value === null
+    || value === undefined
     || value === ''
     || (Array.isArray(value) && value.length === 0)
     || (isPlainObject(value) && Object.keys(value).length === 0);
