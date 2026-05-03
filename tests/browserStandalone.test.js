@@ -19,7 +19,10 @@ describe('standalone browser helpers', () => {
       includeSlug: true,
       includeUnderscored: true,
       includeHyphenated: true,
-    })).toEqual(['John Smith', '"John Smith"', 'johnsmith', 'john_smith', 'john-smith']);
+      includeDotted: true,
+      includeHandle: true,
+      includeLocalPart: true,
+    })).toEqual(['John Smith', '"John Smith"', 'johnsmith', 'john_smith', 'john-smith', 'john.smith', '@johnsmith']);
   });
 
   test('relevance filtering keeps strong multi-token matches', () => {
@@ -70,6 +73,25 @@ describe('standalone browser helpers', () => {
 
     expect(scored[0].url).toBe('https://example.com/john_smith');
     expect(scored[0].score).toBeGreaterThan(scored[1].score);
+  });
+
+  test('scoreStandalone boosts identity-oriented sources for direct handles', () => {
+    const scored = scoreStandalone([
+      {
+        title: '@alice',
+        snippet: 'Bluesky account',
+        url: 'https://bsky.app/profile/alice.test',
+        source: 'bluesky',
+      },
+      {
+        title: 'Alice mention',
+        snippet: 'discussion thread',
+        url: 'https://example.com/topic',
+        source: 'demo',
+      },
+    ], '@alice');
+
+    expect(scored[0].source).toBe('bluesky');
   });
 
   test('searchDirect merges sources, scores results, and surfaces spillover candidates', async () => {

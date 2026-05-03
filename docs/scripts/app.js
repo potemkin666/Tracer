@@ -183,7 +183,7 @@ async function searchDirect(query){
 
     // ── GitHub Users ──
     {name:'github-users',fn:async()=>{
-      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true,includeDotted:true,includeHandle:true,includeLocalPart:true}),async(_term,encoded)=>{
         const d=await fetchWithRetry(`https://api.github.com/search/users?q=${encoded}&per_page=5`);
         return(d.items||[]).map((u,i)=>({source:'github',
           title:u.login||'',url:u.html_url||'',
@@ -418,7 +418,7 @@ async function searchDirect(query){
 
     // ── GitLab Users (complements GitHub) ──
     {name:'gitlab-users',fn:async()=>{
-      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true,includeDotted:true,includeHandle:true,includeLocalPart:true}),async(_term,encoded)=>{
         const d=await fetchWithRetry(`https://gitlab.com/api/v4/users?search=${encoded}&per_page=5`);
         return(d||[]).map((u,i)=>({source:'gitlab',
           title:u.username||u.name||'',url:u.web_url||`https://gitlab.com/${encodeURIComponent(u.username||u.name||'')}`,
@@ -429,7 +429,7 @@ async function searchDirect(query){
 
     // ── Codeberg Users (Gitea-based, open-source alternative) ──
     {name:'codeberg-users',fn:async()=>{
-      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true,includeDotted:true,includeHandle:true,includeLocalPart:true}),async(_term,encoded)=>{
         const d=await fetchWithRetry(`https://codeberg.org/api/v1/users/search?q=${encoded}&limit=5`);
         return((d.data||d)||[]).map((u,i)=>{const uname=u.login||u.username||'';return{source:'codeberg',
           title:uname,url:u.html_url||`https://codeberg.org/${encodeURIComponent(uname)}`,
@@ -438,9 +438,20 @@ async function searchDirect(query){
       });
     }},
 
+    // ── Bluesky account search ──
+    {name:'bluesky',fn:async()=>{
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true,includeDotted:true,includeHandle:true,includeLocalPart:true}),async(_term,encoded)=>{
+        const d=await fetchWithRetry(`https://public.api.bsky.app/xrpc/app.bsky.actor.searchActors?q=${encoded}&limit=5`);
+        return(d.actors||[]).map((a,i)=>({source:'bluesky',
+          title:a.handle||a.displayName||'',url:`https://bsky.app/profile/${a.handle||''}`,
+          snippet:[a.displayName||'',a.description?(a.description.slice(0,120)):'',a.followersCount?`${a.followersCount} followers`:''].filter(Boolean).join(' · '),
+          score:7-i,seenOn:['bluesky']}));
+      });
+    }},
+
     // ── Mastodon / Fediverse account search ──
     {name:'mastodon',fn:async()=>{
-      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true,includeDotted:true,includeHandle:true,includeLocalPart:true}),async(_term,encoded)=>{
         const d=await fetchWithRetry(`https://mastodon.social/api/v2/search?q=${encoded}&type=accounts&limit=5`);
         return(d.accounts||[]).map((a,i)=>({source:'mastodon',
           title:`@${a.acct||a.username||''}`,url:a.url||'',
@@ -451,7 +462,7 @@ async function searchDirect(query){
 
     // ── Keybase identity search ──
     {name:'keybase',fn:async()=>{
-      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true,includeDotted:true,includeHandle:true,includeLocalPart:true}),async(_term,encoded)=>{
         const d=await fetchWithRetry(`https://keybase.io/_/api/1.0/user/autocomplete.json?q=${encoded}`);
         return((d.completions)||[]).slice(0,5).map((c,i)=>{const comp=c.components||{};return{source:'keybase',
           title:comp.username?.val||'',url:`https://keybase.io/${comp.username?.val||''}`,
@@ -475,7 +486,7 @@ async function searchDirect(query){
 
     // ── Reddit user search ──
     {name:'reddit-users',fn:async()=>{
-      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true,includeDotted:true,includeHandle:true,includeLocalPart:true}),async(_term,encoded)=>{
         const d=await fetchWithRetry(`https://www.reddit.com/users/search.json?q=${encoded}&limit=5`,{headers:{'User-Agent':'Tracer/1.0'}});
         return((d.data&&d.data.children)||[]).map((c,i)=>{const u=c.data||{};return{source:'reddit-users',
           title:`u/${u.name||''}`,url:`https://www.reddit.com/user/${u.name}`,
@@ -485,9 +496,20 @@ async function searchDirect(query){
       });
     }},
 
+    // ── Stack Exchange user search ──
+    {name:'stackexchange-users',fn:async()=>{
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true,includeDotted:true,includeHandle:true,includeLocalPart:true}),async(_term,encoded)=>{
+        const d=await fetchWithRetry(`https://api.stackexchange.com/2.3/users?inname=${encoded}&site=stackoverflow&pagesize=5&order=desc&sort=reputation`);
+        return(d.items||[]).map((u,i)=>({source:'stackexchange-users',
+          title:u.display_name||'',url:u.link||'',
+          snippet:[u.reputation?`${u.reputation} reputation`:'',u.location||'',u.badge_counts?.gold?`${u.badge_counts.gold} gold badges`:'' ].filter(Boolean).join(' · '),
+          score:6-i,seenOn:['stackexchange-users']}));
+      });
+    }},
+
     // ── Lichess player search ──
     {name:'lichess',fn:async()=>{
-      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true}),async(_term,encoded)=>{
+      return searchVariants(queryVariants(plan,{includeSlug:true,includeUnderscored:true,includeHyphenated:true,includeDotted:true,includeHandle:true,includeLocalPart:true}),async(_term,encoded)=>{
         const d=await fetchWithRetry(`https://lichess.org/api/player/autocomplete?term=${encoded}&object=true&friend=false`,{headers:{Accept:'application/json'}});
         return((d.result||d)||[]).slice(0,5).map((u,i)=>({source:'lichess',
           title:u.name||u.id||'',url:`https://lichess.org/@/${u.name||u.id}`,

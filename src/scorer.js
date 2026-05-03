@@ -1,4 +1,4 @@
-import { WEIGHTS, scoreResults } from '../docs/scripts/shared/scoringShared.js';
+import { IDENTITY_SOURCES, WEIGHTS, scoreResults } from '../docs/scripts/shared/scoringShared.js';
 export { WEIGHTS } from '../docs/scripts/shared/scoringShared.js';
 
 /**
@@ -11,17 +11,25 @@ export function extractFeatures(r, lowerInput, tokens, urlMap) {
   const url     = (r.url     || '').toLowerCase();
   const combined = `${title}|${snippet}|${url}`;
   const tags    = (r.meta && r.meta.tags) || [];
+  const username = String(r.meta?.username || '').toLowerCase();
+  const localPart = lowerInput.includes('@') && !lowerInput.startsWith('@')
+    ? lowerInput.split('@')[0]
+    : lowerInput.replace(/^@+/u, '');
   const usernameVariants = [
+    localPart,
     lowerInput.replace(/\s+/g, ''),
     tokens.join('_'),
     tokens.join('-'),
-  ];
+    tokens.join('.'),
+  ].filter(Boolean);
 
   return {
      titleExact:    title.includes(lowerInput) ? 1 : 0,
      snippetExact:  snippet.includes(lowerInput) ? 1 : 0,
+     usernameExact: usernameVariants.includes(username) ? 1 : 0,
      urlUsername:   usernameVariants.some((variant) => url.includes(variant)) ? 1 : 0,
      multiSource:   (urlMap[r.url] || 0) > 1 ? 1 : 0,
+     identitySource: IDENTITY_SOURCES.has(r.source) || tags.includes('social') || tags.includes('profile') ? 1 : 0,
      archiveSource: r.source === 'wayback' || /archive\.org/.test(url) ? 1 : 0,
      fossilTag:     tags.includes('fossil') ? 1 : 0,
      timesliceTag:  tags.includes('timeslice') ? 1 : 0,

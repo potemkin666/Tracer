@@ -12,7 +12,7 @@ describe('generateQueries', () => {
   });
 
   test('includes site-specific query for linkedin', () => {
-    expect(results.some((q) => q.includes('site:linkedin.com'))).toBe(true);
+    expect(results.some((q) => q.includes('site:linkedin.com/in'))).toBe(true);
   });
 
   test('includes site-specific query for github', () => {
@@ -31,15 +31,24 @@ describe('generateQueries', () => {
     expect(results).toContain('john-smith');
   });
 
+  test('includes username variant with dots', () => {
+    expect(results).toContain('john.smith');
+  });
+
   test('deduplicates case-insensitive variants for single-token input', () => {
     expect(generateQueries('Alice')).toEqual([
       'Alice',
-      'Alice site:linkedin.com',
-      'Alice site:twitter.com',
-      'Alice site:github.com',
-      'Alice site:reddit.com',
-      'Alice site:facebook.com',
-      'Alice site:web.archive.org',
+      '@alice',
+      'alice site:github.com',
+      'alice site:reddit.com/user',
+      'alice site:gitlab.com',
+      'alice site:keybase.io',
+      'alice site:bsky.app/profile',
+      'alice site:mastodon.social',
+      'alice site:instagram.com',
+      'alice site:tiktok.com',
+      'alice site:facebook.com',
+      'alice site:web.archive.org',
     ]);
   });
 });
