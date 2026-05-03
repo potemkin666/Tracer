@@ -31,6 +31,14 @@ function logInternalError(context, err) {
   });
 }
 
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export function parseAllowedOrigins(value = process.env.TRACER_ALLOWED_ORIGINS) {
   if (typeof value !== 'string' || !value.trim()) {
     return [...DEFAULT_ALLOWED_ORIGINS];
@@ -119,7 +127,7 @@ export function createApp({
   const searchRateLimiter = createRateLimiter(rateLimiterOptions);
   app.use(express.static(docsDir));
   app.use(express.static(publicDir));
-  app.use(['/search', '/search/stream', '/snapshot', '/snapshot/view'], searchRateLimiter);
+  app.use(['/search', '/search/stream'], searchRateLimiter);
 
   app.post('/search', async (req, res) => {
     const controller = new globalThis.AbortController();
@@ -232,7 +240,7 @@ export function createApp({
     res.json({ total: allConnectors.length, active: active.length });
   });
 
-  app.get('/snapshot', async (req, res) => {
+  app.get('/snapshot', searchRateLimiter, async (req, res) => {
     const url = typeof req.query.url === 'string' ? req.query.url.trim() : '';
     if (!url) return res.status(400).json({ error: 'url is required' });
     const cached = responseCache.getSnapshot(url);
@@ -247,7 +255,7 @@ export function createApp({
     }
   });
 
-  app.get('/snapshot/view', async (req, res) => {
+  app.get('/snapshot/view', searchRateLimiter, async (req, res) => {
     const url = typeof req.query.url === 'string' ? req.query.url.trim() : '';
     if (!url) return res.status(400).send('url is required');
     try {
@@ -255,8 +263,8 @@ export function createApp({
       const snapshot = cached || await snapshotLookupImpl(url, {});
       if (!cached) responseCache.setSnapshot(url, snapshot);
       const archiveUrl = snapshot.archiveUrl;
-      const escapedOriginal = url.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      const escapedArchive = String(archiveUrl || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      const escapedOriginal = escapeHtml(url);
+      const escapedArchive = escapeHtml(archiveUrl);
       if (!archiveUrl) {
         return res.status(404).send(`<html><body><p>No archived snapshot found for <code>${escapedOriginal}</code>.</p></body></html>`);
       }

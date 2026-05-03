@@ -2,7 +2,21 @@ import httpClient from './httpClient.js';
 
 function safeUrl(value) {
   try {
-    return new URL(String(value || '')).toString();
+    const parsed = new URL(String(value || ''));
+    const hostname = parsed.hostname.toLowerCase();
+    if (
+      hostname === 'localhost'
+      || hostname === '127.0.0.1'
+      || hostname === '::1'
+      || /^10\./u.test(hostname)
+      || /^192\.168\./u.test(hostname)
+      || /^172\.(1[6-9]|2\d|3[0-1])\./u.test(hostname)
+      || /^169\.254\./u.test(hostname)
+      || /^fc|^fd|^fe80/iu.test(hostname)
+    ) {
+      return '';
+    }
+    return parsed.toString();
   } catch {
     return '';
   }
