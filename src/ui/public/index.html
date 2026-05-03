@@ -30,6 +30,7 @@
     .graph-tooltip { position: absolute; pointer-events: none; background: rgba(0,0,0,0.8); color: #fff; padding: 5px 9px; border-radius: 4px; font-size: 0.78rem; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none; }
 
     #listPanel { padding: 1rem; }
+    .result-brief { background: #fff; border: 1px solid #d7e3f7; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 0.75rem; color: #50627a; line-height: 1.5; }
     .result-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 0.6rem; }
     .result-card h3 { font-size: 0.9rem; margin: 0 0 0.2rem; }
     .result-card h3 a { color: #1a73e8; text-decoration: none; }
@@ -74,7 +75,9 @@
 
 <div id="listPanel" class="tab-panel"></div>
 
-<script>
+<script type="module">
+import { buildResultsBrief } from '/scripts/shared/resultBrief.js';
+
 // ── Tab switching ──
 document.querySelectorAll('.tabs button').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -129,7 +132,8 @@ function scoreColor(s) {
 function renderList(results) {
   const el = document.getElementById('listPanel');
   if (!results.length) { el.innerHTML = '<p style="padding:1rem;color:#888;">No results.</p>'; return; }
-  el.innerHTML = results.map(r => {
+  const brief = buildResultsBrief(results);
+  el.innerHTML = (brief ? `<div class="result-brief">${esc(brief)}</div>` : '') + results.map(r => {
     const tags = (r.meta && r.meta.tags && r.meta.tags.length) ? ' · ' + r.meta.tags.join(', ') : '';
     return `<div class="result-card">
       <h3><span class="score-badge" style="background:${scoreColor(r.score)}">${r.score}</span>

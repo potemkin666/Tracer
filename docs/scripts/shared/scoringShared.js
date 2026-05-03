@@ -1,8 +1,10 @@
 export const WEIGHTS = {
   titleExact: 3.2,
   snippetExact: 2.1,
+   usernameExact: 2.4,
   urlUsername: 2.0,
   multiSource: 1.4,
+   identitySource: 1.1,
   archiveSource: 0.9,
   fossilTag: 1.5,
   timesliceTag: 0.8,
@@ -15,6 +17,25 @@ export const WEIGHTS = {
   snippetPartial: 0.4,
   bias: -2.0,
 };
+
+export const IDENTITY_SOURCES = new Set([
+  'bluesky',
+  'codeberg',
+  'github',
+  'gitlab',
+  'google-scholar',
+  'gravatar',
+  'keybase',
+  'lichess',
+  'mastodon',
+  'namechk',
+  'orcid',
+  'reddit-users',
+  'social-profiles',
+  'stackexchange-users',
+  'whats-my-name',
+  'wikidata',
+]);
 
 export function sigmoid(z) {
   return 1 / (1 + Math.exp(-z));

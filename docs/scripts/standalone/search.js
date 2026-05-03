@@ -6,13 +6,14 @@ import {
   getStandaloneMatchSignals,
 } from '../shared/queryShared.js';
 import { dedupeResultsByUrl, mergeUniqueValues } from '../shared/dedupeShared.js';
-import { scoreResults } from '../shared/scoringShared.js';
+import { normaliseUrlForDedupe } from '../shared/urlNormaliser.js';
+import { IDENTITY_SOURCES, scoreResults } from '../shared/scoringShared.js';
 
 export function mergeVariantResults(results) {
   const map = new Map();
 
   for (const result of results) {
-    const key = (result.url && result.url.toLowerCase())
+    const key = (result.url && normaliseUrlForDedupe(result.url))
       || `${result.source || ''}|${(result.title || '').toLowerCase()}`;
 
     if (!map.has(key)) {
@@ -57,6 +58,9 @@ export async function searchVariants(terms, run) {
 
 export function dedupeStandalone(results) {
   return dedupeResultsByUrl(results, {
+    getKey(result) {
+      return normaliseUrlForDedupe(result.url);
+    },
     createEntry(result) {
       return {
         ...result,
@@ -85,8 +89,10 @@ export function scoreStandalone(results, originalInput) {
     return {
       titleExact: signals.title.includes(plan.lower) ? 1 : 0,
       snippetExact: signals.snippet.includes(plan.lower) ? 1 : 0,
-      urlUsername: signals.noSpaces || signals.underscored || signals.hyphenated ? 1 : 0,
+      usernameExact: signals.handle || signals.localPart ? 1 : 0,
+      urlUsername: signals.noSpaces || signals.underscored || signals.hyphenated || signals.dotted ? 1 : 0,
       multiSource: (urlMap[result.url] || 0) > 1 ? 1 : 0,
+      identitySource: IDENTITY_SOURCES.has(result.source) ? 1 : 0,
       archiveSource: result.source === 'wayback' || /archive\.org/.test(signals.url) ? 1 : 0,
       allTokensPresent: plan.tokens.length > 1 && signals.tokenHits === plan.tokens.length ? 1 : 0,
       titlePartial: plan.tokens.some((token) => signals.title.includes(token)) ? 1 : 0,

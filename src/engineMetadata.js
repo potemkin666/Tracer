@@ -34,8 +34,8 @@ export const STANDALONE_OPEN_FETCHERS = [
   'archive.org', 'openlibrary', 'pubmed', 'duckduckgo', 'npm', 'openalex',
   'semantic-scholar', 'crossref', 'orcid', 'wayback', 'arxiv', 'core', 'europeana',
   'nominatim', 'doaj', 'wikibooks', 'commons', 'google-books', 'google-scholar',
-  'gitlab-users', 'codeberg-users', 'mastodon', 'keybase', 'gravatar', 'reddit-users',
-  'lichess', 'marginalia', 'wiby',
+  'gitlab-users', 'codeberg-users', 'bluesky', 'mastodon', 'keybase', 'gravatar',
+  'reddit-users', 'stackexchange-users', 'lichess', 'marginalia', 'wiby',
 ];
 
 export const STANDALONE_KEY_BACKED_FETCHERS = [
@@ -64,10 +64,12 @@ export const STANDALONE_SOURCE_TIERS = {
   'google-scholar': 'open',
   gitlab: 'social',
   codeberg: 'social',
+  bluesky: 'social',
   mastodon: 'social',
   keybase: 'social',
   gravatar: 'social',
   'reddit-users': 'social',
+  'stackexchange-users': 'social',
   reddit: 'social',
   lichess: 'social',
   marginalia: 'open',

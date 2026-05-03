@@ -5,9 +5,11 @@ import {
   queryVariants,
 } from '../docs/scripts/shared/queryShared.js';
 import {
+  dedupeStandalone,
   scoreStandalone,
   searchDirect,
 } from '../docs/scripts/standalone/search.js';
+import { buildResultsBrief } from '../docs/scripts/shared/resultBrief.js';
 
 describe('standalone browser helpers', () => {
   test('query variants include username-style forms', () => {
@@ -17,7 +19,10 @@ describe('standalone browser helpers', () => {
       includeSlug: true,
       includeUnderscored: true,
       includeHyphenated: true,
-    })).toEqual(['John Smith', '"John Smith"', 'johnsmith', 'john_smith', 'john-smith']);
+      includeDotted: true,
+      includeHandle: true,
+      includeLocalPart: true,
+    })).toEqual(['John Smith', '"John Smith"', 'johnsmith', 'john_smith', 'john-smith', 'john.smith', '@johnsmith']);
   });
 
   test('relevance filtering keeps strong multi-token matches', () => {
@@ -70,6 +75,25 @@ describe('standalone browser helpers', () => {
     expect(scored[0].score).toBeGreaterThan(scored[1].score);
   });
 
+  test('scoreStandalone boosts identity-oriented sources for direct handles', () => {
+    const scored = scoreStandalone([
+      {
+        title: '@alice',
+        snippet: 'Bluesky account',
+        url: 'https://bsky.app/profile/alice.test',
+        source: 'bluesky',
+      },
+      {
+        title: 'Alice mention',
+        snippet: 'discussion thread',
+        url: 'https://example.com/topic',
+        source: 'demo',
+      },
+    ], '@alice');
+
+    expect(scored[0].source).toBe('bluesky');
+  });
+
   test('searchDirect merges sources, scores results, and surfaces spillover candidates', async () => {
     let summary = '';
     const results = await searchDirect('john smith', [
@@ -108,5 +132,46 @@ describe('standalone browser helpers', () => {
     expect(results).toHaveLength(2);
     expect(results[0].seenOn).toEqual(['alpha', 'beta']);
     expect(results.some((result) => result.url === 'https://example.com/john')).toBe(true);
+  });
+
+  test('dedupeStandalone collapses normalized duplicate URLs', () => {
+    const results = dedupeStandalone([
+      {
+        title: 'Primary',
+        snippet: '',
+        url: 'https://Example.com/profile/?utm_source=test#bio',
+        source: 'alpha',
+        seenOn: ['alpha'],
+      },
+      {
+        title: '',
+        snippet: 'Duplicate',
+        url: 'https://example.com/profile',
+        source: 'beta',
+        seenOn: ['beta'],
+      },
+    ]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].seenOn).toEqual(['alpha', 'beta']);
+  });
+
+  test('buildResultsBrief summarizes deduplicated results for users', () => {
+    expect(buildResultsBrief([
+      {
+        title: 'John Smith',
+        url: 'https://example.com/john-smith',
+        source: 'alpha',
+        seenOn: ['alpha', 'beta'],
+        score: 84,
+      },
+      {
+        title: 'John Smith archive',
+        url: 'https://archive.org/john-smith',
+        source: 'archive',
+        seenOn: ['archive'],
+        score: 42,
+      },
+    ])).toContain('2 unique signals after deduplication.');
   });
 });

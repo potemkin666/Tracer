@@ -73,6 +73,18 @@ describe('extractFeatures', () => {
     expect(features.urlUsername).toBe(1);
     expect(features.allTokensPresent).toBe(1);
   });
+
+  test('boosts direct username matches from identity-oriented sources', () => {
+    const features = extractFeatures({
+      title: 'alice',
+      url: 'https://github.com/alice',
+      snippet: 'GitHub user',
+      source: 'github',
+      meta: { username: 'alice', tags: ['social', 'profile'] },
+    }, '@alice', ['alice'], {});
+    expect(features.usernameExact).toBe(1);
+    expect(features.identitySource).toBe(1);
+  });
 });
 
 describe('computeConfidence', () => {
