@@ -995,13 +995,12 @@ function openResultInNewTab(url){
 
 function renderFirstBloodPanel(firstBlood){
   if(!firstBlood)return '';
-  const echoCount=firstBlood.echoCount??Math.max((firstBlood.familySize||1)-1,0);
   const sourceLink=firstBlood.url
     ? `<a href="${esc(firstBlood.url)}" target="_blank" rel="noopener noreferrer">${esc(firstBlood.title)}</a>`
     : esc(firstBlood.title);
   return '<details class="cluster" open><summary class="cluster-hdr">🩸 FIRST-BLOOD FINDER</summary><div class="tree-item">'+
     `<strong>${esc(firstBlood.dateLabel||'Earliest surfaced lead')}</strong> · ${sourceLink}`+
-    `<div class="card-seen">ORIGIN SOURCE <span>${esc(firstBlood.source||'unknown')}</span> · FAMILY <span>${esc(firstBlood.sourceFamily||'unknown')}</span> · ECHOES <span>${echoCount}</span></div>`+
+    `<div class="card-seen">ORIGIN SOURCE <span>${esc(firstBlood.source||'unknown')}</span> · FAMILY <span>${esc(firstBlood.sourceFamily||'unknown')}</span> · ECHOES <span>${firstBlood.echoCount||0}</span></div>`+
     '</div></details>';
 }
 
@@ -1245,7 +1244,7 @@ function renderInsightPanels(results){
     const agreement=buildConsensusItems(
       'Agreement',
       consensus.agreement,
-      (family)=>`<div class="consensus-item"><strong>Agreement</strong><div class="card-seen">${esc(family.label)} · reliable ${family.reliableCount} · echoes ${family.size}</div></div>`,
+      (family)=>`<div class="consensus-item"><strong>Agreement</strong><div class="card-seen">${esc(family.label)} · reliable ${family.reliableCount} · echoes ${family.echoCount}</div></div>`,
       'No multi-source reliable agreement yet.'
     );
     const divergence=buildConsensusItems(
@@ -1257,7 +1256,7 @@ function renderInsightPanels(results){
     const amplification=buildConsensusItems(
       'Amplification risk',
       consensus.amplification,
-      (family)=>`<div class="consensus-item"><strong>Amplification risk</strong><div class="card-seen">${esc(family.label)} · low-quality ${family.lowQualityCount} · echoes ${family.size}</div></div>`,
+      (family)=>`<div class="consensus-item"><strong>Amplification risk</strong><div class="card-seen">${esc(family.label)} · low-quality ${family.lowQualityCount} · echoes ${family.echoCount}</div></div>`,
       'No weak-source repetition spike detected.'
     );
     consensusEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">⚖️ CONSENSUS FRACTURE MAP</summary><div class="consensus-list">'+agreement+divergence+amplification+'</div></details>';

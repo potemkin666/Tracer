@@ -47,6 +47,8 @@ const ECHO_STOPWORDS = new Set([
 const RELIABLE_BUCKETS = new Set(['official', 'media']);
 const LOW_QUALITY_BUCKETS = new Set(['forum', 'unknown']);
 const MAX_ECHO_TOKENS = 8;
+const MAX_TITLE_TOKENS = 7;
+const MAX_SNIPPET_TOKENS = 5;
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
@@ -97,8 +99,8 @@ function buildEchoFingerprint(result = {}) {
   if (username) return `handle:${username}`;
 
   const hostname = safeHostname(result.url || '');
-  const titleTokens = normaliseFingerprintTokens(result.title).slice(0, 7);
-  const snippetTokens = normaliseFingerprintTokens(result.snippet).slice(0, 5);
+  const titleTokens = normaliseFingerprintTokens(result.title).slice(0, MAX_TITLE_TOKENS);
+  const snippetTokens = normaliseFingerprintTokens(result.snippet).slice(0, MAX_SNIPPET_TOKENS);
   const mergedTokens = unique([...titleTokens, ...snippetTokens]).slice(0, MAX_ECHO_TOKENS);
 
   if (titleTokens.length >= 3) return `title:${titleTokens.join(' ')}`;
@@ -299,7 +301,7 @@ export function findFirstBlood(results = []) {
   }
 
   const fallback = summariseTrace(results[0] || {});
-  return fallback.url || fallback.title ? fallback : null;
+  return fallback.url || fallback.title ? { ...fallback, familySize: 1, echoCount: 0 } : null;
 }
 
 export function buildConsensusFractureMap(results = []) {
