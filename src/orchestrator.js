@@ -9,6 +9,7 @@ import * as timeSlice from './connectors/timeSlice.js';
 import * as docSearch from './connectors/docSearch.js';
 import * as fossilHunter from './fossilHunter.js';
 import * as avatarHunter from './avatarHunter.js';
+import { ORCHESTRATOR_DEFAULTS } from './runtimeConfig.js';
 import {
   combineSignals,
   createAbortError,
@@ -18,17 +19,14 @@ import {
   throwIfAborted,
 } from './requestContext.js';
 
-const CONNECTOR_TIMEOUT_MS = 15_000;
-const DEFAULT_CONCURRENCY = 12;
-const MAX_QUERY_TASKS = {
-  normal: 360,
-  aggressive: 720,
-};
-
 export function pruneQueries(queries, connectorCount, mode = 'normal') {
   if (!queries.length || connectorCount <= 0) return queries;
-  const maxTasks = mode === 'aggressive' ? MAX_QUERY_TASKS.aggressive : MAX_QUERY_TASKS.normal;
-  const minQueries = mode === 'aggressive' ? 6 : 4;
+  const maxTasks = mode === 'aggressive'
+    ? ORCHESTRATOR_DEFAULTS.maxQueryTasks.aggressive
+    : ORCHESTRATOR_DEFAULTS.maxQueryTasks.normal;
+  const minQueries = mode === 'aggressive'
+    ? ORCHESTRATOR_DEFAULTS.minimumQueries.aggressive
+    : ORCHESTRATOR_DEFAULTS.minimumQueries.normal;
   const maxQueries = Math.max(minQueries, Math.ceil(maxTasks / connectorCount));
   return queries.slice(0, Math.min(queries.length, maxQueries));
 }
@@ -53,22 +51,30 @@ function poolAll(tasks, concurrency, signal) {
   return Promise.all(workers).then(() => results);
 }
 
-function createProgressTracker(notify, connectorStats, signal) {
+export function createProgressTracker(notify, connectorStats, signal) {
+  let cumulativeResults = 0;
+
   return {
-    markPhase(phase, resultsSoFar) {
+    markPhase(phase, resultsSoFar = cumulativeResults) {
       throwIfAborted(signal);
       notify({ phase, resultsSoFar });
     },
 
     recordSuccess(connectorId, startedAt, batch) {
       throwIfAborted(signal);
+      cumulativeResults += batch.length;
       connectorStats.push({
         id: connectorId,
         ok: true,
         ms: Date.now() - startedAt,
         count: batch.length,
       });
-      notify({ phase: 'connectors', connector: connectorId, resultsSoFar: batch.length });
+      notify({
+        phase: 'connectors',
+        connector: connectorId,
+        batchResults: batch.length,
+        resultsSoFar: cumulativeResults,
+      });
       return batch;
     },
 
@@ -82,16 +88,29 @@ function createProgressTracker(notify, connectorStats, signal) {
         ms: Date.now() - startedAt,
         error: err.message,
       });
-      notify({ phase: 'connectors', connector: connectorId, error: err.message });
+      notify({
+        phase: 'connectors',
+        connector: connectorId,
+        error: err.message,
+        resultsSoFar: cumulativeResults,
+      });
       return [];
     },
   };
 }
 
-async function runConnectorSearch(connector, query, apiKeys, requestSignal) {
+export function resolveConnectorRuntime(connector = {}) {
+  const runtime = connector.runtime || {};
+  return {
+    timeoutMs: runtime.timeoutMs ?? ORCHESTRATOR_DEFAULTS.connectorTimeoutMs,
+    retries: runtime.retries ?? ORCHESTRATOR_DEFAULTS.connectorRetries,
+  };
+}
+
+async function runConnectorAttempt(connector, query, apiKeys, requestSignal, timeoutMs) {
   const timeoutController = new globalThis.AbortController();
   const timeoutError = createAbortError('connector timeout');
-  const timer = setTimeout(() => timeoutController.abort(timeoutError), CONNECTOR_TIMEOUT_MS);
+  const timer = setTimeout(() => timeoutController.abort(timeoutError), timeoutMs);
   const signal = combineSignals(requestSignal, timeoutController.signal);
 
   try {
@@ -109,6 +128,22 @@ async function runConnectorSearch(connector, query, apiKeys, requestSignal) {
   }
 }
 
+async function runConnectorSearch(connector, query, apiKeys, requestSignal) {
+  const { timeoutMs, retries } = resolveConnectorRuntime(connector);
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await runConnectorAttempt(connector, query, apiKeys, requestSignal, timeoutMs);
+    } catch (err) {
+      if (isAbortError(err) || requestSignal?.aborted || attempt >= retries) {
+        throw err;
+      }
+    }
+  }
+
+  return [];
+}
+
 export async function run(input, config = {}) {
   const {
     apiKeys = {},
@@ -118,7 +153,7 @@ export async function run(input, config = {}) {
     timeSliceMode = false,
     documents = false,
     onProgress,
-    concurrency = DEFAULT_CONCURRENCY,
+    concurrency = ORCHESTRATOR_DEFAULTS.defaultConcurrency,
     signal,
   } = config;
 

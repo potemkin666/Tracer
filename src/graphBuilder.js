@@ -13,6 +13,7 @@
  */
 
 import { extractDomain, extractUsernameFromUrl } from './identity.js';
+import { GRAPH_LIMITS } from './runtimeConfig.js';
 
 /**
  * Pull email-like patterns out of a text string.
@@ -53,8 +54,6 @@ function extractUrls(text) {
  * Very common usernames (e.g. 'admin', 'test') would create too many
  * false-positive edges, so we cap the group size.
  */
-const MAX_USERNAME_GROUP = 30;
-
 /**
  * Build the identity graph.
  *
@@ -123,7 +122,7 @@ export function buildGraph(results, avatarClusters = []) {
     byDomain.get(node.domain).push(node.id);
   }
   for (const [domain, urls] of byDomain) {
-    if (urls.length < 2 || urls.length > 20) continue;   // skip huge generic domains
+    if (urls.length < 2 || urls.length > GRAPH_LIMITS.maxDomainGroup) continue;
     for (let i = 0; i < urls.length; i++) {
       for (let j = i + 1; j < urls.length; j++) {
         addEdge(urls[i], urls[j], 'sameDomain', domain);
@@ -141,7 +140,7 @@ export function buildGraph(results, avatarClusters = []) {
     }
   }
   for (const [domain, urls] of byEmailDomain) {
-    if (urls.length < 2 || urls.length > 20) continue;
+    if (urls.length < 2 || urls.length > GRAPH_LIMITS.maxEmailDomainGroup) continue;
     for (let i = 0; i < urls.length; i++) {
       for (let j = i + 1; j < urls.length; j++) {
         addEdge(urls[i], urls[j], 'sharedEmail', domain);
@@ -157,7 +156,7 @@ export function buildGraph(results, avatarClusters = []) {
     byUsername.get(node.username).push(node);
   }
   for (const [username, matchNodes] of byUsername) {
-    if (matchNodes.length < 2 || matchNodes.length > MAX_USERNAME_GROUP) continue;
+    if (matchNodes.length < 2 || matchNodes.length > GRAPH_LIMITS.maxUsernameGroup) continue;
     // Only link nodes on *different* domains (same-domain is already covered)
     for (let i = 0; i < matchNodes.length; i++) {
       for (let j = i + 1; j < matchNodes.length; j++) {

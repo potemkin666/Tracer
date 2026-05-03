@@ -1,3 +1,5 @@
+import { ORCHESTRATOR_DEFAULTS } from './runtimeConfig.js';
+
 export const KEY_DEFS = [
   { id: 'brave', label: 'BRAVE KEY' },
   { id: 'kagi', label: 'KAGI KEY' },
@@ -73,7 +75,27 @@ export const STANDALONE_SOURCE_TIERS = {
   wayback: 'wayback',
 };
 
-export const SERVER_CONNECTORS = [
+const CONNECTOR_RUNTIME_OVERRIDES = {
+  duckduckgo: { timeoutMs: 10_000, retries: 1 },
+  europeana: { timeoutMs: 20_000, retries: 1 },
+  jstor: { timeoutMs: 20_000, retries: 1 },
+  openverse: { timeoutMs: 20_000, retries: 1 },
+  opencorporates: { timeoutMs: 20_000, retries: 1 },
+  worldcat: { timeoutMs: 20_000, retries: 1 },
+};
+
+function withConnectorRuntime(connector) {
+  return {
+    ...connector,
+    runtime: {
+      timeoutMs: ORCHESTRATOR_DEFAULTS.connectorTimeoutMs,
+      retries: ORCHESTRATOR_DEFAULTS.connectorRetries,
+      ...(CONNECTOR_RUNTIME_OVERRIDES[connector.id] || {}),
+    },
+  };
+}
+
+const SERVER_CONNECTOR_DEFS = [
   // ── CORE ──────────────────────────────────────────────────────────────────
   { id: 'brave', label: 'Brave Search', tier: 'core', requiresKey: 'brave', modulePath: './brave.js' },
   { id: 'serpapi', label: 'SerpAPI', tier: 'core', requiresKey: 'serpapi', modulePath: './serpapi.js' },
@@ -610,6 +632,8 @@ export const SERVER_CONNECTORS = [
 
 ];
 
+export const SERVER_CONNECTORS = SERVER_CONNECTOR_DEFS.map(withConnectorRuntime);
+
 export const SERVER_TIER_MAP = Object.fromEntries(
   SERVER_CONNECTORS.map(({ id, tier }) => [id, tier])
 );
@@ -631,11 +655,13 @@ export const ENGINE_METADATA = {
     label,
     tier,
     requiresKey,
+    runtime,
   }) => ({
     id,
     label,
     tier,
     requiresKey,
+    runtime,
   })),
   serverTierMap: SERVER_TIER_MAP,
   sourceTierMap: SOURCE_TIER_MAP,
