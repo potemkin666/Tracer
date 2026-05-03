@@ -993,7 +993,7 @@ function describeSourceBucket(result){
   if(family==='forum')return'forums';
   if(family==='media')return'media';
   if(family==='package-ecosystem')return'package ecosystems';
-  if(family==='code-hosting')return'identity search';
+  if(family==='code-hosting')return'code repositories';
   if(family==='broker-directory')return'people directories';
   return'open web';
 }
@@ -1090,7 +1090,7 @@ function renderResults(results,clusters,context={}){
     const clusterLabel=r.meta&&r.meta.clusterLabel;
     const seenOn=r.seenOn||[];
     const bc=bclass(r.source,tags);
-    const state=classifyResultState(r);
+    const resultState=classifyResultState(r);
     const reliability=(r.meta&&r.meta.reliability)||'unknown';
     const language=(r.meta&&r.meta.languageLabel)||'Unknown';
     const region=r.meta&&r.meta.region?` · ${esc(String(r.meta.region).toUpperCase())}`:'';
@@ -1133,7 +1133,7 @@ function renderResults(results,clusters,context={}){
       `<div class="card-top">`+
         `<div class="card-title">${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title||r.url)}</a>`:esc(r.title||'—')}</div>`+
         `<span class="badge ${bc}">${esc(r.source)}</span>`+
-        `<span class="state-tag state-${esc(state.tone)}">${esc(state.label)}</span>`+
+        `<span class="state-tag state-${esc(resultState.tone)}">${esc(resultState.label)}</span>`+
         `<span class="score">▲${r.score||0}</span>`+
       `</div>`+
       (r.snippet?`<div class="card-snip">${esc(r.snippet)}</div>`:'')+
