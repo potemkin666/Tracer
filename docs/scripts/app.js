@@ -157,6 +157,7 @@ async function fetchWithRetry(url,opts,retries=1){
 }
 // Safely decode HTML entities (StackExchange API returns encoded titles).
 function decodeEntities(s){const el=document.createElement('textarea');el.innerHTML=s;return el.value;}
+function stripHtml(s){return String(s||'').replace(/<\/?[^>]+(>|$)/g,'');}
 function formatStackExchangeUserSnippet(user){
   const badgeCounts=user.badge_counts||{};
   return [
@@ -176,11 +177,11 @@ async function searchDirect(query){
 
     // ── Wikipedia ──
     {name:'wikipedia',fn:async()=>{
-      const d=await fetchWithRetry(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=8&format=json&origin=*`);
-      return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikipedia',
-        title:item.title||'',url:`https://en.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
-        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
-        score:8-i,seenOn:['wikipedia']}));
+        const d=await fetchWithRetry(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=8&format=json&origin=*`);
+        return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikipedia',
+          title:item.title||'',url:`https://en.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
+          snippet:stripHtml(item.snippet).slice(0,180),
+          score:8-i,seenOn:['wikipedia']}));
     }},
 
     // ── Wikidata ──
@@ -304,10 +305,10 @@ async function searchDirect(query){
     // ── CrossRef ──
     {name:'crossref',fn:async()=>{
       const d=await fetchWithRetry(`https://api.crossref.org/works?query=${q}&rows=8`);
-      return((d.message&&d.message.items)||[]).map((item,i)=>({source:'crossref',
-        title:(item.title||[])[0]||'',url:item.URL||'',
-        snippet:item.abstract?(item.abstract.replace(/<\/?[^>]+(>|$)/g,'').slice(0,150)+'…'):'',
-        score:4-i,seenOn:['crossref']}));
+        return((d.message&&d.message.items)||[]).map((item,i)=>({source:'crossref',
+          title:(item.title||[])[0]||'',url:item.URL||'',
+          snippet:item.abstract?(stripHtml(item.abstract).slice(0,150)+'…'):'',
+          score:4-i,seenOn:['crossref']}));
     }},
 
     // ── ORCID ──
@@ -386,20 +387,20 @@ async function searchDirect(query){
 
     // ── Wikibooks ──
     {name:'wikibooks',fn:async()=>{
-      const d=await fetchWithRetry(`https://en.wikibooks.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&format=json&origin=*`);
-      return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikibooks',
-        title:item.title||'',url:`https://en.wikibooks.org/wiki/${encodeURIComponent(item.title)}`,
-        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
-        score:3-i,seenOn:['wikibooks']}));
+        const d=await fetchWithRetry(`https://en.wikibooks.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&format=json&origin=*`);
+        return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikibooks',
+          title:item.title||'',url:`https://en.wikibooks.org/wiki/${encodeURIComponent(item.title)}`,
+          snippet:stripHtml(item.snippet).slice(0,180),
+          score:3-i,seenOn:['wikibooks']}));
     }},
 
     // ── Wikimedia Commons ──
     {name:'commons',fn:async()=>{
-      const d=await fetchWithRetry(`https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&srnamespace=6&format=json&origin=*`);
-      return(d.query&&d.query.search||[]).map((item,i)=>({source:'commons',
-        title:item.title||'',url:`https://commons.wikimedia.org/wiki/${encodeURIComponent(item.title)}`,
-        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
-        score:2-i,seenOn:['commons']}));
+        const d=await fetchWithRetry(`https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&srnamespace=6&format=json&origin=*`);
+        return(d.query&&d.query.search||[]).map((item,i)=>({source:'commons',
+          title:item.title||'',url:`https://commons.wikimedia.org/wiki/${encodeURIComponent(item.title)}`,
+          snippet:stripHtml(item.snippet).slice(0,180),
+          score:2-i,seenOn:['commons']}));
     }},
 
     // ── Google Books (FREE — no API key needed) ──
@@ -417,7 +418,7 @@ async function searchDirect(query){
       const d=await fetchWithRetry(`https://zenodo.org/api/records/?q=${q}&size=6`);
       return(((d.hits&&d.hits.hits)||[])).map((item,i)=>({source:'zenodo',
         title:item.metadata?.title||'',url:item.links?.html||`https://zenodo.org/records/${item.id}`,
-        snippet:[(item.metadata?.creators||[]).slice(0,2).map((creator)=>creator.name).join(', '),item.metadata?.publication_date||'',item.metadata?.description?String(item.metadata.description).replace(/<\/?[^>]+(>|$)/g,'').slice(0,110):''].filter(Boolean).join(' · '),
+        snippet:[(item.metadata?.creators||[]).slice(0,2).map((creator)=>creator.name).join(', '),item.metadata?.publication_date||'',stripHtml(item.metadata?.description).slice(0,110)].filter(Boolean).join(' · '),
         score:5-i,seenOn:['zenodo']}));
     }},
 
@@ -538,7 +539,7 @@ async function searchDirect(query){
         const d=await fetchWithRetry(`https://mastodon.social/api/v2/search?q=${encoded}&type=accounts&limit=5`);
         return(d.accounts||[]).map((a,i)=>({source:'mastodon',
           title:`@${a.acct||a.username||''}`,url:a.url||'',
-          snippet:[a.display_name||'',a.note?(a.note.replace(/<\/?[^>]+(>|$)/g,'').slice(0,120)):'',a.followers_count?`${a.followers_count} followers`:''].filter(Boolean).join(' · '),
+          snippet:[a.display_name||'',stripHtml(a.note).slice(0,120),a.followers_count?`${a.followers_count} followers`:''].filter(Boolean).join(' · '),
           score:7-i,seenOn:['mastodon']}));
       });
     }},
