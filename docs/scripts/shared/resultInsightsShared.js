@@ -58,6 +58,13 @@ function safeDomainTail(hostname) {
   return parts.length ? parts[parts.length - 1] : '';
 }
 
+function isAsciiText(value) {
+  return [...String(value || '')].every((char) => char === '\n'
+    || char === '\r'
+    || char === '\t'
+    || (char >= ' ' && char <= '~'));
+}
+
 function normaliseLanguageLabel(code) {
   return { en: 'English', es: 'Spanish', fr: 'French', de: 'German', pt: 'Portuguese' }[code] || 'Unknown';
 }
@@ -71,7 +78,7 @@ export function detectLanguage(text) {
   for (const { code, re } of LANGUAGE_PATTERNS) {
     if (re.test(sample)) return code;
   }
-  if (/^[ -~\s]+$/u.test(sample)) return 'en';
+  if (isAsciiText(sample)) return 'en';
   return 'unknown';
 }
 

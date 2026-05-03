@@ -10,6 +10,7 @@ const PROFILE_TARGETS = [
   { source: 'hn-direct', buildUrl: (handle) => `https://news.ycombinator.com/user?id=${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'forum'] },
   { source: 'devto-direct', buildUrl: (handle) => `https://dev.to/${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'tech'] },
 ];
+const MAX_ERROR_CHECK_LENGTH = 600;
 
 function normaliseHandleCandidate(value) {
   const candidate = String(value || '')
@@ -37,7 +38,7 @@ export function buildProfileProbeHandles(input) {
 }
 
 function looksMissing(response) {
-  const body = String(response.data || '').slice(0, 600).toLowerCase();
+  const body = String(response.data || '').slice(0, MAX_ERROR_CHECK_LENGTH).toLowerCase();
   return /not found|page not found|doesn.?t exist|404/u.test(body);
 }
 

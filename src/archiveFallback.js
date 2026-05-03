@@ -45,6 +45,18 @@ export async function lookupArchiveSnapshot(url, { signal } = {}) {
   };
 }
 
+/**
+ * Enrich top-ranked live results with archival fallback metadata.
+ *
+ * Only the first `limit` non-archive URLs are probed to keep latency bounded
+ * during normal searches. The returned array is a shallow clone of the input
+ * results with each result's `meta` object cloned before archive metadata is
+ * attached.
+ *
+ * @param {object[]} results
+ * @param {{ signal?: AbortSignal, limit?: number }} [options]
+ * @returns {Promise<object[]>}
+ */
 export async function attachArchiveFallback(results = [], { signal, limit = 8 } = {}) {
   const next = results.map((result) => ({
     ...result,

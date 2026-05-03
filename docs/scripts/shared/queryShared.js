@@ -1,4 +1,5 @@
 const OPERATOR_PATTERN = /(?:^|\s)(site|filetype|intitle|inurl|lang|region):("[^"]+"|\S+)/giu;
+const FUZZY_MATCH_TOLERANCE_RATIO = 6;
 
 export function parseOperators(input) {
   const operators = {
@@ -122,7 +123,7 @@ export function isFuzzyHandleMatch(left, right) {
   if (!a || !b) return false;
   if (a === b) return true;
   const distance = editDistance(a, b);
-  const maxDistance = Math.max(1, Math.floor(Math.max(a.length, b.length) / 6));
+  const maxDistance = Math.max(1, Math.floor(Math.max(a.length, b.length) / FUZZY_MATCH_TOLERANCE_RATIO));
   return distance <= maxDistance;
 }
 
