@@ -100,6 +100,7 @@ function buildEchoFingerprint(result = {}) {
   const snippetTokens = normaliseFingerprintTokens(result.snippet).slice(0, 5);
   const mergedTokens = unique([...titleTokens, ...snippetTokens]).slice(0, 8);
 
+  if (titleTokens.length >= 3) return `title:${titleTokens.join(' ')}`;
   if (mergedTokens.length >= 3) return `echo:${mergedTokens.join(' ')}`;
   if (titleTokens.length) return `title:${titleTokens.join(' ')}`;
   if (hostname) return `host:${hostname}`;

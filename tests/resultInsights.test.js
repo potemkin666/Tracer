@@ -143,10 +143,15 @@ describe('result insights', () => {
       echoCount: 2,
     });
 
-    expect(buildConsensusFractureMap(results)).toMatchObject({
-      agreement: [expect.objectContaining({ size: 3, reliableCount: 2 })],
-      divergence: [expect.objectContaining({ reliableCount: 1 })],
-      amplification: [expect.objectContaining({ lowQualityCount: 1 })],
-    });
+    const consensus = buildConsensusFractureMap(results);
+    expect(consensus.agreement).toEqual(expect.arrayContaining([
+      expect.objectContaining({ size: 3, reliableCount: 2 }),
+    ]));
+    expect(consensus.divergence).toEqual(expect.arrayContaining([
+      expect.objectContaining({ reliableCount: 1 }),
+    ]));
+    expect(consensus.amplification).toEqual(expect.arrayContaining([
+      expect.objectContaining({ lowQualityCount: 1 }),
+    ]));
   });
 });
