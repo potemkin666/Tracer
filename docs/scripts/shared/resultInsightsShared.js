@@ -46,6 +46,7 @@ const ECHO_STOPWORDS = new Set([
 ]);
 const RELIABLE_BUCKETS = new Set(['official', 'media']);
 const LOW_QUALITY_BUCKETS = new Set(['forum', 'unknown']);
+const MAX_ECHO_TOKENS = 8;
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
@@ -98,7 +99,7 @@ function buildEchoFingerprint(result = {}) {
   const hostname = safeHostname(result.url || '');
   const titleTokens = normaliseFingerprintTokens(result.title).slice(0, 7);
   const snippetTokens = normaliseFingerprintTokens(result.snippet).slice(0, 5);
-  const mergedTokens = unique([...titleTokens, ...snippetTokens]).slice(0, 8);
+  const mergedTokens = unique([...titleTokens, ...snippetTokens]).slice(0, MAX_ECHO_TOKENS);
 
   if (titleTokens.length >= 3) return `title:${titleTokens.join(' ')}`;
   if (mergedTokens.length >= 3) return `echo:${mergedTokens.join(' ')}`;

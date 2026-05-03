@@ -993,6 +993,37 @@ function openResultInNewTab(url){
   globalThis.open(url,'_blank','noopener,noreferrer');
 }
 
+function renderFirstBloodPanel(firstBlood){
+  if(!firstBlood)return '';
+  const echoCount=firstBlood.familySize||firstBlood.echoCount||1;
+  const sourceLink=firstBlood.url
+    ? `<a href="${esc(firstBlood.url)}" target="_blank" rel="noopener noreferrer">${esc(firstBlood.title)}</a>`
+    : esc(firstBlood.title);
+  return '<details class="cluster" open><summary class="cluster-hdr">🩸 FIRST-BLOOD FINDER</summary><div class="tree-item">'+
+    `<strong>${esc(firstBlood.dateLabel||'Earliest surfaced lead')}</strong> · ${sourceLink}`+
+    `<div class="card-seen">ORIGIN SOURCE <span>${esc(firstBlood.source||'unknown')}</span> · FAMILY <span>${esc(firstBlood.sourceFamily||'unknown')}</span> · ECHOES <span>${echoCount}</span></div>`+
+    '</div></details>';
+}
+
+function renderSourceFamilyPanel(familyTree){
+  if(!familyTree.length)return '';
+  return '<details class="cluster"><summary class="cluster-hdr">🧬 SOURCE FAMILY TREE</summary><div class="tree-list">'+
+    familyTree.map((family)=>{
+      const originLink=family.ancestor.url
+        ? `<a href="${esc(family.ancestor.url)}" target="_blank" rel="noopener noreferrer">${esc(family.ancestor.source||family.ancestor.hostname||'origin')}</a>`
+        : esc(family.ancestor.source||family.ancestor.hostname||'origin');
+      return `<div class="tree-item"><strong>${esc(family.label)}</strong><div class="card-seen">ANCESTOR <span>${family.ancestor.dateLabel?esc(family.ancestor.dateLabel):'undated'}</span> · ${originLink} · ECHOES <span>${family.size}</span> · HOSTS <span>${family.hostnames.length}</span></div></div>`;
+    }).join('')+
+    '</div></details>';
+}
+
+function buildConsensusItems(title,items,renderItem,emptyState){
+  if(!items.length){
+    return `<div class="consensus-item"><strong>${title}</strong><div class="card-seen">${emptyState}</div></div>`;
+  }
+  return items.map(renderItem).join('');
+}
+
 function describeSourceBucket(result){
   const tags=(result.meta&&result.meta.tags)||[];
   const family=result.meta&&result.meta.sourceFamily;
@@ -1194,17 +1225,12 @@ function renderInsightPanels(results){
 
   const firstBlood=findFirstBlood(results);
   if(originEl&&firstBlood){
-    originEl.innerHTML='<details class="cluster" open><summary class="cluster-hdr">🩸 FIRST-BLOOD FINDER</summary><div class="tree-item">'+
-      `<strong>${esc(firstBlood.dateLabel||'Earliest surfaced lead')}</strong> · <a href="${esc(firstBlood.url)}" target="_blank" rel="noopener noreferrer">${esc(firstBlood.title)}</a>`+
-      `<div class="card-seen">ORIGIN SOURCE <span>${esc(firstBlood.source||'unknown')}</span> · FAMILY <span>${esc(firstBlood.sourceFamily||'unknown')}</span>${firstBlood.familySize?` · ECHOES <span>${firstBlood.familySize}</span>`:''}</div>`+
-      '</div></details>';
+    originEl.innerHTML=renderFirstBloodPanel(firstBlood);
   }
 
   const familyTree=buildSourceFamilyTree(results).slice(0,6);
   if(familyEl&&familyTree.length){
-    familyEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">🧬 SOURCE FAMILY TREE</summary><div class="tree-list">'+
-      familyTree.map((family)=>`<div class="tree-item"><strong>${esc(family.label)}</strong><div class="card-seen">ANCESTOR <span>${family.ancestor.dateLabel?esc(family.ancestor.dateLabel):'undated'}</span> · ${family.ancestor.url?`<a href="${esc(family.ancestor.url)}" target="_blank" rel="noopener noreferrer">${esc(family.ancestor.source||family.ancestor.hostname||'origin')}</a>`:esc(family.ancestor.source||family.ancestor.hostname||'origin')} · ECHOES <span>${family.size}</span> · HOSTS <span>${family.hostnames.length}</span></div></div>`).join('')+
-      '</div></details>';
+    familyEl.innerHTML=renderSourceFamilyPanel(familyTree);
   }
 
   const timeline=buildTimeline(results).slice(0,10);
@@ -1216,15 +1242,24 @@ function renderInsightPanels(results){
 
   const consensus=buildConsensusFractureMap(results);
   if(consensusEl){
-    const agreement=consensus.agreement.length
-      ? consensus.agreement.map((family)=>`<div class="consensus-item"><strong>Agreement</strong><div class="card-seen">${esc(family.label)} · reliable ${family.reliableCount} · echoes ${family.size}</div></div>`).join('')
-      : '<div class="consensus-item"><strong>Agreement</strong><div class="card-seen">No multi-source reliable agreement yet.</div></div>';
-    const divergence=consensus.divergence.length
-      ? consensus.divergence.map((family)=>`<div class="consensus-item"><strong>Divergence</strong><div class="card-seen">${esc(family.label)} · reliable ${family.reliableCount} · separate branch</div></div>`).join('')
-      : '<div class="consensus-item"><strong>Divergence</strong><div class="card-seen">Reliable sources are not materially split on this pass.</div></div>';
-    const amplification=consensus.amplification.length
-      ? consensus.amplification.map((family)=>`<div class="consensus-item"><strong>Amplification risk</strong><div class="card-seen">${esc(family.label)} · low-quality ${family.lowQualityCount} · echoes ${family.size}</div></div>`).join('')
-      : '<div class="consensus-item"><strong>Amplification risk</strong><div class="card-seen">No weak-source repetition spike detected.</div></div>';
+    const agreement=buildConsensusItems(
+      'Agreement',
+      consensus.agreement,
+      (family)=>`<div class="consensus-item"><strong>Agreement</strong><div class="card-seen">${esc(family.label)} · reliable ${family.reliableCount} · echoes ${family.size}</div></div>`,
+      'No multi-source reliable agreement yet.'
+    );
+    const divergence=buildConsensusItems(
+      'Divergence',
+      consensus.divergence,
+      (family)=>`<div class="consensus-item"><strong>Divergence</strong><div class="card-seen">${esc(family.label)} · reliable ${family.reliableCount} · separate branch</div></div>`,
+      'Reliable sources are not materially split on this pass.'
+    );
+    const amplification=buildConsensusItems(
+      'Amplification risk',
+      consensus.amplification,
+      (family)=>`<div class="consensus-item"><strong>Amplification risk</strong><div class="card-seen">${esc(family.label)} · low-quality ${family.lowQualityCount} · echoes ${family.size}</div></div>`,
+      'No weak-source repetition spike detected.'
+    );
     consensusEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">⚖️ CONSENSUS FRACTURE MAP</summary><div class="consensus-list">'+agreement+divergence+amplification+'</div></details>';
   }
 
@@ -1361,6 +1396,11 @@ function downloadBlob(blob,filename){
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},100);
 }
 
+function resetPanel(id){
+  const panel=document.getElementById(id);
+  if(panel)panel.innerHTML='';
+}
+
 // ── SEARCH HISTORY ───────────────────────────────────────────────────────────
 const HISTORY_KEY='tracer_search_history';
 const HISTORY_MAX=20;
@@ -1431,7 +1471,31 @@ function rerunSearch(query){
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function showLoading(v){document.getElementById('loading').style.display=v?'block':'none';document.getElementById('srch-btn').disabled=v}
-function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const insights=document.getElementById('insights-panel');if(insights)insights.innerHTML='';const origin=document.getElementById('origin-panel');if(origin)origin.innerHTML='';const family=document.getElementById('family-panel');if(family)family.innerHTML='';const timeline=document.getElementById('timeline-panel');if(timeline)timeline.innerHTML='';const consensus=document.getElementById('consensus-panel');if(consensus)consensus.innerHTML='';const related=document.getElementById('related-panel');if(related)related.innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';const meta=document.getElementById('results-meta');if(meta){meta.innerHTML='';meta.style.display='none'}const brief=document.getElementById('results-brief');if(brief){brief.textContent='';brief.style.display='none'}_lastResults=[]}
+function clearResults(){
+  document.getElementById('results-section').style.display='none';
+  document.getElementById('results-list').innerHTML='';
+  document.getElementById('avatar-clusters').innerHTML='';
+  document.getElementById('src-status-wrap').innerHTML='';
+  resetPanel('insights-panel');
+  resetPanel('origin-panel');
+  resetPanel('family-panel');
+  resetPanel('timeline-panel');
+  resetPanel('consensus-panel');
+  resetPanel('related-panel');
+  const eb=document.getElementById('export-bar');
+  if(eb)eb.style.display='none';
+  const meta=document.getElementById('results-meta');
+  if(meta){
+    meta.innerHTML='';
+    meta.style.display='none';
+  }
+  const brief=document.getElementById('results-brief');
+  if(brief){
+    brief.textContent='';
+    brief.style.display='none';
+  }
+  _lastResults=[];
+}
 function showErr(msg,isErr){const el=document.getElementById('err');el.textContent=msg;el.style.display=msg?'block':'none';if(!isErr){el.style.color='var(--bright)';return}setUiStatus('error','SIGNAL LOST')}
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
