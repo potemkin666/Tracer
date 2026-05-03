@@ -157,6 +157,7 @@ async function fetchWithRetry(url,opts,retries=1){
 }
 // Safely decode HTML entities (StackExchange API returns encoded titles).
 function decodeEntities(s){const el=document.createElement('textarea');el.innerHTML=s;return el.value;}
+function stripHtml(s){return String(s||'').replace(/<\/?[^>]+(>|$)/g,'');}
 function formatStackExchangeUserSnippet(user){
   const badgeCounts=user.badge_counts||{};
   return [
@@ -176,11 +177,11 @@ async function searchDirect(query){
 
     // ── Wikipedia ──
     {name:'wikipedia',fn:async()=>{
-      const d=await fetchWithRetry(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=8&format=json&origin=*`);
-      return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikipedia',
-        title:item.title||'',url:`https://en.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
-        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
-        score:8-i,seenOn:['wikipedia']}));
+        const d=await fetchWithRetry(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=8&format=json&origin=*`);
+        return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikipedia',
+          title:item.title||'',url:`https://en.wikipedia.org/wiki/${encodeURIComponent(item.title)}`,
+          snippet:stripHtml(item.snippet).slice(0,180),
+          score:8-i,seenOn:['wikipedia']}));
     }},
 
     // ── Wikidata ──
@@ -304,10 +305,10 @@ async function searchDirect(query){
     // ── CrossRef ──
     {name:'crossref',fn:async()=>{
       const d=await fetchWithRetry(`https://api.crossref.org/works?query=${q}&rows=8`);
-      return((d.message&&d.message.items)||[]).map((item,i)=>({source:'crossref',
-        title:(item.title||[])[0]||'',url:item.URL||'',
-        snippet:item.abstract?(item.abstract.replace(/<\/?[^>]+(>|$)/g,'').slice(0,150)+'…'):'',
-        score:4-i,seenOn:['crossref']}));
+        return((d.message&&d.message.items)||[]).map((item,i)=>({source:'crossref',
+          title:(item.title||[])[0]||'',url:item.URL||'',
+          snippet:item.abstract?(stripHtml(item.abstract).slice(0,150)+'…'):'',
+          score:4-i,seenOn:['crossref']}));
     }},
 
     // ── ORCID ──
@@ -386,20 +387,20 @@ async function searchDirect(query){
 
     // ── Wikibooks ──
     {name:'wikibooks',fn:async()=>{
-      const d=await fetchWithRetry(`https://en.wikibooks.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&format=json&origin=*`);
-      return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikibooks',
-        title:item.title||'',url:`https://en.wikibooks.org/wiki/${encodeURIComponent(item.title)}`,
-        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
-        score:3-i,seenOn:['wikibooks']}));
+        const d=await fetchWithRetry(`https://en.wikibooks.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&format=json&origin=*`);
+        return(d.query&&d.query.search||[]).map((item,i)=>({source:'wikibooks',
+          title:item.title||'',url:`https://en.wikibooks.org/wiki/${encodeURIComponent(item.title)}`,
+          snippet:stripHtml(item.snippet).slice(0,180),
+          score:3-i,seenOn:['wikibooks']}));
     }},
 
     // ── Wikimedia Commons ──
     {name:'commons',fn:async()=>{
-      const d=await fetchWithRetry(`https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&srnamespace=6&format=json&origin=*`);
-      return(d.query&&d.query.search||[]).map((item,i)=>({source:'commons',
-        title:item.title||'',url:`https://commons.wikimedia.org/wiki/${encodeURIComponent(item.title)}`,
-        snippet:(item.snippet||'').replace(/<\/?[^>]+(>|$)/g,'').slice(0,180),
-        score:2-i,seenOn:['commons']}));
+        const d=await fetchWithRetry(`https://commons.wikimedia.org/w/api.php?action=query&list=search&srsearch=${q}&srlimit=5&srnamespace=6&format=json&origin=*`);
+        return(d.query&&d.query.search||[]).map((item,i)=>({source:'commons',
+          title:item.title||'',url:`https://commons.wikimedia.org/wiki/${encodeURIComponent(item.title)}`,
+          snippet:stripHtml(item.snippet).slice(0,180),
+          score:2-i,seenOn:['commons']}));
     }},
 
     // ── Google Books (FREE — no API key needed) ──
@@ -410,6 +411,87 @@ async function searchDirect(query){
         snippet:[(v.authors||[]).slice(0,2).join(', '),v.publishedDate||'',v.publisher||'',
           (v.description||'').slice(0,120)].filter(Boolean).join(' · '),
         score:6-i,seenOn:['google-books']};});
+    }},
+
+    // ── Zenodo ──
+    {name:'zenodo',fn:async()=>{
+      const d=await fetchWithRetry(`https://zenodo.org/api/records/?q=${q}&size=6`);
+      return(((d.hits&&d.hits.hits)||[])).map((item,i)=>{
+        const creators=(item.metadata?.creators||[]).slice(0,2).map((creator)=>creator.name).join(', ');
+        const description=stripHtml(item.metadata?.description).slice(0,110);
+        return{source:'zenodo',
+          title:item.metadata?.title||'',url:item.links?.html||`https://zenodo.org/records/${item.id}`,
+          snippet:[creators,item.metadata?.publication_date||'',description].filter(Boolean).join(' · '),
+          score:5-i,seenOn:['zenodo']};
+      });
+    }},
+
+    // ── DataCite ──
+    {name:'datacite',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.datacite.org/dois?query=${q}&page[size]=6`);
+      return(d.data||[]).map((item,i)=>{
+        const attrs=item.attributes||{};
+        const creators=(attrs.creators||[]).slice(0,2).map((creator)=>creator.name).join(', ');
+        const description=((attrs.descriptions||[])[0]?.description||'').slice(0,110);
+        return{source:'datacite',
+          title:(attrs.titles||[])[0]?.title||attrs.doi||'',url:attrs.url||`https://doi.org/${attrs.doi}`,
+          snippet:[creators,attrs.publicationYear||'',description].filter(Boolean).join(' · '),
+          score:4-i,seenOn:['datacite']};
+      });
+    }},
+
+    // ── Openverse ──
+    {name:'openverse',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.openverse.org/v1/images/?q=${q}&page_size=6`);
+      return(d.results||[]).map((item,i)=>({source:'openverse',
+        title:item.title||item.id||'',url:item.foreign_landing_url||item.url||'',
+        snippet:[item.creator||'',item.source||'',item.license||''].filter(Boolean).join(' · '),
+        score:4-i,seenOn:['openverse']}));
+    }},
+
+    // ── Packagist ──
+    {name:'packagist',fn:async()=>{
+      const d=await fetchWithRetry(`https://packagist.org/search.json?q=${q}&per_page=6`);
+      return(d.results||[]).map((item,i)=>({source:'packagist',
+        title:item.name||'',url:item.url||`https://packagist.org/packages/${item.name}`,
+        snippet:[item.description||'',item.repository||''].filter(Boolean).join(' · ').slice(0,180),
+        score:5-i,seenOn:['packagist']}));
+    }},
+
+    // ── RubyGems ──
+    {name:'rubygems',fn:async()=>{
+      const d=await fetchWithRetry(`https://rubygems.org/api/v1/search.json?query=${q}`);
+      return(d||[]).slice(0,6).map((item,i)=>({source:'rubygems',
+        title:item.name||'',url:item.project_uri||`https://rubygems.org/gems/${item.name}`,
+        snippet:[item.info||'',item.version?`v${item.version}`:'',item.authors||''].filter(Boolean).join(' · ').slice(0,180),
+        score:4-i,seenOn:['rubygems']}));
+    }},
+
+    // ── crates.io ──
+    {name:'crates',fn:async()=>{
+      const d=await fetchWithRetry(`https://crates.io/api/v1/crates?page=1&per_page=6&q=${q}`);
+      return(d.crates||[]).map((item,i)=>({source:'crates',
+        title:item.name||'',url:`https://crates.io/crates/${item.name}`,
+        snippet:[item.description||'',item.max_version?`v${item.max_version}`:'',item.downloads?`${item.downloads} downloads`:''].filter(Boolean).join(' · ').slice(0,180),
+        score:4-i,seenOn:['crates']}));
+    }},
+
+    // ── MusicBrainz ──
+    {name:'musicbrainz',fn:async()=>{
+      const d=await fetchWithRetry(`https://musicbrainz.org/ws/2/artist?query=${q}&fmt=json&limit=6`,{headers:{Accept:'application/json'}});
+      return(d.artists||[]).map((item,i)=>({source:'musicbrainz',
+        title:item.name||'',url:`https://musicbrainz.org/artist/${item.id}`,
+        snippet:[item.country||'',item.disambiguation||'',item['life-span']?.begin||''].filter(Boolean).join(' · '),
+        score:3-i,seenOn:['musicbrainz']}));
+    }},
+
+    // ── GBIF ──
+    {name:'gbif',fn:async()=>{
+      const d=await fetchWithRetry(`https://api.gbif.org/v1/species/search?q=${q}&limit=6`);
+      return(d.results||[]).map((item,i)=>({source:'gbif',
+        title:item.canonicalName||item.scientificName||'',url:item.key?`https://www.gbif.org/species/${item.key}`:'',
+        snippet:[item.rank||'',item.kingdom||'',item.datasetTitle||''].filter(Boolean).join(' · '),
+        score:2-i,seenOn:['gbif']}));
     }},
 
     // ── Google Scholar profiles (FREE — no API key needed) ──
@@ -466,7 +548,7 @@ async function searchDirect(query){
         const d=await fetchWithRetry(`https://mastodon.social/api/v2/search?q=${encoded}&type=accounts&limit=5`);
         return(d.accounts||[]).map((a,i)=>({source:'mastodon',
           title:`@${a.acct||a.username||''}`,url:a.url||'',
-          snippet:[a.display_name||'',a.note?(a.note.replace(/<\/?[^>]+(>|$)/g,'').slice(0,120)):'',a.followers_count?`${a.followers_count} followers`:''].filter(Boolean).join(' · '),
+          snippet:[a.display_name||'',stripHtml(a.note).slice(0,120),a.followers_count?`${a.followers_count} followers`:''].filter(Boolean).join(' · '),
           score:7-i,seenOn:['mastodon']}));
       });
     }},
@@ -873,6 +955,20 @@ document.getElementById('query').addEventListener('keydown',e=>{if(e.key==='Ente
 
 // ── RENDER ────────────────────────────────────────────────────────────────────
 const TIER_MAP=ENGINE_METADATA.sourceTierMap||{};
+const SERVER_CONNECTORS=ENGINE_METADATA.serverConnectors||[];
+const KEY_BACKED_FETCHERS=new Set((ENGINE_METADATA.standalone&&ENGINE_METADATA.standalone.keyBackedFetchers)||[]);
+const GATED_SOURCES=new Set([
+  ...SERVER_CONNECTORS.filter((connector)=>connector.requiresKey).map((connector)=>connector.id),
+  ...KEY_BACKED_FETCHERS,
+]);
+const QUERY_TYPE_LABELS={
+  name:'NAME TRACE',
+  handle:'HANDLE TRACE',
+  email:'EMAIL TRACE',
+  phone:'PHONE TRACE',
+  image:'IMAGE TRACE',
+  company:'COMPANY TRACE',
+};
 function bclass(src,tags){
   if(tags&&tags.includes('fossil'))return'b-wayback';
   if(tags&&tags.includes('document'))return'b-obscure';
@@ -882,7 +978,54 @@ function bclass(src,tags){
   return'b-'+(TIER_MAP[src]||'obscure');
 }
 
+function formatQueryType(intent){
+  return QUERY_TYPE_LABELS[intent]||`${String(intent||'name').toUpperCase()} TRACE`;
+}
+
+function describeSourceBucket(result){
+  const tags=(result.meta&&result.meta.tags)||[];
+  const family=result.meta&&result.meta.sourceFamily;
+  if(tags.includes('direct-probe'))return'direct probes';
+  if(tags.includes('profile')||tags.includes('social')||tags.includes('username-check'))return'identity search';
+  if(family==='archive'||tags.includes('fossil')||tags.includes('timeslice')||tags.includes('archive-lane')||result.meta?.pageStatus==='archived')return'archives';
+  if(family==='official')return'official records';
+  if(family==='academic')return'academic indexes';
+  if(family==='forum')return'forums';
+  if(family==='media')return'media';
+  if(family==='package-ecosystem')return'package ecosystems';
+  if(family==='code-hosting')return'code repositories';
+  if(family==='broker-directory')return'people directories';
+  return'open web';
+}
+
+function buildStrongestSourceSummary(results){
+  if(!results.length)return'none yet';
+  const counts=new Map();
+  results.forEach((result)=>{
+    const bucket=describeSourceBucket(result);
+    counts.set(bucket,(counts.get(bucket)||0)+Math.max(1,(result.score||0)));
+  });
+  return [...counts.entries()]
+    .sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))
+    .slice(0,3)
+    .map(([label])=>label)
+    .join(', ');
+}
+
+function classifyResultState(result){
+  const tags=(result.meta&&result.meta.tags)||[];
+  const pageStatus=result.meta&&result.meta.pageStatus;
+  if(pageStatus==='archived'||result.source==='wayback'||result.source==='archive-first'||tags.includes('fossil')||tags.includes('timeslice')||tags.includes('archive-lane'))return{label:'archived',tone:'archived'};
+  if(GATED_SOURCES.has(result.source))return{label:'gated',tone:'gated'};
+  if(pageStatus==='dead'||pageStatus==='unknown'||result.meta?.whySurvived||tags.includes('direct-probe')||tags.includes('username-check')||tags.includes('profile'))return{label:'inferred',tone:'inferred'};
+  return{label:'live',tone:'live'};
+}
+
 function renderResults(results,clusters,context={}){
+  const query=document.getElementById('query').value.trim();
+  const queryPlan=buildQueryPlan(query);
+  const queryType=formatQueryType((results[0]&&results[0].meta&&results[0].meta.queryIntent)||queryPlan.intent);
+  const strongestSummary=buildStrongestSourceSummary(results);
   document.getElementById('results-section').style.display='block';
   document.getElementById('res-count').textContent=
     results.length+' UNIQUE TRACE'+(results.length!==1?'S':'')+' RECOVERED';
@@ -902,6 +1045,14 @@ function renderResults(results,clusters,context={}){
     brief.style.display=results.length?'block':'none';
   }
 
+  const meta=document.getElementById('results-meta');
+  if(meta){
+    meta.innerHTML=
+      `<span class="meta-pill meta-pill-query">QUERY TYPE <strong>${esc(queryType)}</strong></span>`+
+      `<span class="meta-pill meta-pill-summary">STRONGEST FROM <strong>${esc(strongestSummary)}</strong></span>`;
+    meta.style.display='flex';
+  }
+
   const cd=document.getElementById('avatar-clusters');cd.innerHTML='';
   (clusters||[]).forEach(c=>{
     const el=document.createElement('div');el.className='cluster';
@@ -917,7 +1068,9 @@ function renderResults(results,clusters,context={}){
     setUiStatus('empty','NO TRACE FOUND');
     list.innerHTML=
       '<div class="no-results">'+
+        '<div class="nr-sonar" aria-hidden="true"></div>'+
         '<div class="nr-hdr">NO TRACE FOUND</div>'+
+        '<div class="nr-copy">The water stayed quiet on this pass. Tighten the ping and try another angle.</div>'+
         '<ul class="nr-tips">'+
           '<li>Check your spelling — a single wrong character can bury the signal</li>'+
           '<li>Try a real name, username, domain, or email address</li>'+
@@ -937,6 +1090,7 @@ function renderResults(results,clusters,context={}){
     const clusterLabel=r.meta&&r.meta.clusterLabel;
     const seenOn=r.seenOn||[];
     const bc=bclass(r.source,tags);
+    const resultState=classifyResultState(r);
     const reliability=(r.meta&&r.meta.reliability)||'unknown';
     const language=(r.meta&&r.meta.languageLabel)||'Unknown';
     const region=r.meta&&r.meta.region?` · ${esc(String(r.meta.region).toUpperCase())}`:'';
@@ -979,6 +1133,7 @@ function renderResults(results,clusters,context={}){
       `<div class="card-top">`+
         `<div class="card-title">${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">${esc(r.title||r.url)}</a>`:esc(r.title||'—')}</div>`+
         `<span class="badge ${bc}">${esc(r.source)}</span>`+
+        `<span class="state-tag state-${esc(resultState.tone)}">${esc(resultState.label)}</span>`+
         `<span class="score">▲${r.score||0}</span>`+
       `</div>`+
       (r.snippet?`<div class="card-snip">${esc(r.snippet)}</div>`:'')+
@@ -1201,7 +1356,7 @@ function rerunSearch(query){
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function showLoading(v){document.getElementById('loading').style.display=v?'block':'none';document.getElementById('srch-btn').disabled=v}
-function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const insights=document.getElementById('insights-panel');if(insights)insights.innerHTML='';const timeline=document.getElementById('timeline-panel');if(timeline)timeline.innerHTML='';const related=document.getElementById('related-panel');if(related)related.innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';const brief=document.getElementById('results-brief');if(brief){brief.textContent='';brief.style.display='none'}_lastResults=[]}
+function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const insights=document.getElementById('insights-panel');if(insights)insights.innerHTML='';const timeline=document.getElementById('timeline-panel');if(timeline)timeline.innerHTML='';const related=document.getElementById('related-panel');if(related)related.innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';const meta=document.getElementById('results-meta');if(meta){meta.innerHTML='';meta.style.display='none'}const brief=document.getElementById('results-brief');if(brief){brief.textContent='';brief.style.display='none'}_lastResults=[]}
 function showErr(msg,isErr){const el=document.getElementById('err');el.textContent=msg;el.style.display=msg?'block':'none';if(!isErr){el.style.color='var(--bright)';return}setUiStatus('error','SIGNAL LOST')}
 
 // ── INIT ─────────────────────────────────────────────────────────────────────

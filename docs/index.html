@@ -46,7 +46,19 @@
       </span>
     </div>
 
-    <div id="eng-bar">CURRENTS READY: <span id="eng-count">36 open APIs (standalone)</span></div>
+    <div id="eng-bar">CURRENTS READY: <span id="eng-count">44 open APIs (standalone)</span></div>
+
+    <!-- PRIMARY SEARCH ROW -->
+    <div class="search-shell">
+      <div class="search-sonar" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="search-row">
+        <input type="text" id="query" placeholder="trace a name, handle, domain, phrase…" autocomplete="off" spellcheck="false">
+        <button class="btn" id="srch-btn" onclick="doSearch()">PING</button>
+      </div>
+      <div class="search-guidance">send a signal… · ping the surface web… · trace a name, handle, domain, phrase…</div>
+    </div>
 
     <div class="quickstart-card">
       <div class="quickstart-hdr">STATION BRIEFING</div>
@@ -59,18 +71,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- PRIMARY SEARCH ROW -->
-    <div class="search-shell">
-      <div class="search-sonar" aria-hidden="true">
-        <span></span><span></span><span></span>
-      </div>
-      <div class="search-row">
-        <input type="text" id="query" placeholder="trace a name, handle, domain, phrase…" autocomplete="off" spellcheck="false">
-        <button class="btn" id="srch-btn" onclick="doSearch()">PING</button>
-      </div>
-      <div class="search-guidance">send a signal… · ping the surface web… · trace a name, handle, domain, phrase…</div>
     </div>
 
     <!-- OPTIONS -->
@@ -138,6 +138,7 @@
       <button class="btn btn-sm" onclick="exportJSON()">BOTTLE JSON</button>
       <button class="btn btn-sm" onclick="exportCSV()">BOTTLE CSV</button>
     </div>
+    <div id="results-meta" class="results-meta" style="display:none"></div>
     <div id="results-brief" class="results-brief" style="display:none"></div>
     <div id="avatar-clusters"></div>
     <div id="insights-panel"></div>
