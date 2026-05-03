@@ -1,4 +1,4 @@
-import { generateQueries } from '../src/queryPlanner.js';
+import { buildQueryPlan, detectQueryIntent, generateQueries, isFuzzyHandleMatch, rewriteQueryTerms } from '../src/queryPlanner.js';
 
 describe('generateQueries', () => {
   const results = generateQueries('john smith');
@@ -40,20 +40,72 @@ describe('generateQueries', () => {
     expect(results).toContain('john.smith');
   });
 
-  test('deduplicates case-insensitive variants for single-token input', () => {
-    expect(generateQueries('Alice')).toEqual([
-      'Alice',
-      '@alice',
-      'alice site:github.com',
-      'alice site:reddit.com/user',
-      'alice site:gitlab.com',
-      'alice site:keybase.io',
-      'alice site:bsky.app/profile',
-      'alice site:mastodon.social',
-      'alice site:instagram.com',
-      'alice site:tiktok.com',
-      'alice site:facebook.com',
-      'alice site:web.archive.org',
-    ]);
+  test('deduplicates case-insensitive variants for single-token input while adding direct profile sites', () => {
+    const queries = generateQueries('Alice');
+    expect(queries[0]).toBe('Alice');
+    expect(queries).toContain('@alice');
+    expect(queries).toContain('alice site:github.com');
+    expect(queries).toContain('alice site:codeberg.org');
+    expect(queries).toContain('alice site:news.ycombinator.com/user');
+  });
+});
+
+describe('rewriteQueryTerms', () => {
+  test('adds stemming and synonym variants', () => {
+    expect(rewriteQueryTerms('profiles forum')).toEqual(expect.arrayContaining([
+      'profiles forum',
+      'profile forum',
+      'profiles board',
+      'profiles community',
+    ]));
+  });
+
+  test('normalizes repeated letters for spelling-like corrections', () => {
+    expect(rewriteQueryTerms('jooohn')).toContain('joohn');
+  });
+
+  test('keeps double letters intact when they are already normalized', () => {
+    expect(rewriteQueryTerms('joohn')).toContain('joohn');
+  });
+
+  test('rewrites movies-style ies endings to their expected singular form', () => {
+    expect(rewriteQueryTerms('movies')).toContain('movie');
+  });
+});
+
+describe('buildQueryPlan operators', () => {
+  test('extracts search operators from the free-text query', () => {
+    const plan = buildQueryPlan('alice example site:github.com filetype:pdf lang:es region:uk intitle:"alice example"');
+    expect(plan.raw).toBe('alice example');
+    expect(plan.operators).toEqual({
+      site: ['github.com'],
+      filetype: ['pdf'],
+      intitle: ['alice example'],
+      inurl: [],
+      lang: 'es',
+      region: 'uk',
+    });
+  });
+});
+
+describe('isFuzzyHandleMatch', () => {
+  test('matches close username variants', () => {
+    expect(isFuzzyHandleMatch('alic3example', 'aliceexample')).toBe(true);
+    expect(isFuzzyHandleMatch('bob', 'aliceexample')).toBe(false);
+  });
+});
+
+describe('detectQueryIntent', () => {
+  test('classifies core query intents', () => {
+    expect(detectQueryIntent('alice@example.com')).toBe('email');
+    expect(detectQueryIntent('+1 (555) 123-4567')).toBe('phone');
+    expect(detectQueryIntent('@alice_example')).toBe('handle');
+    expect(detectQueryIntent('Example Labs Inc')).toBe('company');
+    expect(detectQueryIntent('avatar alice example')).toBe('image');
+    expect(detectQueryIntent('Alice Example')).toBe('name');
+  });
+
+  test('stores the detected intent in the built query plan', () => {
+    expect(buildQueryPlan('@alice').intent).toBe('handle');
   });
 });

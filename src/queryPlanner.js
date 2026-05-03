@@ -1,4 +1,12 @@
-export { buildQueryPlan, generateQueries } from '../docs/scripts/shared/queryShared.js';
+export {
+  buildQueryPlan,
+  detectQueryIntent,
+  generateQueries,
+  isFuzzyHandleMatch,
+  parseOperators,
+  rewriteQueryTerms,
+  uniqueCaseInsensitive,
+} from '../docs/scripts/shared/queryShared.js';
 
 const DOC_FILETYPES = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'];
 

@@ -7,7 +7,20 @@ import {
 } from '../shared/queryShared.js';
 import { dedupeResultsByUrl, mergeUniqueValues } from '../shared/dedupeShared.js';
 import { normaliseUrlForDedupe } from '../shared/urlNormaliser.js';
-import { IDENTITY_SOURCES, scoreResults } from '../shared/scoringShared.js';
+import {
+  applySourceFamilyCaps,
+  buildIntentWeights,
+  deriveSourceFamily,
+  IDENTITY_SOURCES,
+  estimateDomainAuthority,
+  estimateFreshnessScore,
+  estimateGeoAffinity,
+  estimateKeywordProximity,
+  scoreResults,
+} from '../shared/scoringShared.js';
+import { clusterResults } from '../shared/resultClusterShared.js';
+import { buildResultInsights } from '../shared/resultInsightsShared.js';
+import { isFuzzyHandleMatch } from '../shared/queryShared.js';
 
 export function mergeVariantResults(results) {
   const map = new Map();
@@ -84,7 +97,7 @@ export function scoreStandalone(results, originalInput) {
     if (result.url) urlMap[result.url] = (urlMap[result.url] || 0) + 1;
   });
 
-  return scoreResults(results, (result) => {
+  const scored = scoreResults(results, (result) => {
     const signals = getStandaloneMatchSignals(result, plan);
     return {
       titleExact: signals.title.includes(plan.lower) ? 1 : 0,
@@ -97,9 +110,36 @@ export function scoreStandalone(results, originalInput) {
       allTokensPresent: plan.tokens.length > 1 && signals.tokenHits === plan.tokens.length ? 1 : 0,
       titlePartial: plan.tokens.some((token) => signals.title.includes(token)) ? 1 : 0,
       snippetPartial: plan.tokens.some((token) => signals.snippet.includes(token)) ? 1 : 0,
+      freshHit: estimateFreshnessScore(result),
+      authorityHit: estimateDomainAuthority(result),
+      keywordProximity: estimateKeywordProximity(`${signals.title} ${signals.snippet} ${signals.url}`, plan.tokens),
+      fuzzyUsername: isFuzzyHandleMatch(result.meta?.username || signals.url, plan.localPart || plan.noSpaces) ? 1 : 0,
+      geoHit: estimateGeoAffinity(result, plan.operators),
+      officialHit: result.meta?.reliability === 'official' ? 1 : 0,
       bias: 1,
     };
+  }, buildIntentWeights(undefined, plan.intent)).map((result) => {
+    const signals = getStandaloneMatchSignals(result, plan);
+    const whySurvived = result.score < 80
+      ? (
+        /archive\.org/.test(signals.url) ? 'rare archive evidence kept this visible'
+          : isFuzzyHandleMatch(result.meta?.username || signals.url, plan.localPart || plan.noSpaces) ? `near-match ${plan.intent} variant survived`
+            : result.meta?.reliability === 'official' ? 'official-source signal kept this visible'
+              : null
+      )
+      : null;
+    return {
+      ...result,
+      meta: {
+        ...(result.meta || {}),
+        queryIntent: plan.intent,
+        sourceFamily: deriveSourceFamily(result),
+        ...(whySurvived ? { whySurvived } : {}),
+      },
+    };
   });
+
+  return applySourceFamilyCaps(scored);
 }
 
 function classifyStandaloneError(err) {
@@ -185,6 +225,21 @@ export async function searchDirect(query, namedFetchers, options = {}) {
   }
 
   const expanded = expandRelevantResults(results, plan, extraRatio);
-  const deduped = dedupeStandalone(expanded);
-  return scoreStandalone(deduped, query);
+  const deduped = dedupeStandalone(expanded).map((result) => {
+    const insights = buildResultInsights(result, query);
+    return {
+      ...result,
+      meta: {
+        ...(result.meta || {}),
+        entities: insights.entities,
+        language: insights.language,
+        languageLabel: insights.languageLabel,
+        translationUrl: insights.translationUrl,
+        reliability: insights.reliability,
+        region: insights.region,
+        ...(insights.timeline ? { timeline: insights.timeline, year: insights.timeline.year } : {}),
+      },
+    };
+  });
+  return clusterResults(scoreStandalone(deduped, query));
 }

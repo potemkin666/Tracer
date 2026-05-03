@@ -1,4 +1,5 @@
 import { score, extractFeatures, computeConfidence, WEIGHTS } from '../src/scorer.js';
+import { buildQueryPlan } from '../src/queryPlanner.js';
 
 describe('score', () => {
   test('adds score and confidence properties to each result', () => {
@@ -44,19 +45,53 @@ describe('score', () => {
     expect(scored[0].score).toBeGreaterThanOrEqual(0);
     expect(scored[0].score).toBeLessThanOrEqual(100);
   });
+
+  test('applies intent-specific ranking and source-family caps', () => {
+    const scored = score([
+      { title: 'alice handle', url: 'https://github.com/alice', snippet: '', source: 'github', meta: { username: 'alice' } },
+      { title: 'alice handle mirror', url: 'https://gitlab.com/alice', snippet: '', source: 'gitlab', meta: { username: 'alice' } },
+      { title: 'alice handle alt', url: 'https://codeberg.org/alice', snippet: '', source: 'codeberg', meta: { username: 'alice' } },
+      { title: 'alice package', url: 'https://npmjs.com/package/alice', snippet: '', source: 'npm', meta: {} },
+      { title: 'alice package clone', url: 'https://pypi.org/project/alice', snippet: '', source: 'pypi', meta: {} },
+      { title: 'alice package mirror', url: 'https://rubygems.org/gems/alice', snippet: '', source: 'rubygems', meta: {} },
+      { title: 'alice package extra', url: 'https://crates.io/crates/alice', snippet: '', source: 'crates', meta: {} },
+    ], '@alice');
+
+    expect(scored[0].meta.queryIntent).toBe('handle');
+    expect(scored.find((result) => result.url === 'https://crates.io/crates/alice').meta.familyPenalty).toBeGreaterThan(0);
+  });
+
+  test('adds a why-survived explanation for weaker but useful results', () => {
+    const scored = score([
+      {
+        title: 'archived alice trace',
+        url: 'https://web.archive.org/web/20240101000000/https://example.com/alice',
+        snippet: 'older capture',
+        source: 'wayback',
+        meta: {},
+      },
+    ], 'alice');
+
+    expect(scored[0].meta.whySurvived).toContain('archive');
+  });
 });
 
 describe('extractFeatures', () => {
   test('returns expected feature keys', () => {
     const r = { title: 'test', url: 'https://x.com', snippet: '', source: 'brave', meta: {} };
-    const features = extractFeatures(r, 'test', ['test'], {});
+    const features = extractFeatures(r, buildQueryPlan('test'), {});
     expect(features).toHaveProperty('titleExact');
+    expect(features).toHaveProperty('freshHit');
+    expect(features).toHaveProperty('authorityHit');
+    expect(features).toHaveProperty('keywordProximity');
+    expect(features).toHaveProperty('fuzzyUsername');
+    expect(features).toHaveProperty('geoHit');
     expect(features).toHaveProperty('bias', 1);
   });
 
   test('detects fossil and timeslice tags', () => {
     const r = { title: '', url: '', snippet: '', source: 'timeslice', meta: { tags: ['fossil', 'timeslice'] } };
-    const features = extractFeatures(r, 'query', ['query'], {});
+    const features = extractFeatures(r, buildQueryPlan('query'), {});
     expect(features.fossilTag).toBe(1);
     expect(features.timesliceTag).toBe(1);
   });
@@ -69,7 +104,7 @@ describe('extractFeatures', () => {
       source: 'brave',
       meta: {},
     };
-    const features = extractFeatures(r, 'brian kalbacher', ['brian', 'kalbacher'], {});
+    const features = extractFeatures(r, buildQueryPlan('brian kalbacher'), {});
     expect(features.urlUsername).toBe(1);
     expect(features.allTokensPresent).toBe(1);
   });
@@ -81,9 +116,25 @@ describe('extractFeatures', () => {
       snippet: 'GitHub user',
       source: 'github',
       meta: { username: 'alice', tags: ['social', 'profile'] },
-    }, '@alice', ['alice'], {});
+    }, buildQueryPlan('@alice'), {});
     expect(features.usernameExact).toBe(1);
     expect(features.identitySource).toBe(1);
+  });
+
+  test('captures freshness, authority, and keyword proximity signals', () => {
+    const features = extractFeatures({
+      title: 'Alice Example profile 2025',
+      url: 'https://github.com/alice-example',
+      snippet: 'Alice Example maintains this repository',
+      source: 'github',
+      meta: { username: 'alice-example', year: 2025, region: 'uk', reliability: 'official' },
+    }, buildQueryPlan('alice example region:uk'), {});
+
+    expect(features.freshHit).toBeGreaterThan(0);
+    expect(features.authorityHit).toBeGreaterThan(0.5);
+    expect(features.keywordProximity).toBeGreaterThan(0.5);
+    expect(features.geoHit).toBe(1);
+    expect(features.officialHit).toBe(1);
   });
 });
 

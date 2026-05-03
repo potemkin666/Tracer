@@ -19,7 +19,7 @@
     .tabs button { flex: 1; padding: 0.7rem; border: none; background: #fff; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: #555; }
     .tabs button.active { color: #1a73e8; border-bottom: 3px solid #1a73e8; }
 
-    .tab-panel { display: none; max-width: 960px; margin: 0 auto; }
+    .tab-panel { display: none; max-width: 1080px; margin: 0 auto; }
     .tab-panel.active { display: block; }
 
     #graphPanel { position: relative; background: #fff; border: 1px solid #e0e0e0; border-top: 0; }
@@ -50,7 +50,7 @@
   <input type="text" id="input" placeholder="Name or username…" required>
   <select id="mode">
     <option value="normal">Normal</option>
-    <option value="aggressive">Aggressive</option>
+    <option value="aggressive" selected>Aggressive</option>
   </select>
   <button id="searchBtn">Search</button>
 </div>
@@ -58,11 +58,11 @@
 <div id="status"></div>
 
 <div class="tabs" id="tabBar" style="display:none;">
-  <button class="active" data-tab="graphPanel">Network Graph</button>
-  <button data-tab="listPanel">Results</button>
+  <button class="active" data-tab="listPanel">Results</button>
+  <button data-tab="graphPanel">Network Graph</button>
 </div>
 
-<div id="graphPanel" class="tab-panel active">
+<div id="graphPanel" class="tab-panel">
   <svg id="graphSvg"></svg>
   <div class="legend">
     <div class="legend-item"><div class="legend-swatch" style="background:#e74c3c"></div> Same avatar</div>
@@ -73,10 +73,11 @@
   <div class="graph-tooltip" id="tooltip"></div>
 </div>
 
-<div id="listPanel" class="tab-panel"></div>
+<div id="listPanel" class="tab-panel active"></div>
 
 <script type="module">
 import { buildResultsBrief } from '/scripts/shared/resultBrief.js';
+import { buildRelatedQueries, buildTimeline } from '/scripts/shared/resultInsightsShared.js';
 
 // ── Tab switching ──
 document.querySelectorAll('.tabs button').forEach(btn => {
@@ -111,9 +112,8 @@ async function doSearch() {
     if (data.error) throw new Error(data.error);
     document.getElementById('status').textContent = '';
     document.getElementById('tabBar').style.display = 'flex';
-    renderList(data.results || []);
+    renderList(data.results || [], data.searchNarrative || null, data.telemetry || null);
     renderGraph(data.graph || { nodes: [], edges: [] });
-    // Show graph tab
     document.querySelectorAll('.tabs button')[0].click();
   } catch (err) {
     document.getElementById('status').textContent = 'Error: ' + err.message;
@@ -129,19 +129,50 @@ function scoreColor(s) {
   return '#e74c3c';
 }
 
-function renderList(results) {
+function renderList(results, searchNarrative = null, telemetry = null) {
   const el = document.getElementById('listPanel');
   if (!results.length) { el.innerHTML = '<p style="padding:1rem;color:#888;">No results.</p>'; return; }
   const brief = buildResultsBrief(results);
-  el.innerHTML = (brief ? `<div class="result-brief">${esc(brief)}</div>` : '') + results.map(r => {
+  const query = document.getElementById('input').value.trim();
+  const timeline = buildTimeline(results).slice(0, 6);
+  const related = buildRelatedQueries(query, results).slice(0, 6);
+  const entities = [...new Set(results.flatMap(r => [
+    ...((r.meta && r.meta.entities && r.meta.entities.names) || []),
+    ...((r.meta && r.meta.entities && r.meta.entities.orgs) || []),
+    ...((r.meta && r.meta.entities && r.meta.entities.emails) || []),
+  ]))].slice(0, 8);
+  let currentClusterId = '';
+  const headerSections = [
+    brief ? `<div class="result-brief">${esc(brief)}</div>` : '',
+    searchNarrative ? `<div class="result-brief"><strong>${esc(searchNarrative.headline || '')}</strong> ${(searchNarrative.details || []).map(esc).join(' ')}</div>` : '',
+    telemetry && telemetry.topFamilies && telemetry.topFamilies.length ? `<div class="result-brief"><strong>Recent winners:</strong> ${telemetry.topFamilies.slice(0, 3).map(item => esc(item.family)).join(' · ')}</div>` : '',
+    entities.length ? `<div class="result-brief"><strong>Entities:</strong> ${entities.map(esc).join(' · ')}</div>` : '',
+    timeline.length ? `<div class="result-brief"><strong>Timeline:</strong> ${timeline.map(item => `${esc(item.label)} — ${esc(item.title)}`).join(' · ')}</div>` : '',
+    related.length ? `<div class="result-brief"><strong>Related queries:</strong> ${related.map(value => `<button class="rq" data-query="${esc(value)}" style="margin:0 0.35rem 0.35rem 0;padding:0.3rem 0.55rem;border:1px solid #d7e3f7;border-radius:999px;background:#eef5ff;color:#1a73e8;cursor:pointer;">${esc(value)}</button>`).join('')}</div>` : '',
+  ].join('');
+  el.innerHTML = headerSections + results.map(r => {
     const tags = (r.meta && r.meta.tags && r.meta.tags.length) ? ' · ' + r.meta.tags.join(', ') : '';
-    return `<div class="result-card">
+    const clusterId = r.meta && r.meta.clusterId;
+    const clusterSize = r.meta && r.meta.clusterSize;
+    const clusterLabel = r.meta && r.meta.clusterLabel;
+    const clusterHeader = clusterId && clusterSize > 1 && clusterId !== currentClusterId
+      ? `<div style="background:#eef5ff;border:1px solid #d7e3f7;border-radius:6px;padding:0.55rem 0.8rem;margin:0 0 0.5rem;color:#50627a;font-size:0.8rem;font-weight:600;">≈ Similar pages · ${clusterSize} results · ${esc(clusterLabel || 'shared profile trail')}</div>`
+      : '';
+    currentClusterId = clusterId || currentClusterId;
+    return `${clusterHeader}<div class="result-card">
       <h3><span class="score-badge" style="background:${scoreColor(r.score)}">${r.score}</span>
         <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title || r.url)}</a></h3>
-      <div class="meta">${esc(r.source)} · rank ${r.rank}${tags}</div>
+      <div class="meta">${esc(r.source)} · rank ${r.rank} · ${(r.meta && r.meta.reliability) || 'unknown'}${tags}</div>
+      ${r.meta && r.meta.whySurvived ? `<div class="meta">Why this survived: ${esc(r.meta.whySurvived)}</div>` : ''}
+      ${r.meta && r.meta.pageInspection ? `<div class="meta">Page inspection: ${[((r.meta.pageInspection.usernames || []).slice(0, 2).join(', ')), (r.meta.pageInspection.emails || []).length ? `${(r.meta.pageInspection.emails || []).length} emails` : '', (r.meta.pageInspection.outboundLinks || []).length ? `${(r.meta.pageInspection.outboundLinks || []).length} outbound links` : ''].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
       ${r.snippet ? '<div class="snippet">' + esc(r.snippet) + '</div>' : ''}
+      ${r.meta && r.meta.snapshotViewerUrl ? `<div class="meta"><a href="${esc(r.meta.snapshotViewerUrl)}" target="_blank" rel="noopener">Snapshot</a></div>` : ''}
     </div>`;
   }).join('');
+  el.querySelectorAll('[data-query]').forEach(btn => btn.addEventListener('click', () => {
+    document.getElementById('input').value = btn.dataset.query || '';
+    doSearch();
+  }));
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
@@ -159,7 +190,7 @@ function renderGraph(graphData) {
   svg.setAttribute('viewBox', '0 0 ' + width + ' ' + height);
   const ns = 'http://www.w3.org/2000/svg';
 
-  const EDGE_COLORS = { sameAvatar: '#e74c3c', sameDomain: '#3498db', sharedEmail: '#2ecc71', crossLinked: '#f39c12' };
+  const EDGE_COLORS = { sameAvatar: '#e74c3c', sameDomain: '#3498db', sharedEmail: '#2ecc71', crossLinked: '#f39c12', identityMember: '#8e44ad', sharedUsername: '#16a085' };
 
   const nodes = graphData.nodes.map((n, i) => ({
     ...n, x: width/2 + (Math.random()-0.5)*width*0.6,
@@ -210,20 +241,29 @@ function renderGraph(graphData) {
   // Draw nodes
   const tooltip = document.getElementById('tooltip');
   for (const n of nodes) {
-    const r = Math.max(4, Math.min(12, n.score/10));
-    const circle = document.createElementNS(ns,'circle');
-    circle.setAttribute('cx',n.x); circle.setAttribute('cy',n.y); circle.setAttribute('r',r);
-    circle.setAttribute('fill', scoreColor(n.score));
-    circle.setAttribute('stroke','#fff'); circle.setAttribute('stroke-width','1.5');
-    circle.style.cursor = 'pointer';
-    circle.addEventListener('mouseenter', e => {
-      tooltip.textContent = '[' + n.score + '] ' + (n.label||n.id);
+    const r = Math.max(4, Math.min(n.kind === 'identity' ? 16 : 12, n.score/10));
+    const shape = n.kind === 'identity'
+      ? document.createElementNS(ns,'rect')
+      : document.createElementNS(ns,'circle');
+    if(n.kind === 'identity'){
+      shape.setAttribute('x',n.x-r); shape.setAttribute('y',n.y-r); shape.setAttribute('width',r*2); shape.setAttribute('height',r*2); shape.setAttribute('rx','4');
+      shape.setAttribute('fill','#6c5ce7');
+    }else{
+      shape.setAttribute('cx',n.x); shape.setAttribute('cy',n.y); shape.setAttribute('r',r);
+      shape.setAttribute('fill', scoreColor(n.score));
+    }
+    shape.setAttribute('stroke','#fff'); shape.setAttribute('stroke-width','1.5');
+    shape.style.cursor = n.kind === 'identity' ? 'default' : 'pointer';
+    shape.addEventListener('mouseenter', e => {
+      tooltip.textContent = '[' + n.score + '] ' + (n.label||n.id) + (n.explanation ? ' — ' + n.explanation : '');
       tooltip.style.left = (e.offsetX+12)+'px'; tooltip.style.top = (e.offsetY-8)+'px';
       tooltip.style.display = 'block';
     });
-    circle.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
-    circle.addEventListener('click', () => { window.open(n.id, '_blank'); });
-    svg.appendChild(circle);
+    shape.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+    if(n.kind !== 'identity'){
+      shape.addEventListener('click', () => { window.open(n.id, '_blank'); });
+    }
+    svg.appendChild(shape);
   }
 
   // Labels for high-score nodes

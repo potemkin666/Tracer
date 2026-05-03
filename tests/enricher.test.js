@@ -79,6 +79,7 @@ describe('enrich', () => {
     expect(enriched[0].meta.tags).toContain('social');
     expect(enriched[0].meta.domainCategory).toBe('social');
     expect(enriched[0].meta.username).toBe('jsmith');
+    expect(enriched[0].meta.reliability).toBe('official');
   });
 
   test('adds profile tag when username matches search term', () => {
@@ -122,6 +123,7 @@ describe('enrich', () => {
     const enriched = enrich(results, 'test');
     expect(enriched[0].meta).toBeDefined();
     expect(Array.isArray(enriched[0].meta.tags)).toBe(true);
+    expect(enriched[0].meta.entities).toBeDefined();
   });
 
   test('handles empty results array', () => {
@@ -142,5 +144,22 @@ describe('enrich', () => {
     expect(enriched[0].meta).not.toBe(results[0].meta);
     expect(enriched[0].meta.tags).toContain('social');
     expect(results[0].meta.tags).toEqual(['fossil']);
+  });
+
+  test('extracts entities, timeline, region, and translation metadata from snippets', () => {
+    const enriched = enrich([
+      {
+        url: 'https://example.es/perfil',
+        title: 'Alice Example at Example Labs Inc',
+        snippet: 'perfil oficial · alice@example.com · Madrid · 2024',
+        meta: {},
+      },
+    ], 'alice example region:es');
+
+    expect(enriched[0].meta.entities.emails).toContain('alice@example.com');
+    expect(enriched[0].meta.entities.orgs).toContain('Example Labs Inc');
+    expect(enriched[0].meta.region).toBe('es');
+    expect(enriched[0].meta.timeline.year).toBe(2024);
+    expect(enriched[0].meta.translationUrl).toContain('translate.google.com');
   });
 });
