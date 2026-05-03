@@ -2,13 +2,13 @@ import httpClient from './httpClient.js';
 import { buildQueryPlan, uniqueCaseInsensitive } from './queryPlanner.js';
 
 const PROFILE_TARGETS = [
-  { source: 'github-direct', buildUrl: (handle) => `https://github.com/${handle}`, tags: ['profile', 'direct-probe', 'tech'] },
-  { source: 'gitlab-direct', buildUrl: (handle) => `https://gitlab.com/${handle}`, tags: ['profile', 'direct-probe', 'tech'] },
-  { source: 'codeberg-direct', buildUrl: (handle) => `https://codeberg.org/${handle}`, tags: ['profile', 'direct-probe', 'tech'] },
-  { source: 'keybase-direct', buildUrl: (handle) => `https://keybase.io/${handle}`, tags: ['profile', 'direct-probe', 'tech'] },
-  { source: 'reddit-direct', buildUrl: (handle) => `https://www.reddit.com/user/${handle}`, tags: ['profile', 'direct-probe', 'social'] },
+  { source: 'github-direct', buildUrl: (handle) => `https://github.com/${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'tech'] },
+  { source: 'gitlab-direct', buildUrl: (handle) => `https://gitlab.com/${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'tech'] },
+  { source: 'codeberg-direct', buildUrl: (handle) => `https://codeberg.org/${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'tech'] },
+  { source: 'keybase-direct', buildUrl: (handle) => `https://keybase.io/${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'tech'] },
+  { source: 'reddit-direct', buildUrl: (handle) => `https://www.reddit.com/user/${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'social'] },
   { source: 'hn-direct', buildUrl: (handle) => `https://news.ycombinator.com/user?id=${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'forum'] },
-  { source: 'devto-direct', buildUrl: (handle) => `https://dev.to/${handle}`, tags: ['profile', 'direct-probe', 'tech'] },
+  { source: 'devto-direct', buildUrl: (handle) => `https://dev.to/${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'tech'] },
 ];
 
 function normaliseHandleCandidate(value) {
