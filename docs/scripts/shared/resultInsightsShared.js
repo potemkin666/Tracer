@@ -1,4 +1,4 @@
-import { buildQueryPlan, uniqueCaseInsensitive } from './queryShared.js';
+import { buildQueryPlan, generateScentVariants, uniqueCaseInsensitive } from './queryShared.js';
 
 const LANGUAGE_PATTERNS = [
   { code: 'es', re: /\b(el|la|los|las|de|del|para|con|sobre|perfil|cuenta)\b|[ñáéíóú]/iu },
@@ -40,9 +40,41 @@ const DATE_PATTERNS = [
   /\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},\s+\d{4})\b/iu,
   /\b(\d{4})\b/u,
 ];
+const ECHO_STOPWORDS = new Set([
+  'a', 'an', 'and', 'article', 'claim', 'coverage', 'for', 'from', 'in', 'is', 'news', 'of', 'on',
+  'report', 'reported', 'reporting', 'says', 'story', 'that', 'the', 'to', 'update', 'via', 'with',
+]);
+const RELIABLE_BUCKETS = new Set(['official', 'media']);
+const LOW_QUALITY_BUCKETS = new Set(['forum', 'unknown']);
+const MAX_ECHO_TOKENS = 8;
+const MAX_TITLE_TOKENS = 7;
+const MAX_SNIPPET_TOKENS = 5;
+const MAX_SCENT_VARIANTS = 8;
+const MAX_RELATED_SCENT_VARIANTS = 2;
+const ARTIFACT_MATCHERS = [
+  { type: 'pdf', re: /\.pdf(?:$|[?#])/iu },
+  { type: 'document', re: /\.(docx?|pptx?|xlsx?|txt)(?:$|[?#])/iu },
+  { type: 'image', re: /\.(png|jpe?g|gif|webp|svg)(?:$|[?#])/iu },
+  { type: 'rss', re: /\b(rss|atom|feed)\b|\/feed(?:$|[/?#])|\.xml(?:$|[?#])/iu },
+  { type: 'robots', re: /\brobots\.txt\b/iu },
+  { type: 'sitemap', re: /\bsitemap(?:[_-]index)?\.xml\b/iu },
+  { type: 'redirect', re: /\bredirect\b|utm_|[?&](target|dest|url)=/iu },
+  { type: 'favicon', re: /\bfavicon(?:\.ico)?\b/iu },
+  { type: 'css', re: /\.css(?:$|[?#])|\bcss class\b/iu },
+  { type: 'commit', re: /\bcommit\b/iu },
+  { type: 'slug', re: /\bslug\b|\/[\w-]{6,}\/?$/iu },
+  { type: 'metadata', re: /\b(metadata|byline|title tag|canonical)\b/iu },
+  { type: 'exif', re: /\bexif\b/iu },
+];
 
 function unique(values) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function truncateLabel(value, max = 72) {
+  const text = String(value || '').trim();
+  if (!text || text.length <= max) return text;
+  return `${text.slice(0, max)}…`;
 }
 
 function safeHostname(url) {
@@ -67,6 +99,94 @@ function isAsciiText(value) {
 
 function normaliseLanguageLabel(code) {
   return { en: 'English', es: 'Spanish', fr: 'French', de: 'German', pt: 'Portuguese' }[code] || 'Unknown';
+}
+
+function normaliseFingerprintTokens(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/gu, ' ')
+    .replace(/[^a-z0-9]+/gu, ' ')
+    .trim()
+    .split(/\s+/u)
+    .filter((token) => token && token.length > 2 && !ECHO_STOPWORDS.has(token));
+}
+
+function buildEchoFingerprint(result = {}) {
+  const username = String(result.meta?.username || '')
+    .toLowerCase()
+    .trim()
+    .replace(/^@+/u, '')
+    .replace(/[^a-z0-9._-]/gu, '');
+  if (username) return `handle:${username}`;
+
+  const hostname = safeHostname(result.url || '');
+  const titleTokens = normaliseFingerprintTokens(result.title).slice(0, MAX_TITLE_TOKENS);
+  const snippetTokens = normaliseFingerprintTokens(result.snippet).slice(0, MAX_SNIPPET_TOKENS);
+  const mergedTokens = unique([...titleTokens, ...snippetTokens]).slice(0, MAX_ECHO_TOKENS);
+
+  if (titleTokens.length >= 3) return `title:${titleTokens.join(' ')}`;
+  if (mergedTokens.length >= 3) return `echo:${mergedTokens.join(' ')}`;
+  if (titleTokens.length) return `title:${titleTokens.join(' ')}`;
+  if (hostname) return `host:${hostname}`;
+  return `source:${String(result.source || 'unknown').toLowerCase()}`;
+}
+
+function summariseTrace(result = {}) {
+  const timeline = extractTimelinePoint(result);
+  const hostname = safeHostname(result.url || '');
+  const lane = classifyCommunityLane(result);
+  return {
+    title: result.title || result.url || 'Untitled result',
+    url: result.url || '',
+    source: result.source || '',
+    hostname,
+    reliability: result.meta?.reliability || 'unknown',
+    sourceFamily: result.meta?.sourceFamily || hostname || result.source || 'unknown',
+    dateLabel: timeline?.label || null,
+    sortKey: timeline?.sortKey || null,
+    lane,
+  };
+}
+
+function compareEarliest(left = {}, right = {}) {
+  if (left.sortKey && right.sortKey) return left.sortKey.localeCompare(right.sortKey);
+  if (left.sortKey) return -1;
+  if (right.sortKey) return 1;
+  return (right.score || 0) - (left.score || 0);
+}
+
+function isReliableTrace(trace = {}) {
+  return RELIABLE_BUCKETS.has(trace.reliability) || trace.sourceFamily === 'academic';
+}
+
+function isLowQualityTrace(trace = {}) {
+  return LOW_QUALITY_BUCKETS.has(trace.reliability)
+    || trace.sourceFamily === 'social'
+    || trace.sourceFamily === 'broker-directory';
+}
+
+function classifyCommunityLane(result = {}) {
+  const family = result.meta?.sourceFamily || '';
+  const hostname = safeHostname(result.url || '');
+  if (family === 'forum' || /forum|board|thread/u.test(hostname)) return 'forum';
+  if (/t\.me$|telegram/u.test(hostname)) return 'telegram';
+  if (/youtube\.com$|youtu\.be$/u.test(hostname)) return 'youtube';
+  if (family === 'media' || /\.news$|blog/u.test(hostname)) return hostname.includes('blog') ? 'blog' : 'media';
+  if (family === 'archive') return 'archive';
+  if (family === 'academic' || family === 'official') return 'records';
+  if (family === 'social') return 'social';
+  if (family === 'code-hosting') return 'code';
+  if (family === 'package-ecosystem') return 'package';
+  return 'open-web';
+}
+
+function detectArtifactMatches(result = {}) {
+  const haystack = `${result.title || ''} ${result.snippet || ''} ${result.url || ''}`;
+  const detected = ARTIFACT_MATCHERS.filter(({ re }) => re.test(haystack)).map(({ type }) => type);
+  if (/\bcommit\b/iu.test(haystack) && /\b[a-f0-9]{7,40}\b/iu.test(haystack)) {
+    detected.push('commit');
+  }
+  return unique(detected);
 }
 
 export function detectLanguage(text) {
@@ -180,6 +300,146 @@ export function buildTimeline(results = []) {
     .sort((left, right) => right.sortKey.localeCompare(left.sortKey));
 }
 
+export function buildSourceFamilyTree(results = []) {
+  const groups = new Map();
+
+  results.forEach((result) => {
+    const key = buildEchoFingerprint(result);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(result);
+  });
+
+  return [...groups.entries()]
+    .map(([fingerprint, members], index) => {
+      const traces = members.map(summariseTrace).sort(compareEarliest);
+      const ancestor = traces[0];
+      const hostnames = unique(traces.map((trace) => trace.hostname));
+      const reliableCount = traces.filter(isReliableTrace).length;
+      const lowQualityCount = traces.filter(isLowQualityTrace).length;
+
+      return {
+        id: `echo-family-${index + 1}`,
+        fingerprint,
+        label: truncateLabel(ancestor.title || ancestor.hostname || ancestor.source),
+        ancestor,
+        members: traces,
+        size: traces.length,
+        echoCount: Math.max(traces.length - 1, 0),
+        hostnames,
+        reliableCount,
+        lowQualityCount,
+      };
+    })
+    .sort((left, right) => (
+      right.size - left.size
+      || compareEarliest(left.ancestor, right.ancestor)
+      || left.label.localeCompare(right.label)
+    ));
+}
+
+export function findFirstBlood(results = []) {
+  const familyTree = buildSourceFamilyTree(results);
+  const datedAncestors = familyTree
+    .map((family) => ({ ...family.ancestor, echoCount: family.echoCount, familySize: family.size }))
+    .filter((trace) => trace.sortKey);
+
+  if (datedAncestors.length) {
+    return datedAncestors.sort(compareEarliest)[0];
+  }
+
+  const fallback = summariseTrace(results[0] || {});
+  return fallback.url || fallback.title ? { ...fallback, familySize: 1, echoCount: 0 } : null;
+}
+
+export function buildConsensusFractureMap(results = []) {
+  const familyTree = buildSourceFamilyTree(results);
+  const agreement = familyTree
+    .filter((family) => family.reliableCount > 0 && family.size > 1)
+    .slice(0, 3);
+  const dominantReliable = familyTree.find((family) => family.reliableCount > 0) || null;
+  const divergence = familyTree
+    .filter((family) => dominantReliable && family.reliableCount > 0 && family.fingerprint !== dominantReliable.fingerprint)
+    .slice(0, 3);
+  const amplification = familyTree
+    .filter((family) => family.lowQualityCount >= 1 && family.size > family.reliableCount)
+    .slice(0, 3);
+
+  return {
+    agreement,
+    divergence,
+    amplification,
+    stats: {
+      families: familyTree.length,
+      reliableFamilies: familyTree.filter((family) => family.reliableCount > 0).length,
+      lowQualityFamilies: familyTree.filter((family) => family.lowQualityCount > 0).length,
+    },
+  };
+}
+
+export function buildArtifactSearchProfile(input = '', results = []) {
+  const plan = buildQueryPlan(input);
+  const scentVariants = generateScentVariants(plan).slice(0, MAX_SCENT_VARIANTS);
+  const artifactHits = results
+    .map((result) => ({
+      title: result.title || result.url || 'Untitled result',
+      url: result.url || '',
+      source: result.source || '',
+      types: detectArtifactMatches(result),
+      archived: Boolean(result.meta?.tags?.includes('fossil') || result.meta?.pageStatus === 'archived' || result.meta?.sourceFamily === 'archive'),
+      hidden: Boolean(result.meta?.tags?.includes('document') || result.meta?.tags?.includes('archive-lane') || result.meta?.whySurvived),
+    }))
+    .filter((result) => result.types.length || result.archived || result.hidden);
+
+  const artifactCounts = new Map();
+  artifactHits.forEach((result) => {
+    result.types.forEach((type) => artifactCounts.set(type, (artifactCounts.get(type) || 0) + 1));
+  });
+
+  return {
+    intent: plan.intent,
+    scentVariants,
+    artifactHits: artifactHits.slice(0, 6),
+    dominantArtifacts: [...artifactCounts.entries()]
+      .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+      .slice(0, 5)
+      .map(([type, count]) => ({ type, count })),
+    fossilCount: artifactHits.filter((result) => result.archived).length,
+    hiddenCount: artifactHits.filter((result) => result.hidden).length,
+  };
+}
+
+export function buildContagionMap(results = []) {
+  return buildSourceFamilyTree(results)
+    .filter((family) => family.size > 1)
+    .slice(0, 5)
+    .map((family) => {
+      const lanes = unique(family.members.map((member) => member.lane));
+      return {
+        label: family.label,
+        route: lanes.join(' → '),
+        familySize: family.size,
+        echoCount: family.echoCount,
+        lowQualityCount: family.lowQualityCount,
+        reliableCount: family.reliableCount,
+      };
+    });
+}
+
+export function buildCloneSludgeReport(results = []) {
+  const families = buildSourceFamilyTree(results);
+  const clones = families.filter((family) => family.echoCount > 0);
+  const repeatedResults = clones.reduce((total, family) => total + family.echoCount, 0);
+  return {
+    cloneFamilies: clones.length,
+    repeatedResults,
+    largestFamilies: clones.slice(0, 3).map((family) => ({
+      label: family.label,
+      echoCount: family.echoCount,
+      size: family.size,
+    })),
+  };
+}
+
 export function buildRelatedQueries(input, results = [], limit = 8) {
   const plan = buildQueryPlan(input);
   const domains = unique(results.map((result) => safeHostname(result.url || '')).filter(Boolean)).slice(0, 2);
@@ -187,14 +447,21 @@ export function buildRelatedQueries(input, results = [], limit = 8) {
   const orgs = unique(results.flatMap((result) => result.meta?.entities?.orgs || [])).slice(0, 2);
   const regions = unique(results.map((result) => result.meta?.region).filter(Boolean)).slice(0, 1);
   const language = unique(results.map((result) => result.meta?.language).filter((code) => code && code !== 'unknown' && code !== 'en')).slice(0, 1);
+  const scentVariants = generateScentVariants(plan)
+    .filter((value) => value && value !== plan.raw && value !== plan.exact)
+    .slice(0, MAX_RELATED_SCENT_VARIANTS);
 
   return uniqueCaseInsensitive([
     plan.raw ? `intitle:"${plan.raw}"` : null,
     plan.raw ? `filetype:pdf "${plan.raw}"` : null,
+    plan.intent === 'artifact' && plan.raw ? `"${plan.raw}" "favicon.ico"` : null,
+    plan.intent === 'artifact' && plan.raw ? `"${plan.raw}" "robots.txt"` : null,
+    plan.intent === 'artifact' && plan.raw ? `"${plan.raw}" rss` : null,
     ...domains.map((domain) => plan.raw ? `site:${domain} "${plan.raw}"` : null),
     ...usernames.map((username) => `"${username}" profile`),
-    ...usernames.map((username) => `site:github.com ${username}`),
     ...orgs.map((org) => plan.raw ? `"${org}" "${plan.raw}"` : `"${org}"`),
+    ...usernames.map((username) => `site:github.com ${username}`),
+    ...scentVariants.map((value) => plan.intent === 'artifact' ? `"${value}"` : `${value} profile`),
     ...regions.map((region) => plan.raw ? `${plan.raw} region:${region}` : `region:${region}`),
     ...language.map((code) => plan.raw ? `${plan.raw} lang:${code}` : `lang:${code}`),
   ]).slice(0, limit);
@@ -210,6 +477,7 @@ export function buildResultInsights(result = {}, input = '') {
   const timeline = extractTimelinePoint(result);
 
   return {
+    artifactTypes: detectArtifactMatches(result),
     entities,
     language,
     languageLabel: normaliseLanguageLabel(language),

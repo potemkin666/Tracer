@@ -1,11 +1,17 @@
 export {
+  buildArtifactSearchProfile,
+  buildCloneSludgeReport,
+  buildConsensusFractureMap,
+  buildContagionMap,
   buildRelatedQueries,
   buildResultInsights,
+  buildSourceFamilyTree,
   buildTimeline,
   buildTranslationUrl,
   detectLanguage,
   extractEntities,
   extractTimelinePoint,
+  findFirstBlood,
   inferRegion,
   inferReliability,
 } from '../docs/scripts/shared/resultInsightsShared.js';

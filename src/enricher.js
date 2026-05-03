@@ -61,6 +61,7 @@ export function enrich(results, input) {
       ...result,
       meta,
     }, input);
+    meta.artifactTypes = insights.artifactTypes;
     meta.entities = insights.entities;
     meta.language = insights.language;
     meta.languageLabel = insights.languageLabel;

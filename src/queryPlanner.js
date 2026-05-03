@@ -1,6 +1,7 @@
 export {
   buildQueryPlan,
   detectQueryIntent,
+  generateScentVariants,
   generateQueries,
   isFuzzyHandleMatch,
   parseOperators,

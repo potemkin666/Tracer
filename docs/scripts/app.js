@@ -3,7 +3,16 @@
 import { buildQueryPlan, queryVariants } from './shared/queryShared.js';
 import { createKeyStorage } from './shared/keyStorage.js';
 import { buildResultsBrief } from './shared/resultBrief.js';
-import { buildRelatedQueries, buildTimeline } from './shared/resultInsightsShared.js';
+import {
+  buildArtifactSearchProfile,
+  buildCloneSludgeReport,
+  buildConsensusFractureMap,
+  buildContagionMap,
+  buildRelatedQueries,
+  buildSourceFamilyTree,
+  buildTimeline,
+  findFirstBlood,
+} from './shared/resultInsightsShared.js';
 import {
   searchDirect as runStandaloneSearch,
   searchVariants,
@@ -967,6 +976,7 @@ const QUERY_TYPE_LABELS={
   email:'EMAIL TRACE',
   phone:'PHONE TRACE',
   image:'IMAGE TRACE',
+  artifact:'ARTIFACT TRACE',
   company:'COMPANY TRACE',
 };
 function bclass(src,tags){
@@ -980,6 +990,73 @@ function bclass(src,tags){
 
 function formatQueryType(intent){
   return QUERY_TYPE_LABELS[intent]||`${String(intent||'name').toUpperCase()} TRACE`;
+}
+
+function openResultInNewTab(url){
+  if(!url)return;
+  globalThis.open(url,'_blank','noopener,noreferrer');
+}
+
+function renderFirstBloodPanel(firstBlood){
+  if(!firstBlood)return '';
+  const sourceLink=firstBlood.url
+    ? `<a href="${esc(firstBlood.url)}" target="_blank" rel="noopener noreferrer">${esc(firstBlood.title)}</a>`
+    : esc(firstBlood.title);
+  return '<details class="cluster" open><summary class="cluster-hdr">🩸 FIRST-BLOOD FINDER</summary><div class="tree-item">'+
+    `<strong>${esc(firstBlood.dateLabel||'Earliest surfaced lead')}</strong> · ${sourceLink}`+
+    `<div class="card-seen">ORIGIN SOURCE <span>${esc(firstBlood.source||'unknown')}</span> · FAMILY <span>${esc(firstBlood.sourceFamily||'unknown')}</span> · ECHOES <span>${firstBlood.echoCount||0}</span></div>`+
+    '</div></details>';
+}
+
+function renderSourceFamilyPanel(familyTree){
+  if(!familyTree.length)return '';
+  return '<details class="cluster"><summary class="cluster-hdr">🧬 SOURCE FAMILY TREE</summary><div class="tree-list">'+
+    familyTree.map((family)=>{
+      const originLink=family.ancestor.url
+        ? `<a href="${esc(family.ancestor.url)}" target="_blank" rel="noopener noreferrer">${esc(family.ancestor.source||family.ancestor.hostname||'origin')}</a>`
+        : esc(family.ancestor.source||family.ancestor.hostname||'origin');
+      return `<div class="tree-item"><strong>${esc(family.label)}</strong><div class="card-seen">ANCESTOR <span>${family.ancestor.dateLabel?esc(family.ancestor.dateLabel):'undated'}</span> · ${originLink} · ECHOES <span>${family.echoCount}</span> · HOSTS <span>${family.hostnames.length}</span></div></div>`;
+    }).join('')+
+    '</div></details>';
+}
+
+function renderArtifactProfilePanel(profile,cloneReport){
+  if(!profile)return '';
+  const dominant=profile.dominantArtifacts.length
+    ? profile.dominantArtifacts.map((entry)=>`${entry.type} (${entry.count})`).join(' · ')
+    : 'no artifact remnants detected yet';
+  const scent=profile.scentVariants.length
+    ? profile.scentVariants.map((value)=>`<span class="tag">${esc(value)}</span>`).join('')
+    : '<span class="tag">no mutation variants</span>';
+  const hits=profile.artifactHits.length
+    ? profile.artifactHits.map((hit)=>`<div class="tree-item"><strong>${esc(hit.title)}</strong><div class="card-seen">${esc(hit.source)} · ${(hit.types.length?hit.types.map((type)=>esc(type)).join(', '):'hidden layer')} · ${hit.archived?'archived':'live'}${hit.hidden?' · low-visibility':''}</div></div>`).join('')
+    : '<div class="tree-item"><strong>No artifact-heavy hits yet</strong><div class="card-seen">Try a filename, hash, favicon term, CSS class, or old slug.</div></div>';
+  return '<details class="cluster"><summary class="cluster-hdr">🦴 ARTIFACT-FIRST / DIGITAL BLOODHOUND</summary><div class="consensus-list">'+
+    `<div class="consensus-item"><strong>Dominant fossil layer</strong><div class="card-seen">${dominant}</div></div>`+
+    `<div class="consensus-item"><strong>Low-visibility finds</strong><div class="card-seen">${profile.hiddenCount} hidden-layer hits · ${profile.fossilCount} archive-layer hits · ${cloneReport.repeatedResults} cloned repeats</div></div>`+
+    `<div class="consensus-item"><strong>Scent mutations</strong><div class="tags">${scent}</div></div>`+
+    hits+
+    '</div></details>';
+}
+
+function renderContagionPanel(contagion,cloneReport){
+  const routeHtml=contagion.length
+    ? contagion.map((entry)=>`<div class="consensus-item"><strong>${esc(entry.label)}</strong><div class="card-seen">${esc(entry.route||'single lane')} · repeats ${entry.echoCount} · reliable ${entry.reliableCount} · low-quality ${entry.lowQualityCount}</div></div>`).join('')
+    : '<div class="consensus-item"><strong>No contagion chain yet</strong><div class="card-seen">No repeated cross-community route surfaced in this pass.</div></div>';
+  const sludgeHtml=cloneReport.largestFamilies.length
+    ? cloneReport.largestFamilies.map((family)=>`${family.label} (${family.echoCount} repeats)`).join('; ')
+    : 'No sludge-farm clone wave detected.';
+  return '<details class="cluster"><summary class="cluster-hdr">🧫 CONTAGION MAP / CLONE SLUDGE</summary><div class="consensus-list">'+
+    routeHtml+
+    `<div class="consensus-item"><strong>Sludge families</strong><div class="card-seen">${cloneReport.cloneFamilies} echo families · ${cloneReport.repeatedResults} repeated results · ${esc(sludgeHtml)}</div></div>`+
+    '</div></details>';
+}
+
+function buildConsensusItems(title,items,renderItem,emptyState){
+  if(!items.length){
+    return `<div class="consensus-item"><strong>${title}</strong><div class="card-seen">${emptyState}</div></div>`;
+  }
+  return items.map(renderItem).join('');
 }
 
 function describeSourceBucket(result){
@@ -1104,6 +1181,7 @@ function renderResults(results,clusters,context={}){
     const tagsHtml=tags.length?`<div class="tags">${tags.map(t=>`<span class="tag">${esc(t.toUpperCase())}</span>`).join('')}</div>`:'';
     const eraTag=r.meta&&r.meta.era?`<span class="tag" style="border-color:var(--gold);color:var(--gold)">ERA ${r.meta.era}</span>`:'';
     const ftTag=r.meta&&r.meta.fileType?`<span class="tag" style="border-color:#b5838d;color:#b5838d">${esc(r.meta.fileType.toUpperCase())}</span>`:'';
+    const artifactTags=(r.meta&&r.meta.artifactTypes||[]).slice(0,3).map((type)=>`<span class="tag" style="border-color:#6ad5ff;color:#6ad5ff">${esc(type.toUpperCase())}</span>`).join('');
     const insightRow=`<div class="card-seen">RELIABILITY <span>${esc(reliability.toUpperCase())}</span> · LANG <span>${esc(language.toUpperCase())}</span>${region}</div>`;
     const whyHtml=r.meta&&r.meta.whySurvived?`<div class="card-seen">WHY THIS SURVIVED · ${esc(r.meta.whySurvived)}</div>`:'';
     const pageInspection=r.meta&&r.meta.pageInspection;
@@ -1128,6 +1206,18 @@ function renderResults(results,clusters,context={}){
       list.appendChild(hdr);
     }
     const card=document.createElement('div');card.className='card';
+    if(r.url){
+      card.dataset.openable='true';
+      card.tabIndex=0;
+      card.title='Double-click or press Enter/Space to open in a new tab';
+      card.addEventListener('dblclick',()=>openResultInNewTab(r.url));
+      card.addEventListener('keydown',(event)=>{
+        if(event.key==='Enter'||event.key===' '){
+          event.preventDefault();
+          openResultInNewTab(r.url);
+        }
+      });
+    }
     card.style.animationDelay=(i*.035)+'s';
     card.innerHTML=
       `<div class="card-top">`+
@@ -1144,7 +1234,7 @@ function renderResults(results,clusters,context={}){
       seenHtml+
       actionsHtml+
       entityHtml+
-      ((eraTag||ftTag||tagsHtml)?`<div class="tags">${eraTag}${ftTag}${tagsHtml}</div>`:'');
+      ((eraTag||ftTag||artifactTags||tagsHtml)?`<div class="tags">${eraTag}${ftTag}${artifactTags}${tagsHtml}</div>`:'');
     list.appendChild(card);
   });
 }
@@ -1153,12 +1243,24 @@ function renderInsightPanels(results){
   const timelineEl=document.getElementById('timeline-panel');
   const relatedEl=document.getElementById('related-panel');
   const insightsEl=document.getElementById('insights-panel');
+  const artifactEl=document.getElementById('artifact-panel');
+  const originEl=document.getElementById('origin-panel');
+  const familyEl=document.getElementById('family-panel');
+  const contagionEl=document.getElementById('contagion-panel');
+  const consensusEl=document.getElementById('consensus-panel');
   if(timelineEl)timelineEl.innerHTML='';
   if(relatedEl)relatedEl.innerHTML='';
   if(insightsEl)insightsEl.innerHTML='';
+  if(artifactEl)artifactEl.innerHTML='';
+  if(originEl)originEl.innerHTML='';
+  if(familyEl)familyEl.innerHTML='';
+  if(contagionEl)contagionEl.innerHTML='';
+  if(consensusEl)consensusEl.innerHTML='';
   if(!results.length)return;
 
   const query=document.getElementById('query').value.trim();
+  const artifactProfile=buildArtifactSearchProfile(query,results);
+  const cloneReport=buildCloneSludgeReport(results);
   const entities=[
     ...new Set(results.flatMap((result)=>[
       ...((result.meta&&result.meta.entities&&result.meta.entities.names)||[]),
@@ -1169,12 +1271,53 @@ function renderInsightPanels(results){
   if(insightsEl&&entities.length){
     insightsEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">ENTITY EXTRACTION</summary><div class="tags">'+entities.map(v=>`<span class="tag">${esc(v)}</span>`).join('')+'</div></details>';
   }
+  if(artifactEl){
+    artifactEl.innerHTML=renderArtifactProfilePanel(artifactProfile,cloneReport);
+  }
+
+  const firstBlood=findFirstBlood(results);
+  if(originEl&&firstBlood){
+    originEl.innerHTML=renderFirstBloodPanel(firstBlood);
+  }
+
+  const familyTree=buildSourceFamilyTree(results).slice(0,6);
+  if(familyEl&&familyTree.length){
+    familyEl.innerHTML=renderSourceFamilyPanel(familyTree);
+  }
 
   const timeline=buildTimeline(results).slice(0,10);
   if(timelineEl&&timeline.length){
     timelineEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">TIMELINE VIEW</summary>'+
       timeline.map((item)=>`<div class="card-seen"><span>${esc(item.label)}</span> · <a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title)}</a> · ${esc(item.reliability.toUpperCase())}</div>`).join('')+
       '</details>';
+  }
+
+  const contagion=buildContagionMap(results);
+  if(contagionEl){
+    contagionEl.innerHTML=renderContagionPanel(contagion,cloneReport);
+  }
+
+  const consensus=buildConsensusFractureMap(results);
+  if(consensusEl){
+    const agreement=buildConsensusItems(
+      'Agreement',
+      consensus.agreement,
+      (family)=>`<div class="consensus-item"><strong>Agreement</strong><div class="card-seen">${esc(family.label)} · reliable ${family.reliableCount} · echoes ${family.echoCount}</div></div>`,
+      'No multi-source reliable agreement yet.'
+    );
+    const divergence=buildConsensusItems(
+      'Divergence',
+      consensus.divergence,
+      (family)=>`<div class="consensus-item"><strong>Divergence</strong><div class="card-seen">${esc(family.label)} · reliable ${family.reliableCount} · separate branch</div></div>`,
+      'Reliable sources are not materially split on this pass.'
+    );
+    const amplification=buildConsensusItems(
+      'Amplification risk',
+      consensus.amplification,
+      (family)=>`<div class="consensus-item"><strong>Amplification risk</strong><div class="card-seen">${esc(family.label)} · low-quality ${family.lowQualityCount} · echoes ${family.echoCount}</div></div>`,
+      'No weak-source repetition spike detected.'
+    );
+    consensusEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">⚖️ CONSENSUS FRACTURE MAP</summary><div class="consensus-list">'+agreement+divergence+amplification+'</div></details>';
   }
 
   const related=buildRelatedQueries(query,results);
@@ -1246,7 +1389,61 @@ function hideLiveProgress(){
   if(wrap)wrap.style.display='none';
 }
 
-// ── EXPORT (JSON + CSV) ──────────────────────────────────────────────────────
+function buildTextExport(results){
+  const query=document.getElementById('query').value.trim();
+  const artifactProfile=buildArtifactSearchProfile(query,results);
+  const cloneReport=buildCloneSludgeReport(results);
+  const familyTree=buildSourceFamilyTree(results);
+  const firstBlood=findFirstBlood(results);
+  const contagion=buildContagionMap(results);
+  const consensus=buildConsensusFractureMap(results);
+  const sections=[
+    '🧭 TRACER INTELLIGENCE BRIEF',
+    `Query: ${query||'Untitled search'}`,
+    `Generated: ${new Date().toISOString()}`,
+    '',
+    `🌊 Summary: ${buildResultsBrief(results)}`,
+    '',
+    '🦴 Artifact-first / digital bloodhound',
+    `- Dominant artifacts: ${artifactProfile.dominantArtifacts.length?artifactProfile.dominantArtifacts.map((entry)=>`${entry.type} (${entry.count})`).join('; '):'none yet'}`,
+    `- Scent variants: ${artifactProfile.scentVariants.length?artifactProfile.scentVariants.join(', '):'none'}`,
+    `- Hidden-layer hits: ${artifactProfile.hiddenCount} | Archive-layer hits: ${artifactProfile.fossilCount}`,
+    '',
+    '🩸 First-blood finder',
+    firstBlood
+      ? `- ${firstBlood.dateLabel||'Undated'} | ${firstBlood.title} | ${firstBlood.url||firstBlood.source}`
+      : '- No dated origin surfaced.',
+    '',
+    '🧫 Contagion map',
+    ...(contagion.length
+      ? contagion.map((entry,index)=>`${index+1}. ${entry.label}\n   Route: ${entry.route||'single lane'}\n   Repeats: ${entry.echoCount} | Reliable: ${entry.reliableCount} | Low-quality: ${entry.lowQualityCount}`)
+      : ['- No repeated cross-community route detected.']),
+    '',
+    '🧬 Source family tree',
+    ...(familyTree.length
+      ? familyTree.map((family,index)=>`${index+1}. ${family.label}\n   Ancestor: ${family.ancestor.dateLabel||'Undated'} | ${family.ancestor.title} | ${family.ancestor.url||family.ancestor.source}\n   Echoes: ${family.echoCount} | Reliable: ${family.reliableCount} | Low-quality: ${family.lowQualityCount}`)
+      : ['- No echo families formed.']),
+    '',
+    '⚖️ Consensus fracture map',
+    `- Agreement lanes: ${consensus.agreement.length?consensus.agreement.map((family)=>`${family.label} (${family.reliableCount} reliable / ${family.size} echoes)`).join('; '):'none yet'}`,
+    `- Divergence lanes: ${consensus.divergence.length?consensus.divergence.map((family)=>family.label).join('; '):'none detected'}`,
+    `- Amplification risk: ${consensus.amplification.length?consensus.amplification.map((family)=>`${family.label} (${family.lowQualityCount} low-quality repeats)`).join('; '):'no fake-certainty spike detected'}`,
+    `- Clone sludge: ${cloneReport.cloneFamilies} clone families | ${cloneReport.repeatedResults} repeated results`,
+    '',
+    '📎 Result ledger',
+    ...results.map((result,index)=>[
+      `${index+1}. ${result.title||result.url||'Untitled result'}`,
+      `   🔗 ${result.url||'No URL available'}`,
+      `   🛰️ Source: ${result.source||'unknown'} | Score: ${result.score||0} | Reliability: ${(result.meta&&result.meta.reliability)||'unknown'}`,
+      `   👀 Seen on: ${(result.seenOn||[]).join(', ')||'single source'}`,
+      result.snippet?`   📝 ${String(result.snippet).replace(/\s+/gu,' ').trim()}`:'',
+    ].filter(Boolean).join('\n')),
+    '',
+  ];
+  return sections.join('\n');
+}
+
+// ── EXPORT (JSON + TXT) ──────────────────────────────────────────────────────
 function exportJSON(){
   if(!_lastResults.length)return;
   const data=_lastResults.map(r=>({
@@ -1257,26 +1454,10 @@ function exportJSON(){
   const blob=new globalThis.Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   downloadBlob(blob,'tracer-results.json');
 }
-function exportCSV(){
+function exportTXT(){
   if(!_lastResults.length)return;
-  const header='Score,Source,Title,URL,Snippet,Seen On';
-  const rows=_lastResults.map(r=>{
-    const fields=[
-      r.score||0,
-      csvSafe(r.source||''),
-      csvSafe(r.title||''),
-      csvSafe(r.url||''),
-      csvSafe((r.snippet||'').slice(0,300)),
-      csvSafe((r.seenOn||[]).join('; '))
-    ];
-    return fields.join(',');
-  });
-  const blob=new globalThis.Blob([header+'\n'+rows.join('\n')],{type:'text/csv'});
-  downloadBlob(blob,'tracer-results.csv');
-}
-function csvSafe(s){
-  s=String(s||'').replace(/"/g,'""');
-  return /[,"\n\r]/.test(s)?'"'+s+'"':s;
+  const blob=new globalThis.Blob([buildTextExport(_lastResults)],{type:'text/plain;charset=utf-8'});
+  downloadBlob(blob,'tracer-results.txt');
 }
 function downloadBlob(blob,filename){
   const a=document.createElement('a');
@@ -1284,6 +1465,11 @@ function downloadBlob(blob,filename){
   a.download=filename;
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},100);
+}
+
+function resetPanel(id){
+  const panel=document.getElementById(id);
+  if(panel)panel.innerHTML='';
 }
 
 // ── SEARCH HISTORY ───────────────────────────────────────────────────────────
@@ -1356,7 +1542,33 @@ function rerunSearch(query){
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function showLoading(v){document.getElementById('loading').style.display=v?'block':'none';document.getElementById('srch-btn').disabled=v}
-function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const insights=document.getElementById('insights-panel');if(insights)insights.innerHTML='';const timeline=document.getElementById('timeline-panel');if(timeline)timeline.innerHTML='';const related=document.getElementById('related-panel');if(related)related.innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';const meta=document.getElementById('results-meta');if(meta){meta.innerHTML='';meta.style.display='none'}const brief=document.getElementById('results-brief');if(brief){brief.textContent='';brief.style.display='none'}_lastResults=[]}
+function clearResults(){
+  document.getElementById('results-section').style.display='none';
+  document.getElementById('results-list').innerHTML='';
+  document.getElementById('avatar-clusters').innerHTML='';
+  document.getElementById('src-status-wrap').innerHTML='';
+  resetPanel('insights-panel');
+  resetPanel('artifact-panel');
+  resetPanel('origin-panel');
+  resetPanel('family-panel');
+  resetPanel('timeline-panel');
+  resetPanel('contagion-panel');
+  resetPanel('consensus-panel');
+  resetPanel('related-panel');
+  const eb=document.getElementById('export-bar');
+  if(eb)eb.style.display='none';
+  const meta=document.getElementById('results-meta');
+  if(meta){
+    meta.innerHTML='';
+    meta.style.display='none';
+  }
+  const brief=document.getElementById('results-brief');
+  if(brief){
+    brief.textContent='';
+    brief.style.display='none';
+  }
+  _lastResults=[];
+}
 function showErr(msg,isErr){const el=document.getElementById('err');el.textContent=msg;el.style.display=msg?'block':'none';if(!isErr){el.style.color='var(--bright)';return}setUiStatus('error','SIGNAL LOST')}
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
@@ -1383,7 +1595,7 @@ Object.assign(globalThis,{
   checkConn,
   clearKeys,
   doSearch,
-  exportCSV,
   exportJSON,
+  exportTXT,
   saveKeys,
 });

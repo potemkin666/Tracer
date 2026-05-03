@@ -66,6 +66,15 @@ const INTENT_WEIGHT_OVERRIDES = {
     titlePartial: 0.7,
     snippetPartial: 0.3,
   },
+  artifact: {
+    documentTag: 1.8,
+    fossilTag: 1.7,
+    archiveSource: 1.5,
+    keywordProximity: 1.5,
+    authorityHit: 0.9,
+    socialTag: 0.2,
+    profileTag: 0.2,
+  },
 };
 
 const BROKER_DIRECTORY_HOSTS = [
