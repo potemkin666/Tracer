@@ -9,7 +9,7 @@ function uniqueSources(result) {
 function truncate(value, max = 70) {
   const text = String(value || '').trim();
   if (!text || text.length <= max) return text;
-  return `${text.slice(0, max - 1)}…`;
+  return `${text.slice(0, max)}…`;
 }
 
 export function buildResultsBrief(results = []) {
