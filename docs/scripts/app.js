@@ -24,7 +24,7 @@ import {
 
 // ── FISH ─────────────────────────────────────────────────────────────────────
 (function(){
-  const glyphs=['🐟','🐠','🐡','🦈','🐙'];
+    const glyphs=['🐟','🐠','🐡','🦈','🐙'];
   for(let i=0;i<5;i++){
     const f=document.createElement('div');f.className='fish';
     f.textContent=glyphs[i%glyphs.length];
@@ -33,6 +33,8 @@ import {
     document.body.appendChild(f);
   }
 })();
+
+let _lastResults=[];
 
 // ── SHARED ENGINE METADATA ────────────────────────────────────────────────────
 const ENGINE_METADATA=globalThis.TRACER_ENGINE_METADATA||{
@@ -775,7 +777,7 @@ function searchViaSSE(base,query){
           progressPhase=info.phase;
           const bar=document.getElementById('eng-bar');
           if(bar){
-            const phases={cache:'Using cached sweep',connectors:'Scanning connectors',wayback:'Wayback Machine',namechk:'Username check',profileProbe:'Direct profile probing',timeSlice:'Time slicing',docSearch:'Document search',dedupe:'Deduplicating',fossils:'Fossil hunting'};
+            const phases={cache:'Using cached sweep',connectors:'Scanning connectors',wayback:'Wayback Machine',namechk:'Username check',profileProbe:'Direct profile probing',timeSlice:'Time slicing',docSearch:'Document search',dedupe:'Deduplicating',fossils:'Fossil hunting',archiveFirst:'Archive-first expansion'};
             bar.textContent='SERVER · '+(phases[info.phase]||info.phase)+'…';
           }
         }
@@ -787,7 +789,14 @@ function searchViaSSE(base,query){
     es.addEventListener('done',function(e){
       try{
         const data=JSON.parse(e.data);
-        finish(resolve,{results:data.results||[],avatarClusters:data.avatarClusters||[],graph:data.graph||null,connectorStats:data.connectorStats||[]});
+        finish(resolve,{
+          results:data.results||[],
+          avatarClusters:data.avatarClusters||[],
+          graph:data.graph||null,
+          connectorStats:data.connectorStats||[],
+          telemetry:data.telemetry||null,
+          searchNarrative:data.searchNarrative||null,
+        });
       }catch{
         finish(reject,new Error('Failed to parse server response'));
       }
@@ -821,7 +830,7 @@ async function doSearch(){
   setUiStatus('searching',deepSearch?'DESCENT ACTIVE':'SONAR SWEEP ACTIVE');
   showLoading(true);clearResults();showErr('',false);
 
-  let results=[],avatarClusters=[];
+  let results=[],avatarClusters=[],searchContext={};
 
   // Always try the local server first (even on GitHub Pages — the user may have
   // launched `npm run serve` locally and the server now has CORS enabled).
@@ -834,6 +843,11 @@ async function doSearch(){
       const data=await searchViaSSE(base,query);
       results=data.results||[];
       avatarClusters=data.avatarClusters||[];
+      searchContext={
+        telemetry:data.telemetry||null,
+        searchNarrative:data.searchNarrative||null,
+        connectorStats:data.connectorStats||[],
+      };
       // Update engine bar with final stats
       const bar=document.getElementById('eng-bar');
       if(bar){
@@ -849,7 +863,7 @@ async function doSearch(){
     results=await searchDirect(query);
   }
 
-  renderResults(results,avatarClusters);
+  renderResults(results,avatarClusters,searchContext);
   _lastResults=results;
   addToHistory(query,results.length);
   hideLiveProgress();
@@ -868,7 +882,7 @@ function bclass(src,tags){
   return'b-'+(TIER_MAP[src]||'obscure');
 }
 
-function renderResults(results,clusters){
+function renderResults(results,clusters,context={}){
   document.getElementById('results-section').style.display='block';
   document.getElementById('res-count').textContent=
     results.length+' UNIQUE TRACE'+(results.length!==1?'S':'')+' RECOVERED';
@@ -878,7 +892,13 @@ function renderResults(results,clusters){
   if(expBar)expBar.style.display=results.length?'flex':'none';
   const brief=document.getElementById('results-brief');
   if(brief){
-    brief.textContent=buildResultsBrief(results);
+    const searchNarrative=context.searchNarrative
+      ? [context.searchNarrative.headline,...(context.searchNarrative.details||[])].filter(Boolean).join(' ')
+      : '';
+    const telemetrySummary=context.telemetry&&context.telemetry.topFamilies&&context.telemetry.topFamilies.length
+      ? `Recent winners: ${context.telemetry.topFamilies.slice(0,2).map((entry)=>entry.family).join(', ')}.`
+      : '';
+    brief.textContent=[buildResultsBrief(results),searchNarrative,telemetrySummary].filter(Boolean).join(' ');
     brief.style.display=results.length?'block':'none';
   }
 
@@ -932,6 +952,13 @@ function renderResults(results,clusters){
     const ftTag=r.meta&&r.meta.fileType?`<span class="tag" style="border-color:#b5838d;color:#b5838d">${esc(r.meta.fileType.toUpperCase())}</span>`:'';
     const insightRow=`<div class="card-seen">RELIABILITY <span>${esc(reliability.toUpperCase())}</span> · LANG <span>${esc(language.toUpperCase())}</span>${region}</div>`;
     const whyHtml=r.meta&&r.meta.whySurvived?`<div class="card-seen">WHY THIS SURVIVED · ${esc(r.meta.whySurvived)}</div>`:'';
+    const pageInspection=r.meta&&r.meta.pageInspection;
+    const inspectionParts=pageInspection?[
+      pageInspection.usernames&&pageInspection.usernames.length?`${pageInspection.usernames.slice(0,2).map((value)=>esc(value)).join(', ')} usernames`:null,
+      pageInspection.emails&&pageInspection.emails.length?`${pageInspection.emails.length} emails`:null,
+      pageInspection.outboundLinks&&pageInspection.outboundLinks.length?`${pageInspection.outboundLinks.length} outbound links`:null,
+    ].filter(Boolean):[];
+    const inspectionHtml=inspectionParts.length?`<div class="card-seen">PAGE INSPECTION · ${inspectionParts.join(' · ')}</div>`:'';
     const entityHtml=entityParts.length?`<div class="tags">${entityParts.map(v=>`<span class="tag">${esc(v)}</span>`).join('')}</div>`:'';
     const actionLinks=[
       r.meta&&r.meta.translationUrl?`<a href="${esc(r.meta.translationUrl)}" target="_blank" rel="noopener noreferrer">TRANSLATE</a>`:'',
@@ -958,6 +985,7 @@ function renderResults(results,clusters){
       (r.url?`<div class="card-url">${esc(r.url)}</div>`:'')+
       insightRow+
       whyHtml+
+      inspectionHtml+
       seenHtml+
       actionsHtml+
       entityHtml+
@@ -984,23 +1012,23 @@ function renderInsightPanels(results){
     ])),
   ].slice(0,8);
   if(insightsEl&&entities.length){
-    insightsEl.innerHTML='<div class="cluster"><div class="cluster-hdr">ENTITY EXTRACTION</div><div class="tags">'+entities.map(v=>`<span class="tag">${esc(v)}</span>`).join('')+'</div></div>';
+    insightsEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">ENTITY EXTRACTION</summary><div class="tags">'+entities.map(v=>`<span class="tag">${esc(v)}</span>`).join('')+'</div></details>';
   }
 
   const timeline=buildTimeline(results).slice(0,10);
   if(timelineEl&&timeline.length){
-    timelineEl.innerHTML='<div class="cluster"><div class="cluster-hdr">TIMELINE VIEW</div>'+
+    timelineEl.innerHTML='<details class="cluster"><summary class="cluster-hdr">TIMELINE VIEW</summary>'+
       timeline.map((item)=>`<div class="card-seen"><span>${esc(item.label)}</span> · <a href="${esc(item.url)}" target="_blank" rel="noopener noreferrer">${esc(item.title)}</a> · ${esc(item.reliability.toUpperCase())}</div>`).join('')+
-      '</div>';
+      '</details>';
   }
 
   const related=buildRelatedQueries(query,results);
   if(relatedEl&&related.length){
     const wrap=document.createElement('div');
     wrap.className='cluster';
-    wrap.innerHTML='<div class="cluster-hdr">RELATED QUERIES</div><div class="tags">'+
+    wrap.innerHTML='<details><summary class="cluster-hdr">RELATED QUERIES</summary><div class="tags">'+
       related.map((value)=>`<button class="btn btn-sm related-query" data-query="${esc(value)}" type="button">${esc(value)}</button>`).join('')+
-      '</div>';
+      '</div></details>';
     relatedEl.appendChild(wrap);
     relatedEl.querySelectorAll('[data-query]').forEach((btn)=>{
       btn.addEventListener('click',()=>{
@@ -1064,7 +1092,6 @@ function hideLiveProgress(){
 }
 
 // ── EXPORT (JSON + CSV) ──────────────────────────────────────────────────────
-let _lastResults=[];
 function exportJSON(){
   if(!_lastResults.length)return;
   const data=_lastResults.map(r=>({

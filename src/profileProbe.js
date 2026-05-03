@@ -11,6 +11,7 @@ const PROFILE_TARGETS = [
   { source: 'devto-direct', buildUrl: (handle) => `https://dev.to/${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'tech'] },
 ];
 const MAX_ERROR_CHECK_LENGTH = 600;
+const MAX_INSPECTION_LINKS = 4;
 
 function normaliseHandleCandidate(value) {
   const candidate = String(value || '')
@@ -42,6 +43,41 @@ function looksMissing(response) {
   return /not found|page not found|doesn.?t exist|404/u.test(body);
 }
 
+function decodeHtml(value) {
+  return String(value || '')
+    .replace(/&amp;/gu, '&')
+    .replace(/&lt;/gu, '<')
+    .replace(/&gt;/gu, '>')
+    .replace(/&quot;/gu, '"')
+    .replace(/&#39;/gu, "'");
+}
+
+function inspectProfilePage(html, handle, baseUrl) {
+  const body = String(html || '');
+  const title = decodeHtml(body.match(/<title[^>]*>([^<]*)<\/title>/iu)?.[1] || '').trim();
+  const emails = [...new Set((body.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/giu) || []).map((email) => email.toLowerCase()))].slice(0, 3);
+  const outboundLinks = [...new Set(Array.from(
+    body.matchAll(/href=["'](https?:\/\/[^"']+)["']/giu),
+    (match) => {
+      try {
+        return new URL(match[1], baseUrl).toString();
+      } catch {
+        return '';
+      }
+    }
+  ).filter(Boolean))].slice(0, MAX_INSPECTION_LINKS);
+  const usernames = [...new Set([
+    handle,
+    ...Array.from(body.matchAll(/@([a-z0-9._-]{2,39})/giu), (match) => match[1].toLowerCase()),
+  ].filter(Boolean))].slice(0, 4);
+  return {
+    title: title || null,
+    emails,
+    outboundLinks,
+    usernames,
+  };
+}
+
 async function probeTarget(target, handle, signal) {
   const url = target.buildUrl(handle);
   const response = await httpClient.get(url, {
@@ -56,16 +92,21 @@ async function probeTarget(target, handle, signal) {
     return null;
   }
 
+  const pageInspection = inspectProfilePage(response.data, handle, url);
+
   return {
-    title: `${handle} on ${target.source.replace(/-direct$/u, '')}`,
+    title: pageInspection.title || `${handle} on ${target.source.replace(/-direct$/u, '')}`,
     url,
     source: target.source,
     rank: 1,
-    snippet: `Direct profile probe matched ${handle}`,
+    snippet: pageInspection.emails.length || pageInspection.outboundLinks.length
+      ? `Direct probe matched ${handle} · ${pageInspection.emails.length} emails · ${pageInspection.outboundLinks.length} outbound links`
+      : `Direct profile probe matched ${handle}`,
     meta: {
       username: handle,
       tags: target.tags,
       platform: target.source.replace(/-direct$/u, ''),
+      pageInspection,
     },
   };
 }

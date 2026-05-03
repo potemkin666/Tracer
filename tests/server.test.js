@@ -50,13 +50,26 @@ describe('ui server', () => {
   });
 
   test('POST /search returns results, graph, and connector stats', async () => {
+    const telemetry = {
+      searches: 1,
+      outcomes: { highConfidence: 1, weakOnly: 0, empty: 0 },
+      feedback: { helpful: 0, falsePositive: 0 },
+      topFamilies: [],
+      topConnectors: [],
+      lastUpdatedAt: '2026-05-03T10:00:00.000Z',
+    };
     const runImpl = jest.fn(async () => ({
       results: [{ url: 'https://example.com', title: 'Example', source: 'demo' }],
       avatarClusters: [{ avatarHash: 'abc', urls: ['https://example.com'] }],
       connectorStats: [{ id: 'demo', ok: true, count: 1 }],
     }));
     const buildGraphImpl = jest.fn(() => ({ nodes: [{ id: 'https://example.com' }], edges: [] }));
-    const app = createApp({ runImpl, buildGraphImpl });
+    const telemetryStore = {
+      recordSearch: jest.fn(() => telemetry),
+      getSummary: jest.fn(() => telemetry),
+      recordFeedback: jest.fn(() => telemetry),
+    };
+    const app = createApp({ runImpl, buildGraphImpl, telemetryStore });
 
     await withServer(app, async (baseUrl) => {
       const response = await globalThis.fetch(`${baseUrl}/search`, {
@@ -70,6 +83,16 @@ describe('ui server', () => {
         avatarClusters: [{ avatarHash: 'abc', urls: ['https://example.com'] }],
         graph: { nodes: [{ id: 'https://example.com' }], edges: [] },
         connectorStats: [{ id: 'demo', ok: true, count: 1 }],
+        telemetry,
+        searchNarrative: {
+          headline: '1 result survived because multiple weak traces still lined up.',
+          details: [
+            'Most productive connectors: demo (1).',
+            'No direct page inspection evidence surfaced.',
+            'Archive expansion did not drive this result set.',
+          ],
+          status: 'ok',
+        },
       });
       expect(runImpl).toHaveBeenCalledWith('alice', expect.objectContaining({ fossils: true }));
     });
@@ -94,6 +117,18 @@ describe('ui server', () => {
   });
 
   test('GET /search/stream emits progress and done events', async () => {
+    const telemetryStore = {
+      recordSearch: jest.fn(() => ({
+        searches: 1,
+        outcomes: { highConfidence: 1, weakOnly: 0, empty: 0 },
+        feedback: { helpful: 0, falsePositive: 0 },
+        topFamilies: [],
+        topConnectors: [],
+        lastUpdatedAt: '2026-05-03T10:00:00.000Z',
+      })),
+      getSummary: jest.fn(() => ({})),
+      recordFeedback: jest.fn(() => ({})),
+    };
     const app = createApp({
       runImpl: async (_input, options) => {
         options.onProgress({ phase: 'connectors', connector: 'demo', resultsSoFar: 2 });
@@ -104,6 +139,7 @@ describe('ui server', () => {
         };
       },
       buildGraphImpl: () => ({ nodes: [], edges: [] }),
+      telemetryStore,
     });
 
     await withServer(app, async (baseUrl) => {
@@ -114,6 +150,43 @@ describe('ui server', () => {
       expect(text).toContain('"connector":"demo"');
       expect(text).toContain('event: done');
       expect(text).toContain('"graph":{"nodes":[],"edges":[]}');
+      expect(text).toContain('"searchNarrative"');
+    });
+  });
+
+  test('GET /telemetry returns the current summary and feedback updates it', async () => {
+    const telemetry = {
+      searches: 2,
+      outcomes: { highConfidence: 1, weakOnly: 1, empty: 0 },
+      feedback: { helpful: 0, falsePositive: 0 },
+      topFamilies: [{ family: 'social', wins: 1, falsePositives: 0, helpful: 0 }],
+      topConnectors: [],
+      lastUpdatedAt: '2026-05-03T10:00:00.000Z',
+    };
+    const updated = {
+      ...telemetry,
+      feedback: { helpful: 1, falsePositive: 0 },
+      topFamilies: [{ family: 'social', wins: 1, falsePositives: 0, helpful: 1 }],
+    };
+    const telemetryStore = {
+      recordSearch: jest.fn(() => telemetry),
+      getSummary: jest.fn(() => telemetry),
+      recordFeedback: jest.fn(() => updated),
+    };
+    const app = createApp({ telemetryStore });
+
+    await withServer(app, async (baseUrl) => {
+      const summary = await globalThis.fetch(`${baseUrl}/telemetry`);
+      expect(summary.status).toBe(200);
+      await expect(readJson(summary)).resolves.toEqual(telemetry);
+
+      const feedback = await globalThis.fetch(`${baseUrl}/telemetry/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ family: 'social', verdict: 'helpful' }),
+      });
+      expect(feedback.status).toBe(200);
+      await expect(readJson(feedback)).resolves.toEqual(updated);
     });
   });
 

@@ -1,0 +1,15 @@
+{
+  "searches": 4,
+  "lastUpdatedAt": "2026-05-03T10:02:40.009Z",
+  "families": {},
+  "outcomes": {
+    "highConfidence": 0,
+    "weakOnly": 2,
+    "empty": 2
+  },
+  "feedback": {
+    "helpful": 0,
+    "falsePositive": 0
+  },
+  "connectors": {}
+}

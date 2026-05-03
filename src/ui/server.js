@@ -10,6 +10,8 @@ import { createAbortError, isAbortError } from '../requestContext.js';
 import { SearchValidationError, normaliseSearchRequest } from '../searchOptions.js';
 import { lookupArchiveSnapshot } from '../archiveFallback.js';
 import { createResponseCache } from '../searchCache.js';
+import { createTelemetryStore } from '../telemetryStore.js';
+import { buildSearchNarrative } from '../searchNarrative.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -113,6 +115,7 @@ export function createApp({
   getActiveImpl = getActive,
   snapshotLookupImpl = lookupArchiveSnapshot,
   responseCache = createResponseCache(),
+  telemetryStore = createTelemetryStore(),
   rateLimiterOptions,
   allowedOrigins = parseAllowedOrigins(),
 } = {}) {
@@ -155,7 +158,9 @@ export function createApp({
       });
       if (closed) return;
       const graph = buildGraphImpl(results, avatarClusters);
-      const payload = { results, avatarClusters, graph, connectorStats };
+      const telemetry = telemetryStore.recordSearch({ results, connectorStats });
+      const searchNarrative = buildSearchNarrative({ results, connectorStats, telemetry });
+      const payload = { results, avatarClusters, graph, connectorStats, telemetry, searchNarrative };
       responseCache.setSearch(cacheKey, payload);
       res.json(payload);
     } catch (err) {
@@ -222,7 +227,9 @@ export function createApp({
         },
       });
       const graph = buildGraphImpl(results, avatarClusters);
-      const payload = { results, avatarClusters, graph, connectorStats };
+      const telemetry = telemetryStore.recordSearch({ results, connectorStats });
+      const searchNarrative = buildSearchNarrative({ results, connectorStats, telemetry });
+      const payload = { results, avatarClusters, graph, connectorStats, telemetry, searchNarrative };
       responseCache.setSearch(cacheKey, payload);
       sendEvent('done', payload);
     } catch (err) {
@@ -238,6 +245,19 @@ export function createApp({
   app.get('/engines', (req, res) => {
     const active = getActiveImpl(serverApiKeys, 'aggressive');
     res.json({ total: allConnectors.length, active: active.length });
+  });
+
+  app.get('/telemetry', (req, res) => {
+    res.json(telemetryStore.getSummary());
+  });
+
+  app.post('/telemetry/feedback', express.json(), (req, res) => {
+    const family = typeof req.body?.family === 'string' ? req.body.family.trim() : '';
+    const verdict = typeof req.body?.verdict === 'string' ? req.body.verdict.trim() : '';
+    if (!family || !['helpful', 'falsePositive'].includes(verdict)) {
+      return res.status(400).json({ error: 'family and valid verdict are required' });
+    }
+    return res.json(telemetryStore.recordFeedback({ family, verdict }));
   });
 
   const snapshotRouter = express.Router();

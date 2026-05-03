@@ -11,7 +11,7 @@ import * as profileProbe from './profileProbe.js';
 import * as fossilHunter from './fossilHunter.js';
 import * as avatarHunter from './avatarHunter.js';
 import { clusterResults } from './resultClusters.js';
-import { attachArchiveFallback } from './archiveFallback.js';
+import { attachArchiveFallback, expandArchiveFirstResults } from './archiveFallback.js';
 import { ORCHESTRATOR_DEFAULTS } from './runtimeConfig.js';
 import {
   combineSignals,
@@ -231,7 +231,10 @@ export async function run(input, config = {}) {
       tracker.markPhase('fossils', withFossils.length);
       const archived = await attachArchiveFallback(score(withFossils, input), { signal });
       throwIfAborted(signal);
-      const clustered = clusterResults(archived);
+      const archiveLane = await expandArchiveFirstResults(archived, { signal });
+      const withArchiveLane = dedupe([...archived, ...archiveLane]);
+      tracker.markPhase('archiveFirst', withArchiveLane.length);
+      const clustered = clusterResults(withArchiveLane);
       const avatarClusters = avatars || aggressive
         ? await avatarHunter.hunt(clustered, { signal })
         : [];
@@ -242,7 +245,10 @@ export async function run(input, config = {}) {
 
     const archived = await attachArchiveFallback(score(enriched, input), { signal });
     throwIfAborted(signal);
-    const clustered = clusterResults(archived);
+    const archiveLane = await expandArchiveFirstResults(archived, { signal });
+    const withArchiveLane = dedupe([...archived, ...archiveLane]);
+    tracker.markPhase('archiveFirst', withArchiveLane.length);
+    const clustered = clusterResults(withArchiveLane);
     const avatarClusters = avatars || aggressive
       ? await avatarHunter.hunt(clustered, { signal })
       : [];

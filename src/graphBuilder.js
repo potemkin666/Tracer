@@ -15,6 +15,22 @@
 import { extractDomain, extractUsernameFromUrl } from './identity.js';
 import { GRAPH_LIMITS } from './runtimeConfig.js';
 
+const EDGE_STRENGTH = {
+  sameAvatar: 1,
+  sharedEmail: 0.95,
+  sharedUsername: 0.85,
+  crossLinked: 0.65,
+  sameDomain: 0.2,
+};
+
+const EDGE_LABELS = {
+  sameAvatar: 'shared avatar',
+  sharedEmail: 'shared email domain',
+  sharedUsername: 'shared username',
+  crossLinked: 'cross-linked pages',
+  sameDomain: 'same domain',
+};
+
 /**
  * Pull email-like patterns out of a text string.
  * Returns an array of lowercase email addresses found.
@@ -49,6 +65,100 @@ function extractUrls(text) {
     .map((url) => url.replace(/[),.;:!?]+$/u, '').toLowerCase());
 }
 
+function clamp(value, min = 0, max = 1) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function average(values = []) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function buildIdentityLabel(nodes = []) {
+  const usernames = nodes.map((node) => node.username).filter(Boolean);
+  if (usernames.length) return `Identity · ${usernames[0]}`;
+  return `Identity · ${nodes[0]?.label || 'cluster'}`;
+}
+
+function explainIdentity(edgeTypes = new Set()) {
+  const labels = [...edgeTypes].map((type) => EDGE_LABELS[type]).filter(Boolean);
+  if (!labels.length) return 'Stitched from multiple corroborating pages.';
+  if (labels.length === 1) return `Stitched via ${labels[0]}.`;
+  return `Stitched via ${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}.`;
+}
+
+function buildIdentitySubgraph(nodes, edges) {
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const adjacency = new Map(nodes.map((node) => [node.id, new Set()]));
+  const strongEdges = edges.filter((edge) => (
+    nodeIds.has(edge.source)
+    && nodeIds.has(edge.target)
+    && EDGE_STRENGTH[edge.type] >= 0.65
+  ));
+
+  strongEdges.forEach((edge) => {
+    adjacency.get(edge.source)?.add(edge.target);
+    adjacency.get(edge.target)?.add(edge.source);
+  });
+
+  const visited = new Set();
+  const identityNodes = [];
+  const identityEdges = [];
+  let identityIndex = 1;
+
+  nodes.forEach((node) => {
+    if (visited.has(node.id)) return;
+    const stack = [node.id];
+    const componentIds = [];
+    visited.add(node.id);
+    while (stack.length) {
+      const current = stack.pop();
+      componentIds.push(current);
+      for (const neighbour of adjacency.get(current) || []) {
+        if (visited.has(neighbour)) continue;
+        visited.add(neighbour);
+        stack.push(neighbour);
+      }
+    }
+
+    if (componentIds.length < 2) return;
+    const componentNodes = nodes.filter((candidate) => componentIds.includes(candidate.id));
+    const componentEdges = strongEdges.filter((edge) => (
+      componentIds.includes(edge.source) && componentIds.includes(edge.target)
+    ));
+    const edgeTypes = new Set(componentEdges.map((edge) => edge.type));
+    const avgPageConfidence = average(componentNodes.map((candidate) => candidate.confidence || candidate.score / 100));
+    const evidenceStrength = average(componentEdges.map((edge) => EDGE_STRENGTH[edge.type] || 0));
+    const confidence = clamp((avgPageConfidence * 0.6) + (evidenceStrength * 0.4));
+    const id = `identity:${identityIndex++}`;
+    const explanation = explainIdentity(edgeTypes);
+
+    identityNodes.push({
+      id,
+      kind: 'identity',
+      label: buildIdentityLabel(componentNodes),
+      score: Math.round(confidence * 100),
+      confidence,
+      pageCount: componentNodes.length,
+      explanation,
+    });
+
+    componentNodes.forEach((member) => {
+      identityEdges.push({
+        source: id,
+        target: member.id,
+        type: 'identityMember',
+        detail: explanation,
+      });
+    });
+  });
+
+  return {
+    identityNodes,
+    identityEdges,
+  };
+}
+
 /**
  * Maximum number of nodes sharing a username before we skip edge creation.
  * Very common usernames (e.g. 'admin', 'test') would create too many
@@ -80,9 +190,11 @@ export function buildGraph(results, avatarClusters = []) {
 
     nodeMap.set(r.url, {
       id: r.url,
+      kind: 'page',
       label: r.title || r.url,
       source: r.source || '',
       score: r.score ?? 0,
+      confidence: r.confidence ?? (r.score ?? 0) / 100,
       domain,
       emails,
       username: (usernameInfo && usernameInfo.username) || metaUsername || null,
@@ -182,5 +294,9 @@ export function buildGraph(results, avatarClusters = []) {
     }
   }
 
-  return { nodes, edges };
+  const { identityNodes, identityEdges } = buildIdentitySubgraph(nodes, edges);
+  return {
+    nodes: [...nodes, ...identityNodes],
+    edges: [...edges, ...identityEdges],
+  };
 }

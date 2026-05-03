@@ -255,7 +255,8 @@ describe('buildGraph', () => {
       { avatarHash: 'deadbeef1234', urls: ['https://github.com/alice', 'https://twitter.com/alice'] },
     ];
     const { nodes, edges } = buildGraph(results, clusters);
-    expect(nodes).toHaveLength(3);
+    expect(nodes.filter((node) => node.kind !== 'identity')).toHaveLength(3);
+    expect(nodes.some((node) => node.kind === 'identity')).toBe(true);
 
     const types = edges.map(e => e.type);
     expect(types).toContain('sameAvatar');
@@ -263,5 +264,19 @@ describe('buildGraph', () => {
     expect(types).toContain('sharedEmail');
     expect(types).toContain('crossLinked');
     expect(types).toContain('sharedUsername');
+    expect(types).toContain('identityMember');
+  });
+
+  test('builds identity nodes with confidence and explanations', () => {
+    const results = [
+      result({ url: 'https://github.com/alice', score: 92, confidence: 0.92, snippet: 'alice@example.com' }),
+      result({ url: 'https://keybase.io/alice', score: 84, confidence: 0.84, snippet: 'alice@example.com' }),
+    ];
+    const { nodes, edges } = buildGraph(results, []);
+    const identityNode = nodes.find((node) => node.kind === 'identity');
+    expect(identityNode).toBeTruthy();
+    expect(identityNode.confidence).toBeGreaterThan(0.8);
+    expect(identityNode.explanation).toContain('shared');
+    expect(edges.filter((edge) => edge.type === 'identityMember')).toHaveLength(2);
   });
 });
