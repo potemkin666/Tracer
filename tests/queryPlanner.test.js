@@ -68,7 +68,7 @@ describe('rewriteQueryTerms', () => {
     expect(rewriteQueryTerms('joohn')).toContain('joohn');
   });
 
-  test('does not over-stem vowel-plus-ies words', () => {
+  test('rewrites movies-style ies endings to their expected singular form', () => {
     expect(rewriteQueryTerms('movies')).toContain('movie');
   });
 });

@@ -7,7 +7,7 @@ const PROFILE_TARGETS = [
   { source: 'codeberg-direct', buildUrl: (handle) => `https://codeberg.org/${handle}`, tags: ['profile', 'direct-probe', 'tech'] },
   { source: 'keybase-direct', buildUrl: (handle) => `https://keybase.io/${handle}`, tags: ['profile', 'direct-probe', 'tech'] },
   { source: 'reddit-direct', buildUrl: (handle) => `https://www.reddit.com/user/${handle}`, tags: ['profile', 'direct-probe', 'social'] },
-  { source: 'hackernews-direct', buildUrl: (handle) => `https://news.ycombinator.com/user?id=${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'forum'] },
+  { source: 'hn-direct', buildUrl: (handle) => `https://news.ycombinator.com/user?id=${encodeURIComponent(handle)}`, tags: ['profile', 'direct-probe', 'forum'] },
   { source: 'devto-direct', buildUrl: (handle) => `https://dev.to/${handle}`, tags: ['profile', 'direct-probe', 'tech'] },
 ];
 
