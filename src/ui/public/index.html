@@ -30,6 +30,7 @@
     .graph-tooltip { position: absolute; pointer-events: none; background: rgba(0,0,0,0.8); color: #fff; padding: 5px 9px; border-radius: 4px; font-size: 0.78rem; max-width: 280px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: none; }
 
     #listPanel { padding: 1rem; }
+    .result-brief { background: #fff; border: 1px solid #d7e3f7; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 0.75rem; color: #50627a; line-height: 1.5; }
     .result-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 0.8rem 1rem; margin-bottom: 0.6rem; }
     .result-card h3 { font-size: 0.9rem; margin: 0 0 0.2rem; }
     .result-card h3 a { color: #1a73e8; text-decoration: none; }
@@ -129,7 +130,8 @@ function scoreColor(s) {
 function renderList(results) {
   const el = document.getElementById('listPanel');
   if (!results.length) { el.innerHTML = '<p style="padding:1rem;color:#888;">No results.</p>'; return; }
-  el.innerHTML = results.map(r => {
+  const brief = buildResultsBrief(results);
+  el.innerHTML = (brief ? `<div class="result-brief">${esc(brief)}</div>` : '') + results.map(r => {
     const tags = (r.meta && r.meta.tags && r.meta.tags.length) ? ' · ' + r.meta.tags.join(', ') : '';
     return `<div class="result-card">
       <h3><span class="score-badge" style="background:${scoreColor(r.score)}">${r.score}</span>
@@ -138,6 +140,31 @@ function renderList(results) {
       ${r.snippet ? '<div class="snippet">' + esc(r.snippet) + '</div>' : ''}
     </div>`;
   }).join('');
+}
+
+function buildResultsBrief(results) {
+  if (!results.length) return '';
+  const sourceCounts = new Map();
+  const sourceList = (result) => [...new Set([...(result.sources || []), ...(result.seenOn || []), result.source].filter(Boolean))];
+  results.forEach(result => sourceList(result).forEach(source => sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1)));
+  const corroborated = results.filter(result => sourceList(result).length > 1).length;
+  const highConfidence = results.filter(result => (result.score || 0) >= 70).length;
+  const topSources = [...sourceCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 3)
+    .map(([source, count]) => `${source} (${count})`)
+    .join(', ');
+  const lead = results[0] || {};
+  const leadSources = sourceList(lead);
+  const label = String(lead.title || lead.url || 'top lead').trim();
+  const leadLabel = label.length > 70 ? label.slice(0, 69) + '…' : label;
+  return [
+    `${results.length} unique signal${results.length === 1 ? '' : 's'} after deduplication.`,
+    highConfidence ? `${highConfidence} high-confidence match${highConfidence === 1 ? '' : 'es'} surfaced.` : 'No high-confidence matches yet.',
+    corroborated ? `${corroborated} corroborated by multiple sources.` : 'No cross-source corroboration yet.',
+    `Top lead: ${leadLabel}${leadSources[0] ? ` via ${leadSources[0]}` : ''}.`,
+    topSources ? `Most active sources: ${topSources}.` : '',
+  ].filter(Boolean).join(' ');
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }

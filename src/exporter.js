@@ -3,6 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import Handlebars from 'handlebars';
 import { buildGraph } from './graphBuilder.js';
+import { buildResultsBrief } from '../docs/scripts/shared/resultBrief.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +30,7 @@ export function exportHTML(results, filepath, avatarClusters = []) {
 
   const graph = buildGraph(results, avatarClusters);
   const html = template({
+    brief: buildResultsBrief(results),
     results,
     graphJSON: JSON.stringify(graph),
   });

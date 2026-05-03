@@ -254,6 +254,15 @@
     .card-seen span{color:var(--glow);margin:0 .2rem}
     .tags{display:flex;flex-wrap:wrap;gap:.28rem;margin-top:.35rem}
     .tag{font-family:'Press Start 2P',monospace;font-size:.33rem;padding:1px 4px;border:1px solid rgba(100,255,218,.35);color:rgba(100,255,218,.65);background:rgba(100,255,218,.04)}
+    .results-brief{
+      background:rgba(0,18,46,.72);
+      border:1px solid rgba(100,255,218,.24);
+      color:var(--silver);
+      font-size:.78rem;
+      line-height:1.6;
+      padding:.8rem 1rem;
+      margin-bottom:.7rem;
+    }
 
     /* === AVATAR CLUSTER === */
     .cluster{background:rgba(230,57,70,.05);border:1px solid rgba(230,57,70,.3);padding:.8rem 1rem;margin-bottom:.65rem}

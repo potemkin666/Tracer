@@ -2,6 +2,7 @@
 
 import { buildQueryPlan, queryVariants } from './shared/queryShared.js';
 import { createKeyStorage } from './shared/keyStorage.js';
+import { buildResultsBrief } from './shared/resultBrief.js';
 import {
   searchDirect as runStandaloneSearch,
   searchVariants,
@@ -837,11 +838,16 @@ function bclass(src,tags){
 function renderResults(results,clusters){
   document.getElementById('results-section').style.display='block';
   document.getElementById('res-count').textContent=
-    results.length+' SIGNAL'+(results.length!==1?'S':'')+' DETECTED';
+    results.length+' UNIQUE SIGNAL'+(results.length!==1?'S':'')+' DETECTED';
 
   // Show export buttons when there are results
   const expBar=document.getElementById('export-bar');
   if(expBar)expBar.style.display=results.length?'flex':'none';
+  const brief=document.getElementById('results-brief');
+  if(brief){
+    brief.textContent=buildResultsBrief(results);
+    brief.style.display=results.length?'block':'none';
+  }
 
   const cd=document.getElementById('avatar-clusters');cd.innerHTML='';
   (clusters||[]).forEach(c=>{
@@ -1054,7 +1060,7 @@ function rerunSearch(query){
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function showLoading(v){document.getElementById('loading').style.display=v?'block':'none';document.getElementById('srch-btn').disabled=v}
-function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';_lastResults=[]}
+function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';const brief=document.getElementById('results-brief');if(brief){brief.textContent='';brief.style.display='none'}_lastResults=[]}
 function showErr(msg,isErr){const el=document.getElementById('err');el.textContent=msg;el.style.display=msg?'block':'none';if(!isErr)el.style.color='var(--bright)'}
 
 // ── INIT ─────────────────────────────────────────────────────────────────────

@@ -6,13 +6,14 @@ import {
   getStandaloneMatchSignals,
 } from '../shared/queryShared.js';
 import { dedupeResultsByUrl, mergeUniqueValues } from '../shared/dedupeShared.js';
+import { normaliseUrlForDedupe } from '../shared/urlNormaliser.js';
 import { scoreResults } from '../shared/scoringShared.js';
 
 export function mergeVariantResults(results) {
   const map = new Map();
 
   for (const result of results) {
-    const key = (result.url && result.url.toLowerCase())
+    const key = (result.url && normaliseUrlForDedupe(result.url))
       || `${result.source || ''}|${(result.title || '').toLowerCase()}`;
 
     if (!map.has(key)) {
@@ -57,6 +58,9 @@ export async function searchVariants(terms, run) {
 
 export function dedupeStandalone(results) {
   return dedupeResultsByUrl(results, {
+    getKey(result) {
+      return normaliseUrlForDedupe(result.url);
+    },
     createEntry(result) {
       return {
         ...result,

@@ -38,11 +38,12 @@
 
 <header>
   <h1>Tracer &mdash; Identity Report</h1>
+  {{#if brief}}<p style="margin-top:0.5rem;font-size:0.9rem;line-height:1.5;max-width:960px;">{{brief}}</p>{{/if}}
 </header>
 
 <div class="tabs">
   <button class="active" data-tab="graphTab">Network Graph</button>
-  <button data-tab="listTab">Result List ({{results.length}})</button>
+  <button data-tab="listTab">Unique Result List ({{results.length}})</button>
 </div>
 
 <div id="graphTab" class="tab-content active">
