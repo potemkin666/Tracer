@@ -63,4 +63,12 @@ describe('rewriteQueryTerms', () => {
   test('normalizes repeated letters for spelling-like corrections', () => {
     expect(rewriteQueryTerms('jooohn')).toContain('joohn');
   });
+
+  test('keeps double letters intact when they are already normalized', () => {
+    expect(rewriteQueryTerms('joohn')).toContain('joohn');
+  });
+
+  test('does not over-stem vowel-plus-ies words', () => {
+    expect(rewriteQueryTerms('movies')).toContain('movie');
+  });
 });

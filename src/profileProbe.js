@@ -38,7 +38,7 @@ export function buildProfileProbeHandles(input) {
 
 function looksMissing(response) {
   const body = String(response.data || '').slice(0, 600).toLowerCase();
-  return /not found|page not found|doesn['’]t exist|404/u.test(body);
+  return /not found|page not found|doesn.?t exist|404/u.test(body);
 }
 
 async function probeTarget(target, handle, signal) {

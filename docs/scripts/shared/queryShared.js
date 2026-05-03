@@ -46,7 +46,10 @@ function collapseRepeats(value) {
 
 function stemToken(token) {
   if (token.length <= 3) return token;
-  if (/ies$/u.test(token) && token.length > 4) return `${token.slice(0, -3)}y`;
+  if (/ies$/u.test(token) && token.length > 4) {
+    const beforeSuffix = token[token.length - 4] || '';
+    return /[aeiou]/u.test(beforeSuffix) ? `${token.slice(0, -1)}` : `${token.slice(0, -3)}y`;
+  }
   if (/(sses|xes|zes|ches|shes)$/u.test(token) && token.length > 4) return token.slice(0, -2);
   if (/s$/u.test(token) && !/ss$/u.test(token) && token.length > 4) return token.slice(0, -1);
   if (/ing$/u.test(token) && token.length > 5) return token.slice(0, -3);
