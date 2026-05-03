@@ -1,4 +1,5 @@
 import { buildGraph } from '../src/graphBuilder.js';
+import { GRAPH_LIMITS } from '../src/runtimeConfig.js';
 
 describe('buildGraph', () => {
   // ── Helpers ────────────────────────────────────────────────────────────
@@ -119,6 +120,14 @@ describe('buildGraph', () => {
     expect(domainEdges).toHaveLength(0);
   });
 
+  test('skips sameDomain edges for oversized domain groups', () => {
+    const results = Array.from({ length: GRAPH_LIMITS.maxDomainGroup + 1 }, (_, index) =>
+      result({ url: `https://github.com/user-${index}` })
+    );
+    const { edges } = buildGraph(results);
+    expect(edges.filter((edge) => edge.type === 'sameDomain')).toHaveLength(0);
+  });
+
   // ── Edge: sharedEmail ──────────────────────────────────────────────────
   test('sharedEmail edges for results with same email domain in snippets', () => {
     const results = [
@@ -202,6 +211,14 @@ describe('buildGraph', () => {
     const { edges } = buildGraph(results);
     const usernameEdges = edges.filter(e => e.type === 'sharedUsername');
     expect(usernameEdges).toHaveLength(1);
+  });
+
+  test('skips sharedUsername edges for oversized username groups', () => {
+    const results = Array.from({ length: GRAPH_LIMITS.maxUsernameGroup + 1 }, (_, index) =>
+      result({ url: `https://example${index}.com/shared`, meta: { username: 'shared' } })
+    );
+    const { edges } = buildGraph(results);
+    expect(edges.filter((edge) => edge.type === 'sharedUsername')).toHaveLength(0);
   });
 
   test('sharedUsername uses shared identity patterns for keybase profiles', () => {

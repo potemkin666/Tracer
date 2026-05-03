@@ -22,6 +22,10 @@ describe('engine metadata contracts', () => {
     for (const connector of SERVER_CONNECTORS) {
       expect(ids.has(connector.id)).toBe(false);
       ids.add(connector.id);
+      expect(connector.runtime).toEqual({
+        timeoutMs: expect.any(Number),
+        retries: expect.any(Number),
+      });
       expect(
         fs.existsSync(new URL(`../src/connectors/${connector.modulePath.slice(2)}`, import.meta.url))
       ).toBe(true);

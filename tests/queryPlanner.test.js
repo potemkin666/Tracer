@@ -22,4 +22,24 @@ describe('generateQueries', () => {
   test('includes username variant without spaces', () => {
     expect(results).toContain('johnsmith');
   });
+
+  test('includes username variant with underscores', () => {
+    expect(results).toContain('john_smith');
+  });
+
+  test('includes username variant with hyphens', () => {
+    expect(results).toContain('john-smith');
+  });
+
+  test('deduplicates case-insensitive variants for single-token input', () => {
+    expect(generateQueries('Alice')).toEqual([
+      'Alice',
+      'Alice site:linkedin.com',
+      'Alice site:twitter.com',
+      'Alice site:github.com',
+      'Alice site:reddit.com',
+      'Alice site:facebook.com',
+      'Alice site:web.archive.org',
+    ]);
+  });
 });

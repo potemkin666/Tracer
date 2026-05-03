@@ -9,10 +9,15 @@ export class SearchValidationError extends Error {
   }
 }
 
-export function coerceBoolean(value) {
+export function coerceBoolean(value, fieldName = 'value') {
+  if (value === null || value === undefined) return false;
   if (typeof value === 'boolean') return value;
-  if (typeof value === 'string') return value === 'true';
-  return Boolean(value);
+  if (typeof value === 'string') {
+    const normalised = value.trim().toLowerCase();
+    if (normalised === 'true') return true;
+    if (normalised === 'false') return false;
+  }
+  throw new SearchValidationError(`${fieldName} must be true or false`);
 }
 
 export function normaliseMode(mode) {
@@ -48,9 +53,9 @@ export function normaliseSearchRequest(payload = {}) {
   return {
     input: normaliseInput(input),
     mode: normaliseMode(mode),
-    fossils: coerceBoolean(fossils),
-    avatars: coerceBoolean(avatars),
-    timeSliceMode: coerceBoolean(timeSliceMode),
-    documents: coerceBoolean(documents),
+    fossils: coerceBoolean(fossils, 'fossils'),
+    avatars: coerceBoolean(avatars, 'avatars'),
+    timeSliceMode: coerceBoolean(timeSliceMode, 'timeSliceMode'),
+    documents: coerceBoolean(documents, 'documents'),
   };
 }

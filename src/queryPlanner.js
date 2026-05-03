@@ -1,21 +1,4 @@
-export function generateQueries(input) {
-  const quoted = `"${input}"`;
-  const noSpaces = input.replace(/\s+/g, '');
-  const underscored = input.replace(/\s+/g, '_');
-
-  return [
-    quoted,
-    `${quoted} site:linkedin.com`,
-    `${quoted} site:twitter.com`,
-    `${quoted} site:github.com`,
-    `${quoted} site:reddit.com`,
-    `${quoted} site:facebook.com`,
-    `${quoted} site:web.archive.org`,
-    noSpaces,
-    underscored,
-    input,
-  ];
-}
+export { buildQueryPlan, generateQueries } from '../docs/scripts/shared/queryShared.js';
 
 const DOC_FILETYPES = ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'];
 
@@ -23,4 +6,3 @@ export function generateDocQueries(input) {
   const quoted = `"${input}"`;
   return DOC_FILETYPES.map((ft) => `${quoted} filetype:${ft}`);
 }
-
