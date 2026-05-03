@@ -416,19 +416,28 @@ async function searchDirect(query){
     // ── Zenodo ──
     {name:'zenodo',fn:async()=>{
       const d=await fetchWithRetry(`https://zenodo.org/api/records/?q=${q}&size=6`);
-      return(((d.hits&&d.hits.hits)||[])).map((item,i)=>({source:'zenodo',
-        title:item.metadata?.title||'',url:item.links?.html||`https://zenodo.org/records/${item.id}`,
-        snippet:[(item.metadata?.creators||[]).slice(0,2).map((creator)=>creator.name).join(', '),item.metadata?.publication_date||'',stripHtml(item.metadata?.description).slice(0,110)].filter(Boolean).join(' · '),
-        score:5-i,seenOn:['zenodo']}));
+      return(((d.hits&&d.hits.hits)||[])).map((item,i)=>{
+        const creators=(item.metadata?.creators||[]).slice(0,2).map((creator)=>creator.name).join(', ');
+        const description=stripHtml(item.metadata?.description).slice(0,110);
+        return{source:'zenodo',
+          title:item.metadata?.title||'',url:item.links?.html||`https://zenodo.org/records/${item.id}`,
+          snippet:[creators,item.metadata?.publication_date||'',description].filter(Boolean).join(' · '),
+          score:5-i,seenOn:['zenodo']};
+      });
     }},
 
     // ── DataCite ──
     {name:'datacite',fn:async()=>{
       const d=await fetchWithRetry(`https://api.datacite.org/dois?query=${q}&page[size]=6`);
-      return(d.data||[]).map((item,i)=>{const attrs=item.attributes||{};return{source:'datacite',
-        title:(attrs.titles||[])[0]?.title||attrs.doi||'',url:attrs.url||`https://doi.org/${attrs.doi}`,
-        snippet:[(attrs.creators||[]).slice(0,2).map((creator)=>creator.name).join(', '),attrs.publicationYear||'',(attrs.descriptions||[])[0]?.description?.slice(0,110)||''].filter(Boolean).join(' · '),
-        score:4-i,seenOn:['datacite']};});
+      return(d.data||[]).map((item,i)=>{
+        const attrs=item.attributes||{};
+        const creators=(attrs.creators||[]).slice(0,2).map((creator)=>creator.name).join(', ');
+        const description=((attrs.descriptions||[])[0]?.description||'').slice(0,110);
+        return{source:'datacite',
+          title:(attrs.titles||[])[0]?.title||attrs.doi||'',url:attrs.url||`https://doi.org/${attrs.doi}`,
+          snippet:[creators,attrs.publicationYear||'',description].filter(Boolean).join(' · '),
+          score:4-i,seenOn:['datacite']};
+      });
     }},
 
     // ── Openverse ──
