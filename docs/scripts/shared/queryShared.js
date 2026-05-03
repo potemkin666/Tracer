@@ -34,6 +34,10 @@ export function uniqueCaseInsensitive(values) {
   });
 }
 
+function siteQuery(value, site) {
+  return value ? `${value} site:${site}` : null;
+}
+
 export function queryVariants(plan, options = {}) {
   const {
     includeRaw = true,
@@ -61,7 +65,6 @@ export function queryVariants(plan, options = {}) {
 export function generateQueries(input) {
   const plan = buildQueryPlan(input);
   const isSingleToken = plan.tokens.length <= 1;
-  const siteQuery = (value, site) => value ? `${value} site:${site}` : null;
 
   if (isSingleToken) {
     return uniqueCaseInsensitive([
