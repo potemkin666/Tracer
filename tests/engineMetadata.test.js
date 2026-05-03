@@ -33,7 +33,7 @@ describe('engine metadata contracts', () => {
   });
 
   test('standalone metadata covers expected fetcher counts', () => {
-    expect(STANDALONE_OPEN_FETCHERS).toHaveLength(36);
+    expect(STANDALONE_OPEN_FETCHERS).toHaveLength(44);
     expect(STANDALONE_KEY_BACKED_FETCHERS).toHaveLength(11);
   });
 });
