@@ -1,11 +1,11 @@
 {
-  "searches": 4,
-  "lastUpdatedAt": "2026-05-03T10:02:40.009Z",
+  "searches": 2,
+  "lastUpdatedAt": "2026-05-03T10:03:27.125Z",
   "families": {},
   "outcomes": {
     "highConfidence": 0,
-    "weakOnly": 2,
-    "empty": 2
+    "weakOnly": 1,
+    "empty": 1
   },
   "feedback": {
     "helpful": 0,
