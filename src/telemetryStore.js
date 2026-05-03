@@ -1,9 +1,10 @@
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 function defaultFilePath() {
   return process.env.TRACER_TELEMETRY_PATH
-    || path.resolve(process.cwd(), '.tracer-telemetry.json');
+    || path.join(os.tmpdir(), 'tracer-telemetry.json');
 }
 
 function emptyState() {
