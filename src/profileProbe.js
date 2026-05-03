@@ -43,18 +43,9 @@ function looksMissing(response) {
   return /not found|page not found|doesn.?t exist|404/u.test(body);
 }
 
-function decodeHtml(value) {
-  return String(value || '')
-    .replace(/&amp;/gu, '&')
-    .replace(/&lt;/gu, '<')
-    .replace(/&gt;/gu, '>')
-    .replace(/&quot;/gu, '"')
-    .replace(/&#39;/gu, "'");
-}
-
 function inspectProfilePage(html, handle, baseUrl) {
   const body = String(html || '');
-  const title = decodeHtml(body.match(/<title[^>]*>([^<]*)<\/title>/iu)?.[1] || '').trim();
+  const title = String(body.match(/<title[^>]*>([^<]*)<\/title>/iu)?.[1] || '').trim();
   const emails = [...new Set((body.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/giu) || []).map((email) => email.toLowerCase()))].slice(0, 3);
   const outboundLinks = [...new Set(Array.from(
     body.matchAll(/href=["'](https?:\/\/[^"']+)["']/giu),

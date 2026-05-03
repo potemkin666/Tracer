@@ -261,7 +261,6 @@ export function createApp({
   });
 
   const snapshotRouter = express.Router();
-  snapshotRouter.use(searchRateLimiter);
   snapshotRouter.get('/', searchRateLimiter, async (req, res) => {
     const url = typeof req.query.url === 'string' ? req.query.url.trim() : '';
     if (!url) return res.status(400).json({ error: 'url is required' });
@@ -296,7 +295,7 @@ export function createApp({
       return res.status(500).send('internal server error');
     }
   });
-  app.use('/snapshot', snapshotRouter);
+  app.use('/snapshot', searchRateLimiter, snapshotRouter);
 
   app.get('/health', (req, res) => {
     res.json({ status: 'ok' });

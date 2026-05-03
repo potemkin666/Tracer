@@ -155,31 +155,32 @@ export async function expandArchiveFirstResults(
     candidates.map(async (result) => {
       const captures = await fetchTimelineImpl(result.url, { signal, limit: capturesPerResult });
       return captures.map((capture, index) => {
-        const year = Number.parseInt(capture.timestamp.slice(0, 4), 10) || null;
-        return {
-          ...result,
-          title: `[Archive lane ${year || 'capture'}] ${result.title || result.url}`,
-          url: `https://web.archive.org/web/${capture.timestamp}/${capture.url}`,
-          source: 'archive-first',
-          rank: (result.rank || 0) + index + 1,
-          score: Math.max(1, (result.score || 0) - 4 - index),
-          confidence: Math.max(0.01, (result.confidence || ((result.score || 0) / 100)) * (0.92 - (index * 0.04))),
-          snippet: `Historical capture from ${year || 'unknown year'} expanded from a dead but strong lead.`,
-          meta: {
-            ...(result.meta || {}),
-            archiveSourceUrl: result.meta?.archiveSourceUrl || result.url,
-            archiveTimestamp: capture.timestamp,
-            pageStatus: 'archived',
-            whySurvived: 'dead-link archive lane preserved this lead',
-            timeline: year ? {
-              label: String(year),
-              year,
-              sortKey: `${year}-01-01T00:00:00.000Z`,
-            } : result.meta?.timeline,
-            era: year || result.meta?.era,
-            tags: [...new Set([...(result.meta?.tags || []), 'archive-lane', 'fossil'])],
-          },
-        };
+      const year = Number.parseInt(capture.timestamp.slice(0, 4), 10);
+      const safeYear = Number.isNaN(year) ? null : year;
+      return {
+        ...result,
+        title: `[Archive lane ${safeYear || 'capture'}] ${result.title || result.url}`,
+        url: `https://web.archive.org/web/${capture.timestamp}/${capture.url}`,
+        source: 'archive-first',
+        rank: (result.rank || 0) + index + 1,
+        score: Math.max(1, (result.score || 0) - 4 - index),
+        confidence: Math.max(0.01, (result.confidence || ((result.score || 0) / 100)) * (0.92 - (index * 0.04))),
+        snippet: `Historical capture from ${safeYear || 'unknown year'} expanded from a dead but strong lead.`,
+        meta: {
+          ...(result.meta || {}),
+          archiveSourceUrl: result.meta?.archiveSourceUrl || result.url,
+          archiveTimestamp: capture.timestamp,
+          pageStatus: 'archived',
+          whySurvived: 'dead-link archive lane preserved this lead',
+          timeline: safeYear ? {
+            label: String(safeYear),
+            year: safeYear,
+            sortKey: `${safeYear}-01-01T00:00:00.000Z`,
+          } : result.meta?.timeline,
+          era: safeYear || result.meta?.era,
+          tags: [...new Set([...(result.meta?.tags || []), 'archive-lane', 'fossil'])],
+        },
+      };
       });
     })
   );
