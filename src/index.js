@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { parseArgs } from 'node:util';
 import { pathToFileURL } from 'node:url';
+import { logger } from './logger.js';
 import { run } from './orchestrator.js';
 import { exportJSON, exportHTML } from './exporter.js';
 import { loadKeysFromEnv } from './config.js';
@@ -133,7 +134,7 @@ export async function main(argv = process.argv) {
     parsed = parseCliArgs(argv);
   } catch (err) {
     if (err instanceof CliUsageError) {
-      console.error(err.message);
+      logger.error('cli-usage-error', { error: err.message });
       printUsage(process.stderr);
       process.exit(1);
     }
@@ -146,7 +147,7 @@ export async function main(argv = process.argv) {
   }
 
   if (!parsed.input) {
-    console.error('input is required');
+    logger.error('cli-validation-error', { error: 'input is required' });
     printUsage(process.stderr);
     process.exit(1);
   }
@@ -176,7 +177,7 @@ export async function main(argv = process.argv) {
       documents,
     });
   } catch (err) {
-    console.error(err.message);
+    logger.error('search-request-invalid', { error: err.message });
     process.exit(1);
   }
 
@@ -188,16 +189,21 @@ export async function main(argv = process.argv) {
     const { rotateTorCircuit } = await import('./proxyAgent.js');
     try {
       await rotateTorCircuit();
-      console.log('Tor circuit rotated (NEWNYM).');
+      logger.info('tor-circuit-rotated');
     } catch (err) {
-      console.error(`Tor rotation failed: ${err.message}`);
+      logger.error('tor-rotation-failed', { error: err.message });
     }
   }
 
   const proxyLabel = process.env.TRACER_PROXY_URL
     ? ` via ${process.env.TRACER_PROXY_URL}`
     : '';
-  console.log(`Searching for: "${searchRequest.input}" (mode: ${searchRequest.mode})${proxyLabel}`);
+  logger.info('search-started', {
+    input: searchRequest.input,
+    mode: searchRequest.mode,
+    proxy: process.env.TRACER_PROXY_URL || null,
+    proxyLabel,
+  });
 
   const { results, avatarClusters } = await run(searchRequest.input, {
     mode: searchRequest.mode,
@@ -208,28 +214,35 @@ export async function main(argv = process.argv) {
     documents: searchRequest.documents,
   });
 
-  console.log(`\nTotal results: ${results.length}`);
-  console.log('\nTop 5 results:');
-  results.slice(0, 5).forEach((r, i) => {
-    const tags = (r.meta && r.meta.tags && r.meta.tags.length) ? ` [${r.meta.tags.join(',')}]` : '';
-    console.log(`  ${i + 1}. [score:${r.score}${tags}] ${r.title || r.url} (${r.source})`);
+  logger.info('search-complete', {
+    totalResults: results.length,
+    topResults: results.slice(0, 5).map((result, index) => ({
+      rank: index + 1,
+      score: result.score,
+      tags: (result.meta && result.meta.tags) || [],
+      title: result.title || result.url,
+      source: result.source,
+    })),
   });
 
   if (avatarClusters && avatarClusters.length > 0) {
-    console.log(`\nAvatar recurrences found: ${avatarClusters.length}`);
-    avatarClusters.forEach((c, i) => {
-      console.log(`  ${i + 1}. Hash ${c.avatarHash.slice(0, 8)}... reused across ${c.urls.length} results`);
+    logger.info('avatar-clusters-found', {
+      clusters: avatarClusters.map((cluster, index) => ({
+        rank: index + 1,
+        avatarHash: cluster.avatarHash.slice(0, 8),
+        urls: cluster.urls.length,
+      })),
     });
   }
 
   if (output) {
     exportJSON({ results, avatarClusters }, output);
-    console.log(`\nJSON saved to: ${output}`);
+    logger.info('json-export-written', { output });
   }
 
   if (html) {
     exportHTML(results, html, avatarClusters);
-    console.log(`HTML saved to: ${html}`);
+    logger.info('html-export-written', { html });
   }
 }
 
@@ -240,7 +253,7 @@ function isDirectExecution(argv = process.argv) {
 
 if (isDirectExecution()) {
   main().catch((err) => {
-    console.error(err.message);
+    logger.error('cli-fatal-error', { error: err.message });
     process.exit(1);
   });
 }

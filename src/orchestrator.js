@@ -20,6 +20,18 @@ import {
 
 const CONNECTOR_TIMEOUT_MS = 15_000;
 const DEFAULT_CONCURRENCY = 12;
+const MAX_QUERY_TASKS = {
+  normal: 360,
+  aggressive: 720,
+};
+
+export function pruneQueries(queries, connectorCount, mode = 'normal') {
+  if (!queries.length || connectorCount <= 0) return queries;
+  const maxTasks = mode === 'aggressive' ? MAX_QUERY_TASKS.aggressive : MAX_QUERY_TASKS.normal;
+  const minQueries = mode === 'aggressive' ? 6 : 4;
+  const maxQueries = Math.max(minQueries, Math.ceil(maxTasks / connectorCount));
+  return queries.slice(0, Math.min(queries.length, maxQueries));
+}
 
 function poolAll(tasks, concurrency, signal) {
   const results = new Array(tasks.length);
@@ -116,10 +128,10 @@ export async function run(input, config = {}) {
     const notify = typeof onProgress === 'function' ? onProgress : () => {};
     const trackerStats = [];
     const tracker = createProgressTracker(notify, trackerStats, signal);
-    const aggressive = mode === 'aggressive';
     const queries = generateQueries(input);
-    const limited = queries;
     const activeConnectors = getActive(apiKeys, mode);
+    const aggressive = mode === 'aggressive';
+    const limited = pruneQueries(queries, activeConnectors.length, mode);
 
     const tasks = [];
     for (const query of limited) {

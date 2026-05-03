@@ -32,6 +32,12 @@ function emailDomain(email) {
   return at >= 0 ? email.slice(at + 1) : email;
 }
 
+function extractUrls(text) {
+  if (!text) return [];
+  return (text.match(/https?:\/\/[^\s<>"')\]]+/gi) || [])
+    .map((url) => url.replace(/[),.;:!?]+$/u, '').toLowerCase());
+}
+
 /**
  * Maximum number of nodes sharing a username before we skip edge creation.
  * Very common usernames (e.g. 'admin', 'test') would create too many
@@ -153,14 +159,16 @@ export function buildGraph(results, avatarClusters = []) {
   }
 
   // 5. crossLinked — one result's URL appears in another result's snippet
-  const allUrls = [...nodeMap.keys()];
+  const urlLookup = new Map(
+    [...nodeMap.keys()].map((url) => [url.toLowerCase(), url])
+  );
   for (const r of results) {
     if (!r.url || !r.snippet) continue;
-    const snippetLower = r.snippet.toLowerCase();
-    for (const otherUrl of allUrls) {
-      if (otherUrl === r.url) continue;
-      if (snippetLower.includes(otherUrl.toLowerCase())) {
-        addEdge(r.url, otherUrl, 'crossLinked', '');
+    const linkedUrls = new Set(extractUrls(r.snippet));
+    for (const linkedUrl of linkedUrls) {
+      const targetUrl = urlLookup.get(linkedUrl);
+      if (targetUrl && targetUrl !== r.url) {
+        addEdge(r.url, targetUrl, 'crossLinked', '');
       }
     }
   }

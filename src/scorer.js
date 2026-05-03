@@ -1,35 +1,5 @@
-// Feature weights learned from labeled match/non-match data via logistic
-// regression. Each weight corresponds to one binary or continuous feature
-// extracted from a result. Positive weights increase confidence a result
-// is a true match; negative weights decrease it.
-//
-// To retrain: collect a labeled dataset of (result, isMatch) pairs, extract
-// features with extractFeatures(), and run gradient descent on the log-loss.
-export const WEIGHTS = {
-  titleExact:       3.2,   // full input appears in title
-  snippetExact:     2.1,   // full input appears in snippet
-  urlUsername:      2.0,   // username-style input variant appears in URL
-  multiSource:       1.4,   // same URL found via multiple connectors
-  archiveSource:     0.9,   // result from Wayback / archive.org
-  fossilTag:         1.5,   // tagged as a fossil (old capture)
-  timesliceTag:      0.8,   // tagged as a time-slice hit
-  documentTag:       1.1,   // tagged as a document (PDF, DOC, …)
-  socialTag:         1.0,   // tagged as a social profile
-  profileTag:        0.9,   // tagged as a profile result
-  lowRank:           0.6,   // ranked in top-3 by the upstream engine
-  allTokensPresent:  1.6,   // every input token appears across title/snippet/url
-  titlePartial:      0.5,   // at least one input token appears in title
-  snippetPartial:    0.4,   // at least one input token appears in snippet
-  bias:             -2.0,   // intercept — keeps scores conservative
-};
-
-/**
- * Sigmoid function σ(z) = 1 / (1 + e^-z).
- * Maps any real value to (0, 1) — interpreted as probability.
- */
-function sigmoid(z) {
-  return 1 / (1 + Math.exp(-z));
-}
+import { WEIGHTS, scoreResults } from '../docs/scripts/shared/scoringShared.js';
+export { WEIGHTS } from '../docs/scripts/shared/scoringShared.js';
 
 /**
  * Extract numeric features from a single result.
@@ -71,13 +41,7 @@ export function extractFeatures(r, lowerInput, tokens, urlMap) {
  * weights. Returns a value in (0, 1) that can be interpreted as the
  * probability the result is a true match.
  */
-export function computeConfidence(features) {
-  let z = 0;
-  for (const [feat, val] of Object.entries(features)) {
-    z += (WEIGHTS[feat] || 0) * val;
-  }
-  return sigmoid(z);
-}
+export { computeConfidence } from '../docs/scripts/shared/scoringShared.js';
 
 /**
  * Score and rank results by match confidence.
@@ -99,11 +63,9 @@ export function score(results, originalInput) {
     if (r.url) urlMap[r.url] = (urlMap[r.url] || 0) + 1;
   });
 
-  const scored = results.map((r) => {
-    const features   = extractFeatures(r, lowerInput, tokens, urlMap);
-    const confidence = computeConfidence(features);
-    return { ...r, score: Math.round(confidence * 100), confidence };
-  });
-
-  return scored.sort((a, b) => b.confidence - a.confidence);
+  return scoreResults(
+    results,
+    (result) => extractFeatures(result, lowerInput, tokens, urlMap),
+    WEIGHTS
+  );
 }

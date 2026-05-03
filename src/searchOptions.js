@@ -10,7 +10,7 @@ export class SearchValidationError extends Error {
 }
 
 export function coerceBoolean(value, fieldName = 'value') {
-  if (value == null) return false;
+  if (value === null || value === undefined) return false;
   if (typeof value === 'boolean') return value;
   if (typeof value === 'string') {
     const normalised = value.trim().toLowerCase();
