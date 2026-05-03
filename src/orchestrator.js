@@ -7,8 +7,10 @@ import * as wayback from './connectors/wayback.js';
 import * as namechk from './connectors/namechk.js';
 import * as timeSlice from './connectors/timeSlice.js';
 import * as docSearch from './connectors/docSearch.js';
+import * as profileProbe from './profileProbe.js';
 import * as fossilHunter from './fossilHunter.js';
 import * as avatarHunter from './avatarHunter.js';
+import { clusterResults } from './resultClusters.js';
 import { ORCHESTRATOR_DEFAULTS } from './runtimeConfig.js';
 import {
   combineSignals,
@@ -197,6 +199,11 @@ export async function run(input, config = {}) {
     all = all.concat(waybackResults, namechkResults);
     tracker.markPhase('namechk', all.length);
 
+    const profileResults = await profileProbe.search(input, apiKeys, { signal });
+    throwIfAborted(signal);
+    all = all.concat(profileResults);
+    tracker.markPhase('profileProbe', all.length);
+
     if (timeSliceMode || aggressive) {
       const sliceResults = await timeSlice.search(input, apiKeys, { signal });
       throwIfAborted(signal);
@@ -221,21 +228,21 @@ export async function run(input, config = {}) {
       throwIfAborted(signal);
       const withFossils = dedupe([...enriched, ...fossilResults]);
       tracker.markPhase('fossils', withFossils.length);
-      const scored = score(withFossils, input);
+      const clustered = clusterResults(score(withFossils, input));
       const avatarClusters = avatars || aggressive
-        ? await avatarHunter.hunt(scored, { signal })
+        ? await avatarHunter.hunt(clustered, { signal })
         : [];
       throwIfAborted(signal);
-      tracker.markPhase('done', scored.length);
-      return { results: scored, avatarClusters, connectorStats: trackerStats }; 
+      tracker.markPhase('done', clustered.length);
+      return { results: clustered, avatarClusters, connectorStats: trackerStats }; 
     }
 
-    const scored = score(enriched, input);
+    const clustered = clusterResults(score(enriched, input));
     const avatarClusters = avatars || aggressive
-      ? await avatarHunter.hunt(scored, { signal })
+      ? await avatarHunter.hunt(clustered, { signal })
       : [];
     throwIfAborted(signal);
-    tracker.markPhase('done', scored.length);
-    return { results: scored, avatarClusters, connectorStats: trackerStats };
+    tracker.markPhase('done', clustered.length);
+    return { results: clustered, avatarClusters, connectorStats: trackerStats };
   });
 }

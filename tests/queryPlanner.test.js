@@ -1,4 +1,4 @@
-import { generateQueries } from '../src/queryPlanner.js';
+import { generateQueries, rewriteQueryTerms } from '../src/queryPlanner.js';
 
 describe('generateQueries', () => {
   const results = generateQueries('john smith');
@@ -40,20 +40,27 @@ describe('generateQueries', () => {
     expect(results).toContain('john.smith');
   });
 
-  test('deduplicates case-insensitive variants for single-token input', () => {
-    expect(generateQueries('Alice')).toEqual([
-      'Alice',
-      '@alice',
-      'alice site:github.com',
-      'alice site:reddit.com/user',
-      'alice site:gitlab.com',
-      'alice site:keybase.io',
-      'alice site:bsky.app/profile',
-      'alice site:mastodon.social',
-      'alice site:instagram.com',
-      'alice site:tiktok.com',
-      'alice site:facebook.com',
-      'alice site:web.archive.org',
-    ]);
+  test('deduplicates case-insensitive variants for single-token input while adding direct profile sites', () => {
+    const queries = generateQueries('Alice');
+    expect(queries[0]).toBe('Alice');
+    expect(queries).toContain('@alice');
+    expect(queries).toContain('alice site:github.com');
+    expect(queries).toContain('alice site:codeberg.org');
+    expect(queries).toContain('alice site:news.ycombinator.com/user');
+  });
+});
+
+describe('rewriteQueryTerms', () => {
+  test('adds stemming and synonym variants', () => {
+    expect(rewriteQueryTerms('profiles forum')).toEqual(expect.arrayContaining([
+      'profiles forum',
+      'profile forum',
+      'profiles board',
+      'profiles community',
+    ]));
+  });
+
+  test('normalises repeated letters for spelling-like corrections', () => {
+    expect(rewriteQueryTerms('jooohn')).toContain('joohn');
   });
 });

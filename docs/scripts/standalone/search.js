@@ -7,7 +7,14 @@ import {
 } from '../shared/queryShared.js';
 import { dedupeResultsByUrl, mergeUniqueValues } from '../shared/dedupeShared.js';
 import { normaliseUrlForDedupe } from '../shared/urlNormaliser.js';
-import { IDENTITY_SOURCES, scoreResults } from '../shared/scoringShared.js';
+import {
+  IDENTITY_SOURCES,
+  estimateDomainAuthority,
+  estimateFreshnessScore,
+  estimateKeywordProximity,
+  scoreResults,
+} from '../shared/scoringShared.js';
+import { clusterResults } from '../shared/resultClusterShared.js';
 
 export function mergeVariantResults(results) {
   const map = new Map();
@@ -97,6 +104,9 @@ export function scoreStandalone(results, originalInput) {
       allTokensPresent: plan.tokens.length > 1 && signals.tokenHits === plan.tokens.length ? 1 : 0,
       titlePartial: plan.tokens.some((token) => signals.title.includes(token)) ? 1 : 0,
       snippetPartial: plan.tokens.some((token) => signals.snippet.includes(token)) ? 1 : 0,
+      freshHit: estimateFreshnessScore(result),
+      authorityHit: estimateDomainAuthority(result),
+      keywordProximity: estimateKeywordProximity(`${signals.title} ${signals.snippet} ${signals.url}`, plan.tokens),
       bias: 1,
     };
   });
@@ -186,5 +196,5 @@ export async function searchDirect(query, namedFetchers, options = {}) {
 
   const expanded = expandRelevantResults(results, plan, extraRatio);
   const deduped = dedupeStandalone(expanded);
-  return scoreStandalone(deduped, query);
+  return clusterResults(scoreStandalone(deduped, query));
 }

@@ -142,6 +142,11 @@ describe('normaliseUrlForDedupe', () => {
       .toBe('https://example.com/path?b=2');
   });
 
+  test('normalizes known mirror hosts and amp suffixes', () => {
+    expect(normaliseUrlForDedupe('https://old.reddit.com/r/test/comments/1/slug/amp?utm_source=x'))
+      .toBe('https://reddit.com/r/test/comments/1/slug');
+  });
+
   test('falls back gracefully for invalid URLs', () => {
     expect(normaliseUrlForDedupe(' example/path/#frag '))
       .toBe('example/path');

@@ -133,9 +133,17 @@ function renderList(results) {
   const el = document.getElementById('listPanel');
   if (!results.length) { el.innerHTML = '<p style="padding:1rem;color:#888;">No results.</p>'; return; }
   const brief = buildResultsBrief(results);
+  let currentClusterId = '';
   el.innerHTML = (brief ? `<div class="result-brief">${esc(brief)}</div>` : '') + results.map(r => {
     const tags = (r.meta && r.meta.tags && r.meta.tags.length) ? ' · ' + r.meta.tags.join(', ') : '';
-    return `<div class="result-card">
+    const clusterId = r.meta && r.meta.clusterId;
+    const clusterSize = r.meta && r.meta.clusterSize;
+    const clusterLabel = r.meta && r.meta.clusterLabel;
+    const clusterHeader = clusterId && clusterSize > 1 && clusterId !== currentClusterId
+      ? `<div style="background:#eef5ff;border:1px solid #d7e3f7;border-radius:6px;padding:0.55rem 0.8rem;margin:0 0 0.5rem;color:#50627a;font-size:0.8rem;font-weight:600;">≈ Similar pages · ${clusterSize} results · ${esc(clusterLabel || 'shared profile trail')}</div>`
+      : '';
+    currentClusterId = clusterId || currentClusterId;
+    return `${clusterHeader}<div class="result-card">
       <h3><span class="score-badge" style="background:${scoreColor(r.score)}">${r.score}</span>
         <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title || r.url)}</a></h3>
       <div class="meta">${esc(r.source)} · rank ${r.rank}${tags}</div>

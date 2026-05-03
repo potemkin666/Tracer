@@ -774,7 +774,7 @@ function searchViaSSE(base,query){
           progressPhase=info.phase;
           const bar=document.getElementById('eng-bar');
           if(bar){
-            const phases={connectors:'Scanning connectors',wayback:'Wayback Machine',namechk:'Username check',timeSlice:'Time slicing',docSearch:'Document search',dedupe:'Deduplicating',fossils:'Fossil hunting'};
+            const phases={connectors:'Scanning connectors',wayback:'Wayback Machine',namechk:'Username check',profileProbe:'Direct profile probing',timeSlice:'Time slicing',docSearch:'Document search',dedupe:'Deduplicating',fossils:'Fossil hunting'};
             bar.textContent='SERVER · '+(phases[info.phase]||info.phase)+'…';
           }
         }
@@ -906,8 +906,12 @@ function renderResults(results,clusters){
     return;
   }
   setUiStatus('results','TRACES RECOVERED');
+  let currentClusterId='';
   results.forEach((r,i)=>{
     const tags=(r.meta&&r.meta.tags)||[];
+    const clusterId=r.meta&&r.meta.clusterId;
+    const clusterSize=r.meta&&r.meta.clusterSize;
+    const clusterLabel=r.meta&&r.meta.clusterLabel;
     const seenOn=r.seenOn||[];
     const bc=bclass(r.source,tags);
     const seenHtml=seenOn.length>1?
@@ -915,6 +919,13 @@ function renderResults(results,clusters){
     const tagsHtml=tags.length?`<div class="tags">${tags.map(t=>`<span class="tag">${esc(t.toUpperCase())}</span>`).join('')}</div>`:'';
     const eraTag=r.meta&&r.meta.era?`<span class="tag" style="border-color:var(--gold);color:var(--gold)">ERA ${r.meta.era}</span>`:'';
     const ftTag=r.meta&&r.meta.fileType?`<span class="tag" style="border-color:#b5838d;color:#b5838d">${esc(r.meta.fileType.toUpperCase())}</span>`:'';
+    if(clusterId&&clusterSize>1&&clusterId!==currentClusterId){
+      currentClusterId=clusterId;
+      const hdr=document.createElement('div');
+      hdr.className='cluster';
+      hdr.innerHTML=`<div class="cluster-hdr">≈ SIMILAR PAGES — ${clusterSize} results · ${esc(clusterLabel||'shared profile trail')}</div>`;
+      list.appendChild(hdr);
+    }
     const card=document.createElement('div');card.className='card';
     card.style.animationDelay=(i*.035)+'s';
     card.innerHTML=

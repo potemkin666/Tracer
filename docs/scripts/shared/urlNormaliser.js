@@ -16,6 +16,30 @@ const TRACKING_PARAMS = new Set([
   'utm_term',
 ]);
 
+const HOST_ALIASES = new Map([
+  ['m.facebook.com', 'facebook.com'],
+  ['mobile.twitter.com', 'twitter.com'],
+  ['www.twitter.com', 'twitter.com'],
+  ['x.com', 'twitter.com'],
+  ['www.x.com', 'twitter.com'],
+  ['old.reddit.com', 'reddit.com'],
+  ['www.reddit.com', 'reddit.com'],
+]);
+
+function normaliseHostname(hostname) {
+  const lowered = hostname.toLowerCase();
+  return HOST_ALIASES.get(lowered) || lowered;
+}
+
+function normalisePathname(pathname) {
+  let nextPath = pathname;
+  if (nextPath.length > 1) {
+    nextPath = nextPath.replace(/\/amp$/u, '');
+    nextPath = nextPath.replace(/\/+$/u, '');
+  }
+  return nextPath || '/';
+}
+
 export function normaliseUrlForDedupe(url) {
   if (typeof url !== 'string') return '';
   const value = url.trim();
@@ -39,15 +63,13 @@ export function normaliseUrlForDedupe(url) {
     parsed.search = '';
     filtered.forEach(({ key, value }) => parsed.searchParams.append(key, value));
 
-    if (parsed.pathname.length > 1) {
-      parsed.pathname = parsed.pathname.replace(/\/+$/u, '');
-    }
-
-    parsed.hostname = parsed.hostname.toLowerCase();
+    parsed.pathname = normalisePathname(parsed.pathname);
+    parsed.hostname = normaliseHostname(parsed.hostname);
     return parsed.toString();
   } catch {
     return value
       .replace(/#.*$/u, '')
+      .replace(/\/amp$/u, '')
       .replace(/\/+$/u, '')
       .trim();
   }

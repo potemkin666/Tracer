@@ -36,6 +36,59 @@ export function uniqueCaseInsensitive(values) {
   });
 }
 
+function stripDiacritics(value) {
+  return value.normalize('NFKD').replace(/\p{Mark}+/gu, '');
+}
+
+function collapseRepeats(value) {
+  return value.replace(/(.)\1{2,}/gu, '$1$1');
+}
+
+function stemToken(token) {
+  if (token.length <= 3) return token;
+  if (/ies$/u.test(token) && token.length > 4) return `${token.slice(0, -3)}y`;
+  if (/(sses|xes|zes|ches|shes)$/u.test(token) && token.length > 4) return token.slice(0, -2);
+  if (/s$/u.test(token) && !/ss$/u.test(token) && token.length > 4) return token.slice(0, -1);
+  if (/ing$/u.test(token) && token.length > 5) return token.slice(0, -3);
+  if (/ed$/u.test(token) && token.length > 4) return token.slice(0, -2);
+  return token;
+}
+
+const QUERY_SYNONYMS = new Map([
+  ['profile', ['bio', 'account', 'user']],
+  ['account', ['profile', 'handle', 'user']],
+  ['forum', ['board', 'community', 'thread']],
+  ['photo', ['image', 'avatar']],
+  ['resume', ['cv']],
+  ['company', ['organization', 'org']],
+]);
+
+export function rewriteQueryTerms(input) {
+  const plan = buildQueryPlan(input);
+  const stemmedTokens = plan.tokens.map(stemToken);
+  const stemmed = stemmedTokens.join(' ').trim();
+  const deaccented = stripDiacritics(plan.raw);
+  const repeatCollapsed = collapseRepeats(plan.raw);
+  const synonymPhrases = [];
+
+  plan.tokens.forEach((token, index) => {
+    const synonyms = QUERY_SYNONYMS.get(token) || [];
+    synonyms.forEach((synonym) => {
+      const nextTokens = [...plan.tokens];
+      nextTokens[index] = synonym;
+      synonymPhrases.push(nextTokens.join(' '));
+    });
+  });
+
+  return uniqueCaseInsensitive([
+    plan.raw,
+    deaccented !== plan.raw ? deaccented : null,
+    repeatCollapsed !== plan.raw ? repeatCollapsed : null,
+    stemmed && stemmed !== plan.lower ? stemmed : null,
+    ...synonymPhrases,
+  ]);
+}
+
 function siteQuery(value, site) {
   return value ? `${value} site:${site}` : null;
 }
@@ -66,21 +119,26 @@ export function queryVariants(plan, options = {}) {
 
 export function generateQueries(input) {
   const plan = buildQueryPlan(input);
+  const rewrites = rewriteQueryTerms(input);
   const isSingleToken = plan.tokens.length <= 1;
 
   if (isSingleToken) {
     return uniqueCaseInsensitive([
       plan.raw,
       plan.atHandle,
+      ...rewrites.map((value) => (value && value !== plan.raw ? `"${value}" profile` : null)),
       siteQuery(plan.localPart, 'github.com'),
       siteQuery(plan.localPart, 'reddit.com/user'),
       siteQuery(plan.localPart, 'gitlab.com'),
+      siteQuery(plan.localPart, 'codeberg.org'),
       siteQuery(plan.localPart, 'keybase.io'),
       siteQuery(plan.localPart, 'bsky.app/profile'),
       siteQuery(plan.localPart, 'mastodon.social'),
       siteQuery(plan.localPart, 'instagram.com'),
       siteQuery(plan.localPart, 'tiktok.com'),
       siteQuery(plan.localPart, 'facebook.com'),
+      siteQuery(plan.localPart, 'news.ycombinator.com/user'),
+      siteQuery(plan.localPart, 'dev.to'),
       siteQuery(plan.localPart, 'web.archive.org'),
     ]);
   }
@@ -88,13 +146,17 @@ export function generateQueries(input) {
   return uniqueCaseInsensitive([
     plan.exact,
     plan.raw,
+    ...rewrites.filter((value) => value !== plan.raw).map((value) => `"${value}"`),
     siteQuery(plan.exact, 'linkedin.com/in'),
     siteQuery(plan.exact, 'github.com'),
     siteQuery(plan.exact, 'reddit.com/user'),
     siteQuery(plan.exact, 'gitlab.com'),
+    siteQuery(plan.exact, 'codeberg.org'),
     siteQuery(plan.exact, 'keybase.io'),
     siteQuery(plan.exact, 'bsky.app/profile'),
     siteQuery(plan.exact, 'mastodon.social'),
+    siteQuery(plan.exact, 'news.ycombinator.com/user'),
+    siteQuery(plan.exact, 'dev.to'),
     plan.noSpaces,
     plan.underscored,
     plan.hyphenated,

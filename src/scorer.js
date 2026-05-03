@@ -1,4 +1,11 @@
-import { IDENTITY_SOURCES, WEIGHTS, scoreResults } from '../docs/scripts/shared/scoringShared.js';
+import {
+  IDENTITY_SOURCES,
+  WEIGHTS,
+  estimateDomainAuthority,
+  estimateFreshnessScore,
+  estimateKeywordProximity,
+  scoreResults,
+} from '../docs/scripts/shared/scoringShared.js';
 export { WEIGHTS } from '../docs/scripts/shared/scoringShared.js';
 
 /**
@@ -24,23 +31,26 @@ export function extractFeatures(r, lowerInput, tokens, urlMap) {
   ].filter(Boolean);
 
   return {
-     titleExact:    title.includes(lowerInput) ? 1 : 0,
-     snippetExact:  snippet.includes(lowerInput) ? 1 : 0,
-     usernameExact: usernameVariants.includes(username) ? 1 : 0,
-     urlUsername:   usernameVariants.some((variant) => url.includes(variant)) ? 1 : 0,
-     multiSource:   (urlMap[r.url] || 0) > 1 ? 1 : 0,
-     identitySource: IDENTITY_SOURCES.has(r.source) || tags.includes('social') || tags.includes('profile') ? 1 : 0,
-     archiveSource: r.source === 'wayback' || /archive\.org/.test(url) ? 1 : 0,
-     fossilTag:     tags.includes('fossil') ? 1 : 0,
-     timesliceTag:  tags.includes('timeslice') ? 1 : 0,
-     documentTag:   tags.includes('document') ? 1 : 0,
-     socialTag:     tags.includes('social') ? 1 : 0,
-     profileTag:    tags.includes('profile') ? 1 : 0,
-     lowRank:       typeof r.rank === 'number' && r.rank >= 1 && r.rank <= 3 ? 1 : 0,
-     allTokensPresent: tokens.length > 1 && tokens.every((t) => combined.includes(t)) ? 1 : 0,
-     titlePartial:  tokens.some(t => title.includes(t)) ? 1 : 0,
-     snippetPartial:tokens.some(t => snippet.includes(t)) ? 1 : 0,
-     bias:          1,
+    titleExact: title.includes(lowerInput) ? 1 : 0,
+    snippetExact: snippet.includes(lowerInput) ? 1 : 0,
+    usernameExact: usernameVariants.includes(username) ? 1 : 0,
+    urlUsername: usernameVariants.some((variant) => url.includes(variant)) ? 1 : 0,
+    multiSource: (urlMap[r.url] || 0) > 1 ? 1 : 0,
+    identitySource: IDENTITY_SOURCES.has(r.source) || tags.includes('social') || tags.includes('profile') ? 1 : 0,
+    archiveSource: r.source === 'wayback' || /archive\.org/.test(url) ? 1 : 0,
+    fossilTag: tags.includes('fossil') ? 1 : 0,
+    timesliceTag: tags.includes('timeslice') ? 1 : 0,
+    documentTag: tags.includes('document') ? 1 : 0,
+    socialTag: tags.includes('social') ? 1 : 0,
+    profileTag: tags.includes('profile') ? 1 : 0,
+    lowRank: typeof r.rank === 'number' && r.rank >= 1 && r.rank <= 3 ? 1 : 0,
+    allTokensPresent: tokens.length > 1 && tokens.every((t) => combined.includes(t)) ? 1 : 0,
+    titlePartial: tokens.some((t) => title.includes(t)) ? 1 : 0,
+    snippetPartial: tokens.some((t) => snippet.includes(t)) ? 1 : 0,
+    freshHit: estimateFreshnessScore(r),
+    authorityHit: estimateDomainAuthority(r),
+    keywordProximity: estimateKeywordProximity(`${title} ${snippet} ${url}`, tokens),
+    bias: 1,
   };
 }
 

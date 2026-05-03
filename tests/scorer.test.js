@@ -51,6 +51,9 @@ describe('extractFeatures', () => {
     const r = { title: 'test', url: 'https://x.com', snippet: '', source: 'brave', meta: {} };
     const features = extractFeatures(r, 'test', ['test'], {});
     expect(features).toHaveProperty('titleExact');
+    expect(features).toHaveProperty('freshHit');
+    expect(features).toHaveProperty('authorityHit');
+    expect(features).toHaveProperty('keywordProximity');
     expect(features).toHaveProperty('bias', 1);
   });
 
@@ -84,6 +87,20 @@ describe('extractFeatures', () => {
     }, '@alice', ['alice'], {});
     expect(features.usernameExact).toBe(1);
     expect(features.identitySource).toBe(1);
+  });
+
+  test('captures freshness, authority, and keyword proximity signals', () => {
+    const features = extractFeatures({
+      title: 'Alice Example profile 2025',
+      url: 'https://github.com/alice-example',
+      snippet: 'Alice Example maintains this repository',
+      source: 'github',
+      meta: { username: 'alice-example', year: 2025 },
+    }, 'alice example', ['alice', 'example'], {});
+
+    expect(features.freshHit).toBeGreaterThan(0);
+    expect(features.authorityHit).toBeGreaterThan(0.5);
+    expect(features.keywordProximity).toBeGreaterThan(0.5);
   });
 });
 
