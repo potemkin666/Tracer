@@ -162,6 +162,7 @@ function renderList(results) {
       <h3><span class="score-badge" style="background:${scoreColor(r.score)}">${r.score}</span>
         <a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title || r.url)}</a></h3>
       <div class="meta">${esc(r.source)} · rank ${r.rank} · ${(r.meta && r.meta.reliability) || 'unknown'}${tags}</div>
+      ${r.meta && r.meta.whySurvived ? `<div class="meta">Why this survived: ${esc(r.meta.whySurvived)}</div>` : ''}
       ${r.snippet ? '<div class="snippet">' + esc(r.snippet) + '</div>' : ''}
       ${r.meta && r.meta.snapshotViewerUrl ? `<div class="meta"><a href="${esc(r.meta.snapshotViewerUrl)}" target="_blank" rel="noopener">Snapshot</a></div>` : ''}
     </div>`;

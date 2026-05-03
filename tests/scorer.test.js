@@ -45,6 +45,35 @@ describe('score', () => {
     expect(scored[0].score).toBeGreaterThanOrEqual(0);
     expect(scored[0].score).toBeLessThanOrEqual(100);
   });
+
+  test('applies intent-specific ranking and source-family caps', () => {
+    const scored = score([
+      { title: 'alice handle', url: 'https://github.com/alice', snippet: '', source: 'github', meta: { username: 'alice' } },
+      { title: 'alice handle mirror', url: 'https://gitlab.com/alice', snippet: '', source: 'gitlab', meta: { username: 'alice' } },
+      { title: 'alice handle alt', url: 'https://codeberg.org/alice', snippet: '', source: 'codeberg', meta: { username: 'alice' } },
+      { title: 'alice package', url: 'https://npmjs.com/package/alice', snippet: '', source: 'npm', meta: {} },
+      { title: 'alice package clone', url: 'https://pypi.org/project/alice', snippet: '', source: 'pypi', meta: {} },
+      { title: 'alice package mirror', url: 'https://rubygems.org/gems/alice', snippet: '', source: 'rubygems', meta: {} },
+      { title: 'alice package extra', url: 'https://crates.io/crates/alice', snippet: '', source: 'crates', meta: {} },
+    ], '@alice');
+
+    expect(scored[0].meta.queryIntent).toBe('handle');
+    expect(scored.find((result) => result.url === 'https://crates.io/crates/alice').meta.familyPenalty).toBeGreaterThan(0);
+  });
+
+  test('adds a why-survived explanation for weaker but useful results', () => {
+    const scored = score([
+      {
+        title: 'archived alice trace',
+        url: 'https://web.archive.org/web/20240101000000/https://example.com/alice',
+        snippet: 'older capture',
+        source: 'wayback',
+        meta: {},
+      },
+    ], 'alice');
+
+    expect(scored[0].meta.whySurvived).toContain('archive');
+  });
 });
 
 describe('extractFeatures', () => {

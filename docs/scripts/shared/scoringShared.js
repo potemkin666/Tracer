@@ -24,6 +24,59 @@ export const WEIGHTS = {
   bias: -2.0,
 };
 
+const INTENT_WEIGHT_OVERRIDES = {
+  name: {
+    titleExact: 3.5,
+    snippetExact: 2.3,
+    allTokensPresent: 1.9,
+    officialHit: 0.9,
+  },
+  handle: {
+    usernameExact: 3.4,
+    urlUsername: 3.0,
+    fuzzyUsername: 1.6,
+    identitySource: 1.5,
+    profileTag: 1.3,
+    snippetExact: 1.1,
+  },
+  email: {
+    snippetExact: 3.5,
+    keywordProximity: 1.7,
+    multiSource: 1.8,
+    authorityHit: 1.0,
+    titleExact: 1.0,
+  },
+  phone: {
+    snippetExact: 3.6,
+    keywordProximity: 1.8,
+    multiSource: 1.7,
+    titleExact: 0.8,
+  },
+  company: {
+    titleExact: 3.4,
+    snippetExact: 2.5,
+    officialHit: 1.2,
+    authorityHit: 1.0,
+    allTokensPresent: 1.9,
+  },
+  image: {
+    profileTag: 1.5,
+    socialTag: 1.3,
+    archiveSource: 1.1,
+    titlePartial: 0.7,
+    snippetPartial: 0.3,
+  },
+};
+
+const BROKER_DIRECTORY_HOSTS = [
+  /spokeo\.com/u, /whitepages\.com/u, /mylife\.com/u, /beenverified\.com/u,
+  /peekyou\.com/u, /rocketreach\.co/u, /zoominfo\.com/u,
+];
+const PACKAGE_ECOSYSTEM_HOSTS = [
+  /npmjs\.com/u, /pypi\.org/u, /rubygems\.org/u, /packagist\.org/u,
+  /crates\.io/u, /hub\.docker\.com/u,
+];
+
 export const IDENTITY_SOURCES = new Set([
   'bluesky',
   'codeberg',
@@ -61,6 +114,58 @@ export function scoreResults(results, buildFeatures, weights = WEIGHTS) {
       const features = buildFeatures(result);
       const confidence = computeConfidence(features, weights);
       return { ...result, score: Math.round(confidence * 100), confidence };
+    })
+    .sort((a, b) => b.confidence - a.confidence);
+}
+
+export function buildIntentWeights(baseWeights = WEIGHTS, intent = 'name') {
+  return {
+    ...baseWeights,
+    ...(INTENT_WEIGHT_OVERRIDES[intent] || {}),
+  };
+}
+
+export function deriveSourceFamily(result = {}) {
+  const hostname = safeHostname(result.url);
+  const category = result.meta?.domainCategory || null;
+
+  if (PACKAGE_ECOSYSTEM_HOSTS.some((pattern) => pattern.test(hostname))) return 'package-ecosystem';
+  if (BROKER_DIRECTORY_HOSTS.some((pattern) => pattern.test(hostname))) return 'broker-directory';
+  if (hostname.includes('github.com') || hostname.includes('gitlab.com') || hostname.includes('codeberg.org')) return 'code-hosting';
+  if (hostname.includes('archive.org') || result.source === 'wayback' || result.source === 'timeslice') return 'archive';
+  if (hostname.includes('reddit.com') || hostname.includes('ycombinator.com') || /forum|community/u.test(hostname)) return 'forum';
+  if (category === 'social') return 'social';
+  if (category === 'news') return 'media';
+  if (category === 'academic') return 'academic';
+  if (category === 'gov') return 'official';
+  return hostname.split('.').slice(-2).join('.') || result.source || 'unknown';
+}
+
+export function applySourceFamilyCaps(results = [], {
+  perFamilyCap = 3,
+  overflowPenalty = 0.12,
+} = {}) {
+  const familyCounts = new Map();
+
+  return results
+    .map((result) => {
+      const family = deriveSourceFamily(result);
+      const seen = (familyCounts.get(family) || 0) + 1;
+      familyCounts.set(family, seen);
+      const overflow = Math.max(seen - perFamilyCap, 0);
+      const penalty = Math.min(0.45, overflow * overflowPenalty);
+      const confidence = Math.max(0, (result.confidence || 0) * (1 - penalty));
+      return {
+        ...result,
+        confidence,
+        score: Math.round(confidence * 100),
+        meta: {
+          ...(result.meta || {}),
+          sourceFamily: family,
+          familyRank: seen,
+          familyPenalty: penalty,
+        },
+      };
     })
     .sort((a, b) => b.confidence - a.confidence);
 }

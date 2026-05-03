@@ -931,6 +931,7 @@ function renderResults(results,clusters){
     const eraTag=r.meta&&r.meta.era?`<span class="tag" style="border-color:var(--gold);color:var(--gold)">ERA ${r.meta.era}</span>`:'';
     const ftTag=r.meta&&r.meta.fileType?`<span class="tag" style="border-color:#b5838d;color:#b5838d">${esc(r.meta.fileType.toUpperCase())}</span>`:'';
     const insightRow=`<div class="card-seen">RELIABILITY <span>${esc(reliability.toUpperCase())}</span> · LANG <span>${esc(language.toUpperCase())}</span>${region}</div>`;
+    const whyHtml=r.meta&&r.meta.whySurvived?`<div class="card-seen">WHY THIS SURVIVED · ${esc(r.meta.whySurvived)}</div>`:'';
     const entityHtml=entityParts.length?`<div class="tags">${entityParts.map(v=>`<span class="tag">${esc(v)}</span>`).join('')}</div>`:'';
     const actionLinks=[
       r.meta&&r.meta.translationUrl?`<a href="${esc(r.meta.translationUrl)}" target="_blank" rel="noopener noreferrer">TRANSLATE</a>`:'',
@@ -956,6 +957,7 @@ function renderResults(results,clusters){
       (r.snippet?`<div class="card-snip">${esc(r.snippet)}</div>`:'')+
       (r.url?`<div class="card-url">${esc(r.url)}</div>`:'')+
       insightRow+
+      whyHtml+
       seenHtml+
       actionsHtml+
       entityHtml+

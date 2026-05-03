@@ -8,6 +8,9 @@ import {
 import { dedupeResultsByUrl, mergeUniqueValues } from '../shared/dedupeShared.js';
 import { normaliseUrlForDedupe } from '../shared/urlNormaliser.js';
 import {
+  applySourceFamilyCaps,
+  buildIntentWeights,
+  deriveSourceFamily,
   IDENTITY_SOURCES,
   estimateDomainAuthority,
   estimateFreshnessScore,
@@ -94,7 +97,7 @@ export function scoreStandalone(results, originalInput) {
     if (result.url) urlMap[result.url] = (urlMap[result.url] || 0) + 1;
   });
 
-  return scoreResults(results, (result) => {
+  const scored = scoreResults(results, (result) => {
     const signals = getStandaloneMatchSignals(result, plan);
     return {
       titleExact: signals.title.includes(plan.lower) ? 1 : 0,
@@ -115,7 +118,28 @@ export function scoreStandalone(results, originalInput) {
       officialHit: result.meta?.reliability === 'official' ? 1 : 0,
       bias: 1,
     };
+  }, buildIntentWeights(undefined, plan.intent)).map((result) => {
+    const signals = getStandaloneMatchSignals(result, plan);
+    const whySurvived = result.score < 80
+      ? (
+        /archive\.org/.test(signals.url) ? 'rare archive evidence kept this visible'
+          : isFuzzyHandleMatch(result.meta?.username || signals.url, plan.localPart || plan.noSpaces) ? `near-match ${plan.intent} variant survived`
+            : result.meta?.reliability === 'official' ? 'official-source signal kept this visible'
+              : null
+      )
+      : null;
+    return {
+      ...result,
+      meta: {
+        ...(result.meta || {}),
+        queryIntent: plan.intent,
+        sourceFamily: deriveSourceFamily(result),
+        ...(whySurvived ? { whySurvived } : {}),
+      },
+    };
   });
+
+  return applySourceFamilyCaps(scored);
 }
 
 function classifyStandaloneError(err) {

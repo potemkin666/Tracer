@@ -1,6 +1,9 @@
 import {
+  applySourceFamilyCaps,
+  buildIntentWeights,
   IDENTITY_SOURCES,
   WEIGHTS,
+  deriveSourceFamily,
   estimateDomainAuthority,
   estimateFreshnessScore,
   estimateGeoAffinity,
@@ -61,6 +64,16 @@ export function extractFeatures(r, plan, urlMap) {
   };
 }
 
+function buildWhySurvived(result, features, plan) {
+  if (features.archiveSource) return 'rare archive evidence kept this visible';
+  if (features.fuzzyUsername) return `near-match ${plan.intent} variant survived`;
+  if (features.geoHit) return 'regional relevance kept this visible';
+  if (features.multiSource) return 'cross-source corroboration kept this visible';
+  if (features.documentTag || features.timesliceTag) return 'niche document/history signal survived';
+  if (features.officialHit) return 'official-source signal kept this visible';
+  return null;
+}
+
 /**
  * Compute confidence score for a result using learned logistic-regression
  * weights. Returns a value in (0, 1) that can be interpreted as the
@@ -87,9 +100,24 @@ export function score(results, originalInput) {
     if (r.url) urlMap[r.url] = (urlMap[r.url] || 0) + 1;
   });
 
-  return scoreResults(
+  const intentWeights = buildIntentWeights(WEIGHTS, plan.intent);
+  const scored = scoreResults(
     results,
     (result) => extractFeatures(result, plan, urlMap),
-    WEIGHTS
-  );
+    intentWeights
+  ).map((result) => {
+    const features = extractFeatures(result, plan, urlMap);
+    const whySurvived = buildWhySurvived(result, features, plan);
+    return {
+      ...result,
+      meta: {
+        ...(result.meta || {}),
+        queryIntent: plan.intent,
+        sourceFamily: deriveSourceFamily(result),
+        ...(whySurvived ? { whySurvived } : {}),
+      },
+    };
+  });
+
+  return applySourceFamilyCaps(scored);
 }

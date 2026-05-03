@@ -1,5 +1,6 @@
 export {
   buildQueryPlan,
+  detectQueryIntent,
   generateQueries,
   isFuzzyHandleMatch,
   parseOperators,

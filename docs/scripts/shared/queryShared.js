@@ -1,6 +1,24 @@
 const OPERATOR_PATTERN = /(?:^|\s)(site|filetype|intitle|inurl|lang|region):("[^"]+"|\S+)/giu;
 const FUZZY_MATCH_TOLERANCE_RATIO = 6;
 
+function looksLikePhone(raw) {
+  const digits = String(raw || '').replace(/\D+/gu, '');
+  return digits.length >= 7 && digits.length <= 15;
+}
+
+export function detectQueryIntent(input) {
+  const raw = String(input || '').trim();
+  const lower = raw.toLowerCase();
+  if (!raw) return 'name';
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(raw)) return 'email';
+  if (looksLikePhone(raw)) return 'phone';
+  if (/\b(image|avatar|logo|photo|picture)\b/iu.test(raw) || /\.(png|jpe?g|gif|webp)$/iu.test(raw)) return 'image';
+  if (/\b(inc|llc|ltd|corp|corporation|company|group|studio|labs?|agency|foundation|institute|university|college)\b/iu.test(raw)) return 'company';
+  if (/^@/u.test(raw) || (!/\s/u.test(raw) && /^[a-z0-9._-]{2,}$/iu.test(raw))) return 'handle';
+  if (lower.includes('@') && !lower.startsWith('@')) return 'email';
+  return 'name';
+}
+
 export function parseOperators(input) {
   const operators = {
     site: [],
@@ -54,6 +72,7 @@ export function buildQueryPlan(input) {
     atHandle: localPart ? `@${localPart}` : '',
     reversed,
     reversedExact: tokens.length > 1 ? `"${reversed}"` : raw,
+    intent: detectQueryIntent(original || raw),
   };
 }
 

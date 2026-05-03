@@ -45,6 +45,66 @@ function buildClusterKey(result) {
   return null;
 }
 
+function normaliseValues(values = []) {
+  return [...new Set(values.filter(Boolean).map((value) => String(value).toLowerCase().trim()))];
+}
+
+function extractEmailDomains(result) {
+  return normaliseValues((result.meta?.entities?.emails || []).map((email) => email.split('@')[1] || ''));
+}
+
+function extractOrgs(result) {
+  return normaliseValues(result.meta?.entities?.orgs || []);
+}
+
+function extractRegions(result) {
+  return normaliseValues([result.meta?.region].filter(Boolean));
+}
+
+function extractProfilePattern(result) {
+  return normaliseValues([
+    result.meta?.username || '',
+    fingerprintPath(result.url),
+  ]);
+}
+
+function hasConflict(left = [], right = []) {
+  if (!left.length || !right.length) return false;
+  return !left.some((value) => right.includes(value));
+}
+
+function buildContradictionFingerprint(result) {
+  return {
+    emailDomains: extractEmailDomains(result),
+    orgs: extractOrgs(result),
+    regions: extractRegions(result),
+    profilePatterns: extractProfilePattern(result),
+  };
+}
+
+function isCompatibleWithGroup(result, group) {
+  const fingerprint = buildContradictionFingerprint(result);
+  return !group.some((candidate) => {
+    const other = buildContradictionFingerprint(candidate);
+    return hasConflict(fingerprint.emailDomains, other.emailDomains)
+      || hasConflict(fingerprint.orgs, other.orgs)
+      || hasConflict(fingerprint.regions, other.regions)
+      || hasConflict(fingerprint.profilePatterns, other.profilePatterns);
+  });
+}
+
+function splitContradictoryGroup(group) {
+  return group.reduce((partitions, result) => {
+    const existing = partitions.find((partition) => isCompatibleWithGroup(result, partition));
+    if (existing) {
+      existing.push(result);
+      return partitions;
+    }
+    partitions.push([result]);
+    return partitions;
+  }, []);
+}
+
 export function clusterResults(results = []) {
   const keyed = results.map((result) => ({ result, key: buildClusterKey(result) }));
   const groups = new Map();
@@ -59,20 +119,26 @@ export function clusterResults(results = []) {
   let clusterIndex = 1;
 
   groups.forEach((group, key) => {
-    if (group.length < 2) return;
-    const label = fingerprintTitle(group[0].title) || fingerprintPath(group[0].url) || 'similar pages';
-    const maxScore = Math.max(...group.map((item) => item.score || 0));
-    clusterMeta.set(key, {
-      id: `cluster-${clusterIndex++}`,
-      size: group.length,
-      label,
-      maxScore,
+    splitContradictoryGroup(group).forEach((partition, partitionIndex) => {
+      if (partition.length < 2) return;
+      const label = fingerprintTitle(partition[0].title) || fingerprintPath(partition[0].url) || 'similar pages';
+      const maxScore = Math.max(...partition.map((item) => item.score || 0));
+      const clusterId = `cluster-${clusterIndex++}`;
+      partition.forEach((item) => {
+        clusterMeta.set(item.url || `${key}:${partitionIndex}:${item.title}`, {
+          id: clusterId,
+          size: partition.length,
+          label,
+          maxScore,
+          contradictionChecked: group.length > partition.length,
+        });
+      });
     });
   });
 
   return keyed
     .map(({ result, key }) => {
-      const meta = key ? clusterMeta.get(key) : null;
+      const meta = key ? clusterMeta.get(result.url || `${key}:${result.title}`) : null;
       if (!meta) return result;
       return {
         ...result,
@@ -82,6 +148,7 @@ export function clusterResults(results = []) {
           clusterSize: meta.size,
           clusterLabel: meta.label,
           clusterScore: meta.maxScore,
+          clusterContradictionChecked: meta.contradictionChecked,
         },
       };
     })

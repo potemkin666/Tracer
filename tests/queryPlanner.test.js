@@ -1,4 +1,4 @@
-import { buildQueryPlan, generateQueries, isFuzzyHandleMatch, rewriteQueryTerms } from '../src/queryPlanner.js';
+import { buildQueryPlan, detectQueryIntent, generateQueries, isFuzzyHandleMatch, rewriteQueryTerms } from '../src/queryPlanner.js';
 
 describe('generateQueries', () => {
   const results = generateQueries('john smith');
@@ -92,5 +92,20 @@ describe('isFuzzyHandleMatch', () => {
   test('matches close username variants', () => {
     expect(isFuzzyHandleMatch('alic3example', 'aliceexample')).toBe(true);
     expect(isFuzzyHandleMatch('bob', 'aliceexample')).toBe(false);
+  });
+});
+
+describe('detectQueryIntent', () => {
+  test('classifies core query intents', () => {
+    expect(detectQueryIntent('alice@example.com')).toBe('email');
+    expect(detectQueryIntent('+1 (555) 123-4567')).toBe('phone');
+    expect(detectQueryIntent('@alice_example')).toBe('handle');
+    expect(detectQueryIntent('Example Labs Inc')).toBe('company');
+    expect(detectQueryIntent('avatar alice example')).toBe('image');
+    expect(detectQueryIntent('Alice Example')).toBe('name');
+  });
+
+  test('stores the detected intent in the built query plan', () => {
+    expect(buildQueryPlan('@alice').intent).toBe('handle');
   });
 });
