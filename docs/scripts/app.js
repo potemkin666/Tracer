@@ -63,13 +63,18 @@ function collectKeys(){const o={};KEY_DEFS.forEach(k=>{const el=document.getElem
 let connected=false;
 const isFileProtocol=location.protocol==='file:';
 const isStandaloneClient=isFileProtocol||location.hostname.endsWith('.github.io');
+function setUiStatus(status,text){
+  document.body.dataset.status=status;
+  const el=document.getElementById('status-text');
+  if(el&&text)el.textContent=text;
+}
 function getStandaloneEngineLabel(){
   const openCount=(ENGINE_METADATA.standalone&&ENGINE_METADATA.standalone.openFetchers
     ?ENGINE_METADATA.standalone.openFetchers.length
     :0);
-  if(!isStandaloneClient)return '0 (server offline - open-API fallback)';
-  if(isFileProtocol)return `${openCount} open APIs (portable mode works now - start local server for 550+)`;
-  return `${openCount} open APIs (standalone - start local server for 550+)`;
+  if(!isStandaloneClient)return '0 open currents (local station offline)';
+  if(isFileProtocol)return `${openCount} open currents (portable surface sweep active)`;
+  return `${openCount} open currents (standalone shoreline mode)`;
 }
 
 function openLocalServerGuide(){
@@ -103,11 +108,11 @@ document.getElementById('endpoint').addEventListener('change',checkConn);
 async function updateEngCount(base){
   try{
     const r=await fetch(base+'/engines',{signal:AbortSignal.timeout(3000)});
-    if(r.ok){const d=await r.json();document.getElementById('eng-count').textContent=d.total+' engines ('+d.active+' active) — SSE streaming';return}
+    if(r.ok){const d=await r.json();document.getElementById('eng-count').textContent=d.total+' engines ('+d.active+' live currents) — sonar streaming';return}
   }catch{
     // ignore engine count failures
   }
-  document.getElementById('eng-count').textContent='connected (SSE streaming)';
+  document.getElementById('eng-count').textContent='connected (sonar streaming)';
 }
 
 // ── DIRECT CLIENT-SIDE SEARCH (no local server needed) ───────────────────────
@@ -808,6 +813,8 @@ function searchViaSSE(base,query){
 async function doSearch(){
   const query=document.getElementById('query').value.trim();
   if(!query)return;
+  const deepSearch=document.getElementById('mode').value==='aggressive'||document.getElementById('opt-timeslice').checked;
+  setUiStatus('searching',deepSearch?'DESCENT ACTIVE':'SONAR SWEEP ACTIVE');
   showLoading(true);clearResults();showErr('',false);
 
   let results=[],avatarClusters=[];
@@ -828,7 +835,7 @@ async function doSearch(){
       if(bar){
         const stats=data.connectorStats||[];
         const ok=stats.filter(s=>s.ok).length;
-        bar.textContent=`SERVER · ${results.length} results from ${ok}/${stats.length} connectors`;
+        bar.textContent=`LIVE STATION · ${results.length} shoreline traces from ${ok}/${stats.length} currents`;
       }
     }catch(e){
       showErr('Server error: '+e.message+'. Falling back to open APIs…',true);
@@ -860,7 +867,7 @@ function bclass(src,tags){
 function renderResults(results,clusters){
   document.getElementById('results-section').style.display='block';
   document.getElementById('res-count').textContent=
-    results.length+' UNIQUE SIGNAL'+(results.length!==1?'S':'')+' DETECTED';
+    results.length+' UNIQUE TRACE'+(results.length!==1?'S':'')+' RECOVERED';
 
   // Show export buttons when there are results
   const expBar=document.getElementById('export-bar');
@@ -881,19 +888,21 @@ function renderResults(results,clusters){
 
   const list=document.getElementById('results-list');list.innerHTML='';
   if(!results.length){
+    setUiStatus('empty','NO TRACE FOUND');
     list.innerHTML=
       '<div class="no-results">'+
-        '<div class="nr-hdr">NO SIGNALS IN RANGE</div>'+
+        '<div class="nr-hdr">NO TRACE FOUND</div>'+
         '<ul class="nr-tips">'+
-          '<li>Check your spelling — even one wrong letter filters everything out</li>'+
-          '<li>Try a real name, known username, or email address</li>'+
-          '<li>Use fewer words — single-token queries work best in standalone mode</li>'+
-          '<li>Some APIs may be rate-limited — wait a minute and try again</li>'+
-          '<li>Use the repo root <strong style="color:var(--bright)">Start Tracer</strong> launcher or expand "LOCAL SERVER" above for 550+ engines</li>'+
+          '<li>Check your spelling — a single wrong character can bury the signal</li>'+
+          '<li>Try a real name, username, domain, or email address</li>'+
+          '<li>Shorter pings often surface better shoreline traces in standalone mode</li>'+
+          '<li>Some currents rate-limit — wait a minute, then send another ping</li>'+
+          '<li>Launch the local station for the full 550+ engine descent</li>'+
         '</ul>'+
       '</div>';
     return;
   }
+  setUiStatus('results','TRACES RECOVERED');
   results.forEach((r,i)=>{
     const tags=(r.meta&&r.meta.tags)||[];
     const seenOn=r.seenOn||[];
@@ -1083,11 +1092,13 @@ function rerunSearch(query){
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function showLoading(v){document.getElementById('loading').style.display=v?'block':'none';document.getElementById('srch-btn').disabled=v}
 function clearResults(){document.getElementById('results-section').style.display='none';document.getElementById('results-list').innerHTML='';document.getElementById('avatar-clusters').innerHTML='';document.getElementById('src-status-wrap').innerHTML='';const eb=document.getElementById('export-bar');if(eb)eb.style.display='none';const brief=document.getElementById('results-brief');if(brief){brief.textContent='';brief.style.display='none'}_lastResults=[]}
-function showErr(msg,isErr){const el=document.getElementById('err');el.textContent=msg;el.style.display=msg?'block':'none';if(!isErr)el.style.color='var(--bright)'}
+function showErr(msg,isErr){const el=document.getElementById('err');el.textContent=msg;el.style.display=msg?'block':'none';if(!isErr){el.style.color='var(--bright)';return}setUiStatus('error','SIGNAL LOST')}
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 loadKeys();
 renderHistory();
+setUiStatus('idle','AWAITING SIGNAL');
+document.getElementById('query').addEventListener('input',e=>setUiStatus(e.target.value.trim()?'typing':'idle',e.target.value.trim()?'SIGNAL FORMING':'AWAITING SIGNAL'));
 // Always try the local server first. On GitHub Pages or file:// launches we
 // start in STANDALONE mode but immediately attempt a connection — if the user
 // has `npm run serve` running, the dot goes green and searches use the full

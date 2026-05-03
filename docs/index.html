@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TRACER — Deep Ocean Identity Scanner</title>
+  <title>TRACER — Deep Search Engine</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles/app.css">
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles/app.css">
 
 </head>
 <body>
@@ -16,66 +16,88 @@
 <div id="bubbles"></div>
 
 <div id="app">
-  <header>
-    <span class="logo">〰 TRACER 〰</span>
-    <div class="tagline">DEEP OCEAN IDENTITY SCANNER · MULTI-SOURCE · LOCAL-FIRST</div>
+  <header class="site-header">
+    <div class="brand-grid">
+      <div class="brand-mark" aria-hidden="true">
+        <span class="brand-ring"></span>
+        <span class="brand-ring brand-ring-2"></span>
+        <span class="brand-beam"></span>
+        <span class="brand-shore"></span>
+      </div>
+      <div class="brand-copy">
+        <span class="logo">TRACER</span>
+        <div class="tagline">Deep Search Engine</div>
+        <p class="brand-note">Follow the signal beneath the surface.</p>
+      </div>
+    </div>
+    <div class="header-status">
+      <span class="header-kicker">COASTAL ARRAY · LIGHTHOUSE CONTROL · GRID 54.6N / 5.9W</span>
+      <span class="status-pill" id="status-text">AWAITING SIGNAL</span>
+    </div>
   </header>
 
   <!-- MAIN SEARCH PANEL -->
   <div class="panel">
     <div class="panel-hdr">
-      <span>⬡ SEARCH CONSOLE</span>
+      <span>SONAR CONSOLE</span>
       <span id="conn-wrap">
         <span class="dot" id="dot"></span>
         <span id="conn-lbl">OFFLINE</span>
       </span>
     </div>
 
-    <div id="eng-bar">ENGINES READY: <span id="eng-count">36 open APIs (standalone)</span></div>
+    <div id="eng-bar">CURRENTS READY: <span id="eng-count">36 open APIs (standalone)</span></div>
 
     <div class="quickstart-card">
-      <div class="quickstart-hdr">PORTABLE USE — QUICK START</div>
+      <div class="quickstart-hdr">STATION BRIEFING</div>
       <div class="quickstart-grid">
         <div class="quickstart-item">
-          <strong>Use now with built-in APIs</strong>
-          <p>You're in portable standalone mode right now, so you can search immediately with the built-in open APIs.</p>
+          <strong>SURFACE SWEEP READY</strong>
+          <p>You are already connected to the open currents, so you can trace names, handles, domains, and phrases immediately.</p>
           <div class="quickstart-actions">
-            <button class="btn btn-sm" type="button" onclick="document.getElementById('query').focus()">SEARCH NOW</button>
+            <button class="btn btn-sm" type="button" onclick="document.getElementById('query').focus()">PING NOW</button>
           </div>
         </div>
         <div class="quickstart-item">
-          <strong>Use the full 550+ engine mode</strong>
-          <p>Double-click the repo root launcher for your OS: <code style="color:var(--bright)">Start Tracer.bat</code>, <code style="color:var(--bright)">Start Tracer.command</code>, or <code style="color:var(--bright)">Start Tracer.sh</code>.</p>
+          <strong>DESCENT TO FULL DEPTH</strong>
+          <p>Launch the local station to unlock all 550+ engines: <code style="color:var(--bright)">Start Tracer.bat</code>, <code style="color:var(--bright)">Start Tracer.command</code>, or <code style="color:var(--bright)">Start Tracer.sh</code>.</p>
           <div class="quickstart-actions">
-            <button class="btn btn-sm" type="button" onclick="openLocalServerGuide()">OPEN SETUP GUIDE</button>
+            <button class="btn btn-sm" type="button" onclick="openLocalServerGuide()">OPEN CHART</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- PRIMARY SEARCH ROW -->
-    <div class="search-row">
-      <input type="text" id="query" placeholder="name, username, alias, email…" autocomplete="off" spellcheck="false">
-      <button class="btn" id="srch-btn" onclick="doSearch()">◆ DIVE DEEP ◆</button>
+    <div class="search-shell">
+      <div class="search-sonar" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="search-row">
+        <input type="text" id="query" placeholder="trace a name, handle, domain, phrase…" autocomplete="off" spellcheck="false">
+        <button class="btn" id="srch-btn" onclick="doSearch()">PING</button>
+      </div>
+      <div class="search-guidance">send a signal… · ping the surface web… · trace a name, handle, domain, phrase…</div>
     </div>
 
     <!-- OPTIONS -->
     <div class="opts-row">
       <div class="mode-wrap">
+        <span class="control-label">DESCENT</span>
         <select id="mode" title="Scan mode">
           <option value="normal">NORMAL MODE</option>
           <option value="aggressive">AGGRESSIVE MODE</option>
         </select>
       </div>
-      <label><input type="checkbox" id="opt-fossils"> FOSSILS</label>
-      <label><input type="checkbox" id="opt-avatars"> AVATARS</label>
-      <label><input type="checkbox" id="opt-timeslice"> TIME SLICE</label>
-      <label><input type="checkbox" id="opt-docs"> DOCUMENTS</label>
+      <label><input type="checkbox" id="opt-fossils"> ARCHIVES</label>
+      <label><input type="checkbox" id="opt-avatars"> SOCIAL MIRRORS</label>
+      <label><input type="checkbox" id="opt-timeslice"> DEEP SEARCH</label>
+      <label><input type="checkbox" id="opt-docs"> CHARTS &amp; DOCS</label>
     </div>
 
     <!-- LOCAL SERVER (collapsible, advanced) -->
     <details id="local-server-guide">
-      <summary>LOCAL SERVER — connect for 550+ engines</summary>
+      <summary>LOCAL STATION — connect for 550+ engines</summary>
       <div>
         <div style="display:flex;gap:.6rem;margin-bottom:.8rem;align-items:center">
           <span style="font-family:'Press Start 2P',monospace;font-size:.46rem;color:var(--dim);white-space:nowrap">API ENDPOINT</span>
@@ -125,13 +147,13 @@
 
     <!-- API KEYS (collapsible) -->
     <details>
-      <summary>API KEYS — optional, unlocks more engines</summary>
+      <summary>ACCESS CURRENTS — optional, unlock more engines</summary>
       <div>
         <div class="keys-grid" id="keys-grid">
           <!-- populated by JS -->
         </div>
         <div class="key-actions">
-          <button class="btn btn-sm" onclick="saveKeys()">SAVE FOR SESSION</button>
+          <button class="btn btn-sm" onclick="saveKeys()">BOTTLE ACCESS</button>
           <button class="btn btn-sm" onclick="clearKeys()">CLEAR ALL</button>
         </div>
       </div>
@@ -139,7 +161,7 @@
 
     <!-- SEARCH HISTORY (collapsible) -->
     <details id="history-panel">
-      <summary>RECENT SCANS</summary>
+      <summary>BOTTLED EVIDENCE — RECENT SCANS</summary>
       <div>
         <div class="history-list" id="history-list">
           <!-- populated by JS -->
@@ -156,7 +178,7 @@
   <!-- LOADING (with live progress) -->
   <div id="loading">
     <div class="sonar"></div>
-    <p>SCANNING THE DEEP…</p>
+    <p>SONAR SWEEP ACTIVE</p>
     <div class="progress-wrap" id="live-progress" style="display:none">
       <div class="progress-counter" id="progress-counter"></div>
       <div class="progress-grid" id="progress-grid"></div>
@@ -166,12 +188,12 @@
   <!-- RESULTS -->
   <div id="results-section" style="display:none">
     <div class="res-hdr">
-      <span>SIGNALS DETECTED</span>
+      <span>TRACES RECOVERED</span>
       <span id="res-count"></span>
     </div>
     <div class="export-bar" id="export-bar" style="display:none">
-      <button class="btn btn-sm" onclick="exportJSON()">⬇ JSON</button>
-      <button class="btn btn-sm" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn btn-sm" onclick="exportJSON()">BOTTLE JSON</button>
+      <button class="btn btn-sm" onclick="exportCSV()">BOTTLE CSV</button>
     </div>
     <div id="results-brief" class="results-brief" style="display:none"></div>
     <div id="avatar-clusters"></div>
@@ -180,7 +202,7 @@
 </div>
 
 <footer>
-  <span class="fl">TRACER // DEEP OCEAN IDENTITY SCANNER</span>
+  <span class="fl">TRACER // SHORELINE TRACE ARRAY</span>
   <span><a href="https://github.com/potemkin666/Tracer" target="_blank" rel="noopener">github.com/potemkin666/Tracer</a></span>
 </footer>
 
