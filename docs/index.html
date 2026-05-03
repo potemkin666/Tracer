@@ -48,6 +48,18 @@
 
     <div id="eng-bar">CURRENTS READY: <span id="eng-count">36 open APIs (standalone)</span></div>
 
+    <!-- PRIMARY SEARCH ROW -->
+    <div class="search-shell">
+      <div class="search-sonar" aria-hidden="true">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="search-row">
+        <input type="text" id="query" placeholder="trace a name, handle, domain, phrase…" autocomplete="off" spellcheck="false">
+        <button class="btn" id="srch-btn" onclick="doSearch()">PING</button>
+      </div>
+      <div class="search-guidance">send a signal… · ping the surface web… · trace a name, handle, domain, phrase…</div>
+    </div>
+
     <div class="quickstart-card">
       <div class="quickstart-hdr">STATION BRIEFING</div>
       <div class="quickstart-grid">
@@ -59,18 +71,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- PRIMARY SEARCH ROW -->
-    <div class="search-shell">
-      <div class="search-sonar" aria-hidden="true">
-        <span></span><span></span><span></span>
-      </div>
-      <div class="search-row">
-        <input type="text" id="query" placeholder="trace a name, handle, domain, phrase…" autocomplete="off" spellcheck="false">
-        <button class="btn" id="srch-btn" onclick="doSearch()">PING</button>
-      </div>
-      <div class="search-guidance">send a signal… · ping the surface web… · trace a name, handle, domain, phrase…</div>
     </div>
 
     <!-- OPTIONS -->
