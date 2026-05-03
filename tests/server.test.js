@@ -125,4 +125,28 @@ describe('ui server', () => {
       expect(text).not.toContain('top secret failure');
     });
   });
+
+  test('rate limits repeated search requests', async () => {
+    const app = createApp({
+      runImpl: async () => ({ results: [], avatarClusters: [], connectorStats: [] }),
+      rateLimiterOptions: { windowMs: 60_000, max: 1 },
+    });
+
+    await withServer(app, async (baseUrl) => {
+      const first = await globalThis.fetch(`${baseUrl}/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: 'alice' }),
+      });
+      const second = await globalThis.fetch(`${baseUrl}/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: 'alice' }),
+      });
+
+      expect(first.status).toBe(200);
+      expect(second.status).toBe(429);
+      await expect(readJson(second)).resolves.toEqual({ error: 'rate limit exceeded' });
+    });
+  });
 });

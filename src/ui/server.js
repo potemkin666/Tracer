@@ -13,6 +13,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
 const INTERNAL_ERROR_MESSAGE = 'internal server error';
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const SEARCH_RATE_LIMIT_MAX = 20;
 
 function logInternalError(context, err) {
   logger.error('server-error', {
@@ -21,12 +23,39 @@ function logInternalError(context, err) {
   });
 }
 
+function createRateLimiter({
+  windowMs = RATE_LIMIT_WINDOW_MS,
+  max = SEARCH_RATE_LIMIT_MAX,
+} = {}) {
+  const buckets = new Map();
+
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = req.ip || req.socket?.remoteAddress || 'unknown';
+    const existing = buckets.get(key);
+
+    if (!existing || existing.resetAt <= now) {
+      buckets.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+
+    existing.count += 1;
+    if (existing.count > max) {
+      logger.warn('server-rate-limit-hit', { key, path: req.path });
+      return res.status(429).json({ error: 'rate limit exceeded' });
+    }
+
+    return next();
+  };
+}
+
 export function createApp({
   runImpl = run,
   buildGraphImpl = buildGraph,
   loadKeysImpl = loadKeysFromEnv,
   allConnectors = ALL_CONNECTORS,
   getActiveImpl = getActive,
+  rateLimiterOptions,
 } = {}) {
   const serverApiKeys = loadKeysImpl();
   const app = express();
@@ -45,10 +74,11 @@ export function createApp({
 
   const docsDir = path.resolve(__dirname, '../../docs');
   const publicDir = path.join(__dirname, 'public');
+  const searchRateLimiter = createRateLimiter(rateLimiterOptions);
   app.use(express.static(docsDir));
   app.use(express.static(publicDir));
 
-  app.post('/search', async (req, res) => {
+  app.post('/search', searchRateLimiter, async (req, res) => {
     const controller = new globalThis.AbortController();
     let closed = false;
     res.on('close', () => {
@@ -80,7 +110,7 @@ export function createApp({
     }
   });
 
-  app.get('/search/stream', async (req, res) => {
+  app.get('/search/stream', searchRateLimiter, async (req, res) => {
     let searchRequest;
     try {
       searchRequest = normaliseSearchRequest(req.query || {});
