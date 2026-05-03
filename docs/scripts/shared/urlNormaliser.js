@@ -34,7 +34,7 @@ export function normaliseUrlForDedupe(url) {
 
     const filtered = [...parsed.searchParams.entries()]
       .filter(([key]) => !TRACKING_PARAMS.has(key.toLowerCase()))
-      .sort(([left], [right]) => left.localeCompare(right));
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey));
     parsed.search = '';
     filtered.forEach(([key, paramValue]) => parsed.searchParams.append(key, paramValue));
 

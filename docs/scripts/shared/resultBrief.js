@@ -26,7 +26,9 @@ export function buildResultsBrief(results = []) {
   });
 
   const topSources = [...sourceCounts.entries()]
-    .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))
+    .sort((leftEntry, rightEntry) => (
+      rightEntry[1] - leftEntry[1] || leftEntry[0].localeCompare(rightEntry[0])
+    ))
     .slice(0, 3)
     .map(([source, count]) => `${source} (${count})`)
     .join(', ');
