@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TRACER — Deep Search Engine</title>
+  <title>TRACER // Atlantis Operating System</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles/app.css">
@@ -22,13 +22,14 @@
         <img class="brand-logo" src="https://github.com/user-attachments/assets/cc3848d1-d1f4-4dbc-bbfd-1aff071af51f" alt="Tracer logo">
       </div>
       <div class="brand-copy">
+        <div class="brand-glyphs" aria-hidden="true"><span>◈</span><span>⟁</span><span>⌘</span></div>
         <span class="logo">TRACER</span>
-        <div class="tagline">Deep Search Engine</div>
-        <p class="brand-note">Follow the signal beneath the surface.</p>
+        <div class="tagline">Atlantis Console</div>
+        <p class="brand-note">Read the tide-carved signal through stone, foam, and buried light.</p>
       </div>
     </div>
     <div class="header-status">
-      <span class="header-kicker">COASTAL ARRAY · LIGHTHOUSE CONTROL · GRID 54.6N / 5.9W</span>
+      <span class="header-kicker">ATLANTIS NODE · TRIDENT ARRAY · BASIN 54.6N / 5.9W</span>
       <span class="status-pill" id="status-text">AWAITING SIGNAL</span>
     </div>
   </header>
@@ -36,7 +37,7 @@
   <!-- MAIN SEARCH PANEL -->
   <div class="panel">
     <div class="panel-hdr">
-      <span>SONAR CONSOLE</span>
+      <span><span class="panel-icon" aria-hidden="true">⌘</span> SONAR TEMPLE</span>
       <span id="conn-wrap">
         <span class="dot" id="dot"></span>
         <span id="conn-lbl">OFFLINE</span>
@@ -54,17 +55,17 @@
         <input type="text" id="query" placeholder="trace a name, handle, domain, phrase…" autocomplete="off" spellcheck="false">
         <button class="btn" id="srch-btn" onclick="doSearch()">PING</button>
       </div>
-      <div class="search-guidance">send a signal… · ping the surface web… · trace a name, handle, domain, phrase…</div>
+      <div class="search-guidance">cast a glyph… · wake the cyan tide… · trace a name, handle, domain, phrase…</div>
     </div>
 
     <div class="quickstart-card">
-      <div class="quickstart-hdr">STATION BRIEFING</div>
+      <div class="quickstart-hdr">TEMPLE BRIEFING</div>
       <div class="quickstart-grid">
         <div class="quickstart-item">
-          <strong>SURFACE SWEEP READY</strong>
-          <p>You are already connected to the open currents, so you can trace names, handles, domains, and phrases immediately.</p>
+          <strong>GLYPH ARRAY READY</strong>
+          <p>The basin is already linked to the open currents, so you can trace names, handles, domains, and phrases immediately.</p>
           <div class="quickstart-actions">
-            <button class="btn btn-sm" type="button" onclick="document.getElementById('query').focus()">PING NOW</button>
+            <button class="btn btn-sm" type="button" onclick="document.getElementById('query').focus()">ETCH QUERY</button>
           </div>
         </div>
       </div>
@@ -87,7 +88,7 @@
 
     <!-- API KEYS (collapsible) -->
     <details>
-      <summary>ACCESS CURRENTS — optional, unlock more engines</summary>
+      <summary>VAULT KEYS — optional, awaken deeper engines</summary>
       <div>
         <div class="keys-grid" id="keys-grid">
           <!-- populated by JS -->
@@ -101,7 +102,7 @@
 
     <!-- SEARCH HISTORY (collapsible) -->
     <details id="history-panel">
-      <summary>BOTTLED EVIDENCE — RECENT SCANS</summary>
+      <summary>STONE TABLETS — RECENT SCANS</summary>
       <div>
         <div class="history-list" id="history-list">
           <!-- populated by JS -->
@@ -127,13 +128,13 @@
 
   <!-- RESULTS -->
   <div id="results-section" style="display:none">
-    <div class="res-hdr">
-      <span>TRACES RECOVERED</span>
+      <div class="res-hdr">
+      <span>RELICS RECOVERED</span>
       <span id="res-count"></span>
     </div>
     <div class="export-bar" id="export-bar" style="display:none">
-      <button class="btn btn-sm" onclick="exportJSON()">BOTTLE JSON</button>
-      <button class="btn btn-sm" onclick="exportTXT()">BOTTLE TXT</button>
+      <button class="btn btn-sm" onclick="exportJSON()">ETCH JSON</button>
+      <button class="btn btn-sm" onclick="exportTXT()">ETCH TXT</button>
     </div>
     <div id="results-meta" class="results-meta" style="display:none"></div>
     <div id="results-brief" class="results-brief" style="display:none"></div>
@@ -151,7 +152,7 @@
 </div>
 
 <footer>
-  <span class="fl">TRACER // SHORELINE TRACE ARRAY</span>
+  <span class="fl">TRACER // ATLANTIS OPERATING SYSTEM</span>
   <span><a href="https://github.com/potemkin666/Tracer" target="_blank" rel="noopener">github.com/potemkin666/Tracer</a></span>
 </footer>
 
