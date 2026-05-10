@@ -36,4 +36,12 @@ describe('engine metadata contracts', () => {
     expect(STANDALONE_OPEN_FETCHERS).toHaveLength(44);
     expect(STANDALONE_KEY_BACKED_FETCHERS).toHaveLength(11);
   });
+
+  test('all connector modules export a search function', async () => {
+    for (const connector of SERVER_CONNECTORS) {
+      const modulePath = `../src/connectors/${connector.modulePath.slice(2)}`;
+      const module = await import(modulePath);
+      expect(typeof module.search).toBe('function');
+    }
+  });
 });

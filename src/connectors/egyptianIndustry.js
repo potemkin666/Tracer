@@ -1,19 +1,18 @@
 import httpClient from '../httpClient.js';
 import cheerio from 'cheerio';
 import { normalise } from '../normaliser.js';
+import { DEFAULT_USER_AGENT, DEFAULT_TIMEOUT, logConnectorError } from './connectorUtils.js';
 
-const UA = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
-
-async function search(query, apiKeys = {}) {
+async function search(query) {
   try {
     const response = await httpClient.get('https://www.egyptianindustry.com/search', {
       params: { q: query },
       headers: {
-        'User-Agent': UA,
+        'User-Agent': DEFAULT_USER_AGENT,
         Accept: 'text/html',
         'Accept-Language': 'en,ar;q=0.9',
       },
-      timeout: 10000,
+      timeout: DEFAULT_TIMEOUT,
     });
     const $ = cheerio.load(response.data);
     const results = [];
@@ -25,7 +24,7 @@ async function search(query, apiKeys = {}) {
       if (title || url) { results.push(normalise('egyptian-industry', query, { title, url, snippet, rank: i + 1 })); }
     });
     return results;
-  } catch (err) { console.error('[connectors/egyptian-industry]', err.message); return []; }
+  } catch (err) { logConnectorError('egyptian-industry', err); return []; }
 }
 
 export { search };

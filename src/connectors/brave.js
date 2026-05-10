@@ -1,5 +1,6 @@
 import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
+import { DEFAULT_TIMEOUT, logConnectorError } from './connectorUtils.js';
 
 async function search(query, apiKeys = {}) {
   try {
@@ -11,7 +12,7 @@ async function search(query, apiKeys = {}) {
         'X-Subscription-Token': apiKey,
       },
       params: { q: query, count: 10 },
-      timeout: 10000,
+      timeout: DEFAULT_TIMEOUT,
     });
 
     const items = (response.data.web && response.data.web.results) || [];
@@ -23,7 +24,7 @@ async function search(query, apiKeys = {}) {
         rank: i + 1,
       })
     );
-  } catch (err) { console.error('[connectors/brave]', err.message); return []; }
+  } catch (err) { logConnectorError('brave', err); return []; }
 }
 
 export { search };
