@@ -36,4 +36,22 @@ describe('engine metadata contracts', () => {
     expect(STANDALONE_OPEN_FETCHERS).toHaveLength(44);
     expect(STANDALONE_KEY_BACKED_FETCHERS).toHaveLength(11);
   });
+
+  test('all connector modules export a search function', async () => {
+    const errors = [];
+    for (const connector of SERVER_CONNECTORS) {
+      const modulePath = `../src/connectors/${connector.modulePath.slice(2)}`;
+      try {
+        const module = await import(modulePath);
+        if (typeof module.search !== 'function') {
+          errors.push(`${connector.id}: search export is not a function`);
+        }
+      } catch (err) {
+        errors.push(`${connector.id}: ${err.message}`);
+      }
+    }
+    if (errors.length > 0) {
+      throw new Error(`Connector export errors:\n${errors.join('\n')}`);
+    }
+  });
 });

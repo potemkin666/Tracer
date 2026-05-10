@@ -2,107 +2,171 @@ globalThis.TRACER_ENGINE_METADATA = {
   "keyDefs": [
     {
       "id": "brave",
-      "label": "BRAVE KEY"
+      "envVar": "TRACER_BRAVE_KEY",
+      "label": "BRAVE KEY",
+      "description": "Brave Search API key"
     },
     {
       "id": "kagi",
-      "label": "KAGI KEY"
+      "envVar": "TRACER_KAGI_KEY",
+      "label": "KAGI KEY",
+      "description": "Kagi API key"
     },
     {
       "id": "bing",
-      "label": "BING KEY"
+      "envVar": "TRACER_BING_KEY",
+      "label": "BING KEY",
+      "description": "Bing Search API key"
     },
     {
       "id": "google",
-      "label": "GOOGLE KEY"
+      "envVar": "TRACER_GOOGLE_KEY",
+      "label": "GOOGLE KEY",
+      "description": "Google Custom Search key"
     },
     {
       "id": "googleCx",
-      "label": "GOOGLE CX"
+      "envVar": "TRACER_GOOGLE_CX",
+      "label": "GOOGLE CX",
+      "description": "Google Custom Search CX"
     },
     {
       "id": "serpapi",
-      "label": "SERPAPI KEY"
+      "envVar": "TRACER_SERPAPI_KEY",
+      "label": "SERPAPI KEY",
+      "description": "SerpAPI key"
     },
     {
       "id": "mojeek",
-      "label": "MOJEEK KEY"
+      "envVar": "TRACER_MOJEEK_KEY",
+      "label": "MOJEEK KEY",
+      "description": "Mojeek API key"
     },
     {
       "id": "exa",
-      "label": "EXA KEY"
+      "envVar": "TRACER_EXA_KEY",
+      "label": "EXA KEY",
+      "description": "Exa AI API key"
     },
     {
       "id": "perplexity",
-      "label": "PERPLEXITY KEY"
+      "envVar": "TRACER_PERPLEXITY_KEY",
+      "label": "PERPLEXITY KEY",
+      "description": "Perplexity AI API key"
     },
     {
       "id": "shodan",
-      "label": "SHODAN KEY"
+      "envVar": "TRACER_SHODAN_KEY",
+      "label": "SHODAN KEY",
+      "description": "Shodan API key"
     },
     {
       "id": "censysId",
-      "label": "CENSYS ID"
+      "envVar": "TRACER_CENSYS_ID",
+      "label": "CENSYS ID",
+      "description": "Censys API ID"
     },
     {
       "id": "censysSecret",
-      "label": "CENSYS SECRET"
+      "envVar": "TRACER_CENSYS_SECRET",
+      "label": "CENSYS SECRET",
+      "description": "Censys API secret"
     },
     {
       "id": "hunter",
-      "label": "HUNTER KEY"
+      "envVar": "TRACER_HUNTER_KEY",
+      "label": "HUNTER KEY",
+      "description": "Hunter.io API key"
     },
     {
       "id": "intelx",
-      "label": "INTELX KEY"
+      "envVar": "TRACER_INTELX_KEY",
+      "label": "INTELX KEY",
+      "description": "IntelX API key"
     },
     {
       "id": "publicwww",
-      "label": "PUBLICWWW KEY"
+      "envVar": "TRACER_PUBLICWWW_KEY",
+      "label": "PUBLICWWW KEY",
+      "description": "PublicWWW API key"
     },
     {
       "id": "tineye",
-      "label": "TINEYE KEY"
+      "envVar": "TRACER_TINEYE_KEY",
+      "label": "TINEYE KEY",
+      "description": "TinEye API key"
     },
     {
       "id": "dehashed",
-      "label": "DEHASHED email:key"
+      "envVar": "TRACER_DEHASHED_KEY",
+      "label": "DEHASHED email:key",
+      "description": "DeHashed API key"
     },
     {
       "id": "hibp",
-      "label": "HIBP API KEY"
+      "envVar": "TRACER_HIBP_KEY",
+      "label": "HIBP API KEY",
+      "description": "Have I Been Pwned API key"
     },
     {
       "id": "greynoise",
-      "label": "GREYNOISE KEY"
+      "envVar": "TRACER_GREYNOISE_KEY",
+      "label": "GREYNOISE KEY",
+      "description": "GreyNoise API key"
     },
     {
       "id": "yandex",
-      "label": "YANDEX user:key"
+      "envVar": "TRACER_YANDEX_KEY",
+      "label": "YANDEX user:key",
+      "description": "Yandex XML user:key"
     },
     {
       "id": "naverClientId",
-      "label": "NAVER CLIENT ID"
+      "envVar": "TRACER_NAVER_CLIENT_ID",
+      "label": "NAVER CLIENT ID",
+      "description": "Naver client ID"
     },
     {
       "id": "naverClientSecret",
-      "label": "NAVER SECRET"
+      "envVar": "TRACER_NAVER_CLIENT_SECRET",
+      "label": "NAVER SECRET",
+      "description": "Naver client secret"
     },
     {
       "id": "metager",
-      "label": "METAGER KEY"
+      "envVar": "TRACER_METAGER_KEY",
+      "label": "METAGER KEY",
+      "description": "MetaGer API key"
     },
     {
       "id": "swisscows",
-      "label": "SWISSCOWS KEY"
+      "envVar": "TRACER_SWISSCOWS_KEY",
+      "label": "SWISSCOWS KEY",
+      "description": "Swisscows API key"
     },
     {
       "id": "listennotes",
-      "label": "LISTENNOTES KEY"
+      "envVar": "TRACER_LISTENNOTES_KEY",
+      "label": "LISTENNOTES KEY",
+      "description": "ListenNotes API key"
     },
     {
       "id": "searxngUrl",
-      "label": "SEARXNG INSTANCE URL"
+      "envVar": "TRACER_SEARXNG_URL",
+      "label": "SEARXNG INSTANCE URL",
+      "description": "SearXNG instance URL"
+    },
+    {
+      "id": "wolframalpha",
+      "envVar": "TRACER_WOLFRAMALPHA_KEY",
+      "label": "WOLFRAM ALPHA KEY",
+      "description": "Wolfram Alpha API key"
+    },
+    {
+      "id": "netlas",
+      "envVar": "TRACER_NETLAS_KEY",
+      "label": "NETLAS KEY",
+      "description": "Netlas API key"
     }
   ],
   "standalone": {

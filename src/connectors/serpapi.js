@@ -1,5 +1,6 @@
 import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
+import { logConnectorError } from './connectorUtils.js';
 
 async function search(query, apiKeys = {}) {
   try {
@@ -17,7 +18,7 @@ async function search(query, apiKeys = {}) {
         rank: i + 1,
       })
     );
-  } catch (err) { console.error('[connectors/serpapi]', err.message); return []; }
+  } catch (err) { logConnectorError('serpapi', err); return []; }
 }
 
 export { search };

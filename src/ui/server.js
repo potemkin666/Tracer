@@ -17,8 +17,15 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
 const INTERNAL_ERROR_MESSAGE = 'internal server error';
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const SEARCH_RATE_LIMIT_MAX = 20;
+
+// Configurable rate limit and cache settings via environment variables
+const RATE_LIMIT_WINDOW_MS = parseInt(process.env.TRACER_RATE_LIMIT_WINDOW_MS, 10) || 60_000;
+const SEARCH_RATE_LIMIT_MAX = parseInt(process.env.TRACER_RATE_LIMIT_MAX, 10) || 20;
+const CACHE_SEARCH_TTL_MS = parseInt(process.env.TRACER_CACHE_SEARCH_TTL_MS, 10) || (5 * 60_000);
+const CACHE_SNAPSHOT_TTL_MS = parseInt(process.env.TRACER_CACHE_SNAPSHOT_TTL_MS, 10) || (30 * 60_000);
+const CACHE_MAX_SEARCH_ENTRIES = parseInt(process.env.TRACER_CACHE_MAX_SEARCH_ENTRIES, 10) || 100;
+const CACHE_MAX_SNAPSHOT_ENTRIES = parseInt(process.env.TRACER_CACHE_MAX_SNAPSHOT_ENTRIES, 10) || 200;
+
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://potemkin666.github.io',
   'http://localhost:3000',
@@ -87,7 +94,18 @@ function createRateLimiter({
 } = {}) {
   const buckets = new Map();
 
-  return (req, res, next) => {
+  // Periodically clean up expired buckets to prevent memory leak
+  const cleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, bucket] of buckets.entries()) {
+      if (bucket.resetAt <= now) {
+        buckets.delete(key);
+      }
+    }
+  }, windowMs);
+
+  // Allow cleanup to be stopped if needed
+  const middleware = (req, res, next) => {
     const now = Date.now();
     const key = req.ip || req.socket?.remoteAddress || 'unknown';
     const existing = buckets.get(key);
@@ -100,11 +118,22 @@ function createRateLimiter({
     existing.count += 1;
     if (existing.count > max) {
       logger.warn('server-rate-limit-hit', { key, path: req.path });
-      return res.status(429).json({ error: 'rate limit exceeded' });
+      // Add Retry-After header indicating when the limit resets (in seconds)
+      const retryAfterSeconds = Math.ceil((existing.resetAt - now) / 1000);
+      res.set('Retry-After', String(retryAfterSeconds));
+      return res.status(429).json({ 
+        error: 'rate limit exceeded',
+        retryAfter: retryAfterSeconds
+      });
     }
 
     return next();
   };
+
+  // Expose cleanup method for testing
+  middleware.cleanup = () => clearInterval(cleanupInterval);
+
+  return middleware;
 }
 
 export function createApp({
@@ -114,7 +143,12 @@ export function createApp({
   allConnectors = ALL_CONNECTORS,
   getActiveImpl = getActive,
   snapshotLookupImpl = lookupArchiveSnapshot,
-  responseCache = createResponseCache(),
+  responseCache = createResponseCache({
+    searchTtlMs: CACHE_SEARCH_TTL_MS,
+    snapshotTtlMs: CACHE_SNAPSHOT_TTL_MS,
+    maxSearchEntries: CACHE_MAX_SEARCH_ENTRIES,
+    maxSnapshotEntries: CACHE_MAX_SNAPSHOT_ENTRIES,
+  }),
   telemetryStore = createTelemetryStore(),
   rateLimiterOptions,
   allowedOrigins = parseAllowedOrigins(),

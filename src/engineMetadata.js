@@ -1,33 +1,7 @@
 import { ORCHESTRATOR_DEFAULTS } from './runtimeConfig.js';
+import { KEY_DEFS } from './config.js';
 
-export const KEY_DEFS = [
-  { id: 'brave', label: 'BRAVE KEY' },
-  { id: 'kagi', label: 'KAGI KEY' },
-  { id: 'bing', label: 'BING KEY' },
-  { id: 'google', label: 'GOOGLE KEY' },
-  { id: 'googleCx', label: 'GOOGLE CX' },
-  { id: 'serpapi', label: 'SERPAPI KEY' },
-  { id: 'mojeek', label: 'MOJEEK KEY' },
-  { id: 'exa', label: 'EXA KEY' },
-  { id: 'perplexity', label: 'PERPLEXITY KEY' },
-  { id: 'shodan', label: 'SHODAN KEY' },
-  { id: 'censysId', label: 'CENSYS ID' },
-  { id: 'censysSecret', label: 'CENSYS SECRET' },
-  { id: 'hunter', label: 'HUNTER KEY' },
-  { id: 'intelx', label: 'INTELX KEY' },
-  { id: 'publicwww', label: 'PUBLICWWW KEY' },
-  { id: 'tineye', label: 'TINEYE KEY' },
-  { id: 'dehashed', label: 'DEHASHED email:key' },
-  { id: 'hibp', label: 'HIBP API KEY' },
-  { id: 'greynoise', label: 'GREYNOISE KEY' },
-  { id: 'yandex', label: 'YANDEX user:key' },
-  { id: 'naverClientId', label: 'NAVER CLIENT ID' },
-  { id: 'naverClientSecret', label: 'NAVER SECRET' },
-  { id: 'metager', label: 'METAGER KEY' },
-  { id: 'swisscows', label: 'SWISSCOWS KEY' },
-  { id: 'listennotes', label: 'LISTENNOTES KEY' },
-  { id: 'searxngUrl', label: 'SEARXNG INSTANCE URL' },
-];
+export { KEY_DEFS };
 
 export const STANDALONE_OPEN_FETCHERS = [
   'wikipedia', 'wikidata', 'github-users', 'github-repos', 'hackernews', 'stackoverflow',

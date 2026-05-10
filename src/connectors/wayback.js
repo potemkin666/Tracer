@@ -1,5 +1,6 @@
 import httpClient from '../httpClient.js';
 import { normalise } from '../normaliser.js';
+import { logConnectorError } from './connectorUtils.js';
 
 async function search(query) {
   try {
@@ -31,7 +32,7 @@ async function search(query) {
         rank: i + 1,
       });
     });
-  } catch (err) { console.error('[connectors/wayback]', err.message); return []; }
+  } catch (err) { logConnectorError('wayback', err); return []; }
 }
 
 export { search };
