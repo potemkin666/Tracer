@@ -1,4 +1,5 @@
-import fs from 'fs';
+import fs from 'fs/promises';
+import fsSync from 'fs';
 import os from 'os';
 import path from 'path';
 
@@ -22,8 +23,42 @@ function safeObject(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
-function ensureParentDir(filePath) {
-  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+async function ensureParentDir(filePath) {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+}
+
+async function loadState(filePath) {
+  try {
+    const raw = await fs.readFile(filePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return {
+      ...emptyState(),
+      ...safeObject(parsed),
+      outcomes: { ...emptyState().outcomes, ...safeObject(parsed?.outcomes) },
+      feedback: { ...emptyState().feedback, ...safeObject(parsed?.feedback) },
+      families: safeObject(parsed?.families),
+      connectors: safeObject(parsed?.connectors),
+    };
+  } catch {
+    return emptyState();
+  }
+}
+
+function loadStateSync(filePath) {
+  try {
+    const raw = fsSync.readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return {
+      ...emptyState(),
+      ...safeObject(parsed),
+      outcomes: { ...emptyState().outcomes, ...safeObject(parsed?.outcomes) },
+      feedback: { ...emptyState().feedback, ...safeObject(parsed?.feedback) },
+      families: safeObject(parsed?.families),
+      connectors: safeObject(parsed?.connectors),
+    };
+  } catch {
+    return emptyState();
+  }
 }
 
 export function summariseTelemetry(state = emptyState()) {
@@ -60,27 +95,49 @@ export function summariseTelemetry(state = emptyState()) {
 export function createTelemetryStore({
   filePath = defaultFilePath(),
   now = () => new Date().toISOString(),
+  writeDebounceMs = parseInt(process.env.TRACER_TELEMETRY_WRITE_DEBOUNCE_MS, 10) || 5000,
 } = {}) {
-  let state = emptyState();
+  let state = loadStateSync(filePath);
+  let writeTimeout = null;
+  let pendingWrite = false;
 
-  try {
-    const raw = fs.readFileSync(filePath, 'utf8');
-    const parsed = JSON.parse(raw);
-    state = {
-      ...emptyState(),
-      ...safeObject(parsed),
-      outcomes: { ...emptyState().outcomes, ...safeObject(parsed?.outcomes) },
-      feedback: { ...emptyState().feedback, ...safeObject(parsed?.feedback) },
-      families: safeObject(parsed?.families),
-      connectors: safeObject(parsed?.connectors),
-    };
-  } catch {
-    state = emptyState();
+  // Async persist with debouncing to reduce I/O frequency
+  async function persist() {
+    if (writeTimeout) {
+      clearTimeout(writeTimeout);
+    }
+
+    writeTimeout = setTimeout(async () => {
+      if (pendingWrite) return;
+      pendingWrite = true;
+      
+      try {
+        await ensureParentDir(filePath);
+        await fs.writeFile(filePath, JSON.stringify(state, null, 2));
+      } catch (err) {
+        // Log error but don't throw - telemetry failures shouldn't break the app
+        console.error('Failed to persist telemetry:', err.message);
+      } finally {
+        pendingWrite = false;
+        writeTimeout = null;
+      }
+    }, writeDebounceMs);
   }
 
-  function persist() {
-    ensureParentDir(filePath);
-    fs.writeFileSync(filePath, JSON.stringify(state, null, 2));
+  // Force immediate write (for graceful shutdown)
+  async function flush() {
+    if (writeTimeout) {
+      clearTimeout(writeTimeout);
+      writeTimeout = null;
+    }
+    if (pendingWrite) return;
+    
+    try {
+      await ensureParentDir(filePath);
+      await fs.writeFile(filePath, JSON.stringify(state, null, 2));
+    } catch (err) {
+      console.error('Failed to flush telemetry:', err.message);
+    }
   }
 
   function recordSearch({ results = [], connectorStats = [] } = {}) {
@@ -145,5 +202,6 @@ export function createTelemetryStore({
     getSummary() {
       return summariseTelemetry(state);
     },
+    flush,
   };
 }
