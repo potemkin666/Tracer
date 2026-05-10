@@ -59,30 +59,33 @@ node src/index.js "john smith" --config keys.json --output results.json
 | Variable | Description |
 |----------|-------------|
 | `TRACER_BRAVE_KEY` | Brave Search API key |
-| `TRACER_SERPAPI_KEY` | SerpAPI key |
-| `TRACER_MOJEEK_KEY` | Mojeek API key |
 | `TRACER_KAGI_KEY` | Kagi API key |
 | `TRACER_BING_KEY` | Bing Search API key |
 | `TRACER_GOOGLE_KEY` | Google Custom Search key |
 | `TRACER_GOOGLE_CX` | Google Custom Search CX |
-| `TRACER_METAGER_KEY` | MetaGer API key |
-| `TRACER_SWISSCOWS_KEY` | Swisscows API key |
+| `TRACER_SERPAPI_KEY` | SerpAPI key |
+| `TRACER_MOJEEK_KEY` | Mojeek API key |
+| `TRACER_EXA_KEY` | Exa AI API key |
+| `TRACER_PERPLEXITY_KEY` | Perplexity AI API key |
 | `TRACER_SHODAN_KEY` | Shodan API key |
 | `TRACER_CENSYS_ID` | Censys API ID |
 | `TRACER_CENSYS_SECRET` | Censys API secret |
 | `TRACER_HUNTER_KEY` | Hunter.io API key |
 | `TRACER_INTELX_KEY` | IntelX API key |
 | `TRACER_PUBLICWWW_KEY` | PublicWWW API key |
-| `TRACER_LISTENNOTES_KEY` | ListenNotes API key |
+| `TRACER_TINEYE_KEY` | TinEye API key |
+| `TRACER_DEHASHED_KEY` | DeHashed API key |
+| `TRACER_HIBP_KEY` | Have I Been Pwned API key |
+| `TRACER_GREYNOISE_KEY` | GreyNoise API key |
 | `TRACER_YANDEX_KEY` | Yandex XML user:key |
 | `TRACER_NAVER_CLIENT_ID` | Naver client ID |
 | `TRACER_NAVER_CLIENT_SECRET` | Naver client secret |
+| `TRACER_METAGER_KEY` | MetaGer API key |
+| `TRACER_SWISSCOWS_KEY` | Swisscows API key |
+| `TRACER_LISTENNOTES_KEY` | ListenNotes API key |
 | `TRACER_SEARXNG_URL` | SearXNG instance URL |
 | `TRACER_WOLFRAMALPHA_KEY` | Wolfram Alpha API key |
 | `TRACER_NETLAS_KEY` | Netlas API key |
-| `TRACER_EXA_KEY` | Exa AI API key |
-| `TRACER_PERPLEXITY_KEY` | Perplexity AI API key |
-| `TRACER_TINEYE_KEY` | TinEye API key |
 
 ## Web UI
 

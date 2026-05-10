@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { logger } from './logger.js';
 import { run } from './orchestrator.js';
 import { exportJSON, exportHTML } from './exporter.js';
-import { loadKeysFromEnv } from './config.js';
+import { loadKeysFromEnv, generateEnvVarHelp } from './config.js';
 import { normaliseSearchRequest } from './searchOptions.js';
 
 export const USAGE_TEXT =
@@ -27,32 +27,8 @@ export const USAGE_TEXT =
   'process listings, shell history, and /proc.\n' +
   '\n' +
   'Supported env vars:\n' +
-  '  TRACER_BRAVE_KEY          Brave Search API key\n' +
-  '  TRACER_SERPAPI_KEY        SerpAPI key\n' +
-  '  TRACER_MOJEEK_KEY         Mojeek API key\n' +
-  '  TRACER_KAGI_KEY           Kagi API key\n' +
-  '  TRACER_BING_KEY           Bing Search API key\n' +
-  '  TRACER_GOOGLE_KEY         Google Custom Search key\n' +
-  '  TRACER_GOOGLE_CX          Google Custom Search CX\n' +
-  '  TRACER_METAGER_KEY        MetaGer API key\n' +
-  '  TRACER_SWISSCOWS_KEY      Swisscows API key\n' +
-  '  TRACER_SHODAN_KEY         Shodan API key\n' +
-  '  TRACER_CENSYS_ID          Censys API ID\n' +
-  '  TRACER_CENSYS_SECRET      Censys API secret\n' +
-  '  TRACER_HUNTER_KEY         Hunter.io API key\n' +
-  '  TRACER_INTELX_KEY         IntelX API key\n' +
-  '  TRACER_PUBLICWWW_KEY      PublicWWW API key\n' +
-  '  TRACER_LISTENNOTES_KEY    ListenNotes API key\n' +
-  '  TRACER_YANDEX_KEY         Yandex XML user:key\n' +
-  '  TRACER_NAVER_CLIENT_ID    Naver client ID\n' +
-  '  TRACER_NAVER_CLIENT_SECRET Naver client secret\n' +
-  '  TRACER_SEARXNG_URL        SearXNG instance URL\n' +
-  '  TRACER_WOLFRAMALPHA_KEY   Wolfram Alpha API key\n' +
-  '  TRACER_NETLAS_KEY         Netlas API key\n' +
-  '  TRACER_EXA_KEY            Exa AI API key\n' +
-  '  TRACER_PERPLEXITY_KEY     Perplexity AI API key\n' +
-  '  TRACER_TINEYE_KEY         TinEye API key\n' +
-  '\n' +
+  generateEnvVarHelp() +
+  '\n\n' +
   'Proxy env vars:\n' +
   '  TRACER_PROXY_URL          Proxy URL (overridden by --proxy)\n' +
   '  TRACER_TOR_CONTROL_PORT   Tor control port (default 9051)\n' +

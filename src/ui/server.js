@@ -87,7 +87,18 @@ function createRateLimiter({
 } = {}) {
   const buckets = new Map();
 
-  return (req, res, next) => {
+  // Periodically clean up expired buckets to prevent memory leak
+  const cleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, bucket] of buckets.entries()) {
+      if (bucket.resetAt <= now) {
+        buckets.delete(key);
+      }
+    }
+  }, windowMs);
+
+  // Allow cleanup to be stopped if needed
+  const middleware = (req, res, next) => {
     const now = Date.now();
     const key = req.ip || req.socket?.remoteAddress || 'unknown';
     const existing = buckets.get(key);
@@ -105,6 +116,11 @@ function createRateLimiter({
 
     return next();
   };
+
+  // Expose cleanup method for testing
+  middleware.cleanup = () => clearInterval(cleanupInterval);
+
+  return middleware;
 }
 
 export function createApp({
