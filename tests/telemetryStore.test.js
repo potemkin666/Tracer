@@ -4,11 +4,12 @@ import path from 'path';
 import { createTelemetryStore } from '../src/telemetryStore.js';
 
 describe('telemetry store', () => {
-  test('records search outcomes and feedback persistently', () => {
+  test('records search outcomes and feedback persistently', async () => {
     const filePath = path.join(os.tmpdir(), `tracer-telemetry-${Date.now()}.json`);
     const store = createTelemetryStore({
       filePath,
       now: () => '2026-05-03T10:00:00.000Z',
+      writeDebounceMs: 0, // Immediate writes for testing
     });
 
     const summary = store.recordSearch({
@@ -26,8 +27,18 @@ describe('telemetry store', () => {
     const updated = store.recordFeedback({ family: 'social', verdict: 'falsePositive' });
     expect(updated.feedback.falsePositive).toBe(1);
 
+    // Wait for async write to complete
+    await store.flush();
+
     const persisted = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     expect(persisted.searches).toBe(1);
     expect(persisted.feedback.falsePositive).toBe(1);
+    
+    // Clean up test file
+    try {
+      fs.unlinkSync(filePath);
+    } catch {
+      // Ignore cleanup errors
+    }
   });
 });

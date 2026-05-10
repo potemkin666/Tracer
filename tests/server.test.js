@@ -227,7 +227,15 @@ describe('ui server', () => {
 
       expect(first.status).toBe(200);
       expect(second.status).toBe(429);
-      await expect(readJson(second)).resolves.toEqual({ error: 'rate limit exceeded' });
+      
+      // Check for Retry-After header
+      expect(second.headers.get('Retry-After')).toBeTruthy();
+      
+      // Check response includes retryAfter field
+      const body = await readJson(second);
+      expect(body.error).toBe('rate limit exceeded');
+      expect(body.retryAfter).toBeGreaterThan(0);
+      expect(body.retryAfter).toBeLessThanOrEqual(60);
     });
   });
 
