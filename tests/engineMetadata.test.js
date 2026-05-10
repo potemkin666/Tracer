@@ -38,10 +38,20 @@ describe('engine metadata contracts', () => {
   });
 
   test('all connector modules export a search function', async () => {
+    const errors = [];
     for (const connector of SERVER_CONNECTORS) {
       const modulePath = `../src/connectors/${connector.modulePath.slice(2)}`;
-      const module = await import(modulePath);
-      expect(typeof module.search).toBe('function');
+      try {
+        const module = await import(modulePath);
+        if (typeof module.search !== 'function') {
+          errors.push(`${connector.id}: search export is not a function`);
+        }
+      } catch (err) {
+        errors.push(`${connector.id}: ${err.message}`);
+      }
+    }
+    if (errors.length > 0) {
+      throw new Error(`Connector export errors:\n${errors.join('\n')}`);
     }
   });
 });
